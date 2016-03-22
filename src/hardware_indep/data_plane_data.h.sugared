@@ -1,0 +1,15 @@
+from utils import *
+
+tables = hlir.p4_tables
+
+#[ #ifndef __DATA_PLANE_DATA_H__
+#[ #define __DATA_PLANE_DATA_H__
+#[
+#[ #include "parser.h"
+#[
+#[ #define NB_TABLES ${len(tables)}
+#[
+for i, table in enumerate(tables.values()):
+    #[ #define TABLE_${table.name} ${i}
+#[ 
+#[ #endif // __DATA_PLANE_DATA_H__

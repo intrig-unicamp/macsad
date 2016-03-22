@@ -1,0 +1,241 @@
+import p4_hlir.hlir.p4 as p4
+from header_info import hdr_prefix, fld_prefix
+
+def int_to_byte_array(val): # CAUTION: big endian!
+    """
+    :param val: int
+    :rtype:     (int, [int])
+    """
+    nbytes = 0
+    res = []
+    while val > 0:
+        nbytes += 1
+        res.append(int(val % 256))
+        val /= 256
+    res.reverse()
+    return nbytes, res
+
+def fld_id(f):
+    """
+    :param f: p4_field
+    :rtype:   str
+    """
+    return fld_prefix(f.instance.name + "_" + f.name)
+
+def get_key_byte_width(branch_on):
+    """
+    :param branch_on: list of union(p4_field, tuple)
+    :rtype:           int
+    """
+    key_width = 0
+    for switch_ref in branch_on:
+        if type(switch_ref) is p4.p4_field:
+            key_width += (switch_ref.width+7)/8
+        elif type(switch_ref) is tuple:
+            key_width += max(4, (switch_ref[1] + 7) / 8)
+    return key_width
+
+#[ // TODO: insert the parser_exception calls into right places
+pe_dict = { "p4_pe_index_out_of_bounds" : None,
+            "p4_pe_out_of_packet" : None,
+            "p4_pe_header_too_long" : None,
+            "p4_pe_header_too_short" : None,
+            "p4_pe_unhandled_select" : None,
+            "p4_pe_checksum" : None,
+            "p4_pe_default" : None }
+
+
+pe_default = p4.p4_parser_exception(None, None)
+pe_default.name = "p4_pe_default"
+pe_default.return_or_drop = p4.P4_PARSER_DROP
+
+hlir_pes = hlir.p4_parser_exceptions
+for pe_name, pe in pe_dict.items():
+    if hlir_pes.has_key(pe_name):
+        pe_dict[pe_name] = hlir_pes[pe_name]
+    else:
+        pe_dict[pe_name] = pe_default
+for pe_name, pe in hlir_pes.items():
+    if pe_dict.hask_key(pe_name) == False:
+        pe_dict[pe_name] = pe
+
+
+
+#[ #include "odp_lib.h"
+#[ void print_mac(uint8_t* v) { printf("%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX\n", v[0], v[1], v[2], v[3], v[4], v[5]); }
+#[ void print_ip(uint8_t* v) { printf("%d.%d.%d.%d\n",v[0],v[1],v[2],v[3]); }
+#[
+
+
+for pe_name, pe in pe_dict.items():
+    #[ static inline void ${pe_name}(packet_descriptor_t *pd) {
+    if pe.return_or_drop == p4.P4_PARSER_DROP:
+        #[     drop(pd->packet);
+
+    elif type(pe.return_or_drop) == p4.p4_conditional_node:
+        #[     // TODO: the specification allow only control function
+        #[     // TODO: generate conditions and expressions
+    #[ }
+    
+#[
+
+for table in hlir.p4_tables.values():
+    #[ void apply_table_${table.name}(packet_descriptor_t* pd, lookup_table_t** tables);
+#[ 
+#[ static void
+#[ extract_header(uint8_t* buf, packet_descriptor_t* pd, header_instance_t h) {
+#[     pd->headers[h] =
+#[       (header_descriptor_t) {
+#[         .type = h,
+#[         .pointer = buf,
+#[         .length = header_instance_byte_width[h]
+#[       };
+#[ }
+#[ 
+
+for state_name, parse_state in hlir.p4_parse_states.items():
+    #[ static void parse_state_${state_name}(packet_descriptor_t* pd, uint8_t* buf, lookup_table_t** tables);
+#[
+
+for state_name, parse_state in hlir.p4_parse_states.items():
+    branch_on = parse_state.branch_on
+    if branch_on:
+        #[ static inline void build_key_${state_name}(packet_descriptor_t *pd, uint8_t *buf, uint8_t *key) {
+        for switch_ref in branch_on:
+            if type(switch_ref) is p4.p4_field:
+                field_instance = switch_ref
+                byte_width = (field_instance.width + 7) / 8
+                if byte_width <= 4:
+                    #[ EXTRACT_32BITS(pd, ${fld_id(field_instance)}, *(uint32_t*)key)
+                    #[ key += sizeof(uint32_t);
+                else:
+                    #[ EXTRACT_BYTEBUF(pd, ${fld_id(field_instance)}, key)
+                    #[ key += ${byte_width};
+            elif type(switch_ref) is tuple:
+                #[     uint8_t* ptr;
+                offset, width = switch_ref
+                src_len = (width + 7) / 8
+                #[     ptr = buf + ${offset / 8};
+                #[     // TODO implement extract_*_from_stream in the backend
+                if width <= 32:
+                    #[     *(uint32_t *) key = extract_intvalue_from_stream(ptr, ${offset % 8}, ${width});
+                    #[     key += sizeof(uint32_t);
+                else:
+                    #[     memcpy(key, extract_bytebuf_from_stream(ptr, ${offset % 8}, ${width}), ${src_len});
+                    #[     key += ${src_len};
+        #[ }
+
+for state_name, parse_state in hlir.p4_parse_states.items():
+    #[ static void parse_state_${state_name}(packet_descriptor_t* pd, uint8_t* buf, lookup_table_t** tables)
+    #[ {
+    
+    for call in parse_state.call_sequence:
+        if call[0] == p4.parse_call.extract:
+            header_instance_name = hdr_prefix(call[1].name)
+            #[     extract_header(buf, pd, ${header_instance_name});
+            #[     buf += header_instance_byte_width[${header_instance_name}];
+        elif call[0] == p4.parse_call.set:
+            dest_field, src = call[1], call[2]
+            if type(src) is int or type(src) is long:
+                #[     modify_field_to_const32(pd, field_desc(${fld_id(dest_field)}), ${hex(src)});
+            elif type(src) is p4.p4_field:
+                #[     modify_field_to_field(pd, field_desc(${fld_id(dest_field)}), field_desc(${fld_id(src)}));
+            elif type(src) is tuple:
+                value, mask = src
+                fld = fld_id(dest_field)
+                #[     modify_field_to_field(pd, field_desc(${fld_id(dest_field)}), field_desc(${fld_id(src)}));
+                #[     modify_field_with_mask(pd, field_desc(${fld}), ${value}, ${mask}, (field_instance_bit_width[${fld}+7])/8)
+#                #[     modify_field_to_field(pd, field_desc(${fld_id(dest_field)}), field_desc(${fld_id(src)}));
+#                #[     modify_field_from_buffer(pd, field_desc(${fld_id(dest_field)}), ?, mask));
+#void modify_field_to_field  (packet_descriptor_t* p, field_reference_t dstf, field_reference_t srcf);
+#void modify_field_with_mask (packet* p, field f, void* value, void* mask, int modify_length);
+                #[     // TODO setting field to current
+    branch_on = parse_state.branch_on
+    if not branch_on:
+        branch_case, next_state = parse_state.branch_to.items()[0]
+        if isinstance(next_state, p4.p4_parse_state):
+            #[     return parse_state_${next_state.name}(pd, buf, tables);
+        else:
+            #[     #if debug == 1
+            #[     printf("  :::: PACKET PARSED\n");
+            #[     printf("    :: ethernet srcaddr: ");
+            #[     print_mac(extract_bytebuf(pd, field_desc(field_instance_ethernet_srcAddr)));
+            #[     printf("    :: ethernet dstaddr: ");
+            #[     print_mac(extract_bytebuf(pd, field_desc(field_instance_ethernet_dstAddr)));
+            #[     //printf("    :: IP src: "); 
+            #[     //print_ip(extract_bytebuf(pd, field_desc(field_instance_ipv4_srcAddr))); 
+            #[     //printf("    :: IP dst: "); 
+            #[     //print_ip(extract_bytebuf(pd, field_desc(field_instance_ipv4_dstAddr)));
+            #[     for (int i = 0; i < HEADER_INSTANCE_COUNT; ++i) {
+            #[         printf("    :: header %d (type=%d, len=%d) = ", i, pd->headers[i].type, pd->headers[i].length);
+            #[         for (int j = 0; j < pd->headers[i].length; ++j) {
+            #[         printf("%02x ", ((uint8_t*)(pd->headers[i].pointer))[j]);
+            #[         }
+            #[         printf("\n");
+            #[     }
+            #[
+            #[     printf("  :::: TURNING TO TABLE ${next_state.name}\n");
+            #[     #endif
+            #[     return apply_table_${next_state.name}(pd, tables);
+    else:
+        key_byte_width = get_key_byte_width(branch_on)
+        #[     uint8_t key[${key_byte_width}];
+        #[     build_key_${state_name}(pd, buf, key);
+        has_default_case = False
+        for case_num, case in enumerate(parse_state.branch_to.items()):
+            branch_case, next_state = case
+            mask_name  = "mask_value_%d" % case_num
+            value_name  = "case_value_%d" % case_num
+            if branch_case == p4.P4_DEFAULT: # TODO why should two if?
+                has_default_case = True
+                if isinstance(next_state, p4.p4_parse_state):
+                    #[     return parse_state_${next_state.name}(pd, buf, tables);
+                else:
+                    #[     return apply_table_${next_state.name}(pd, tables);
+                continue
+            elif type(branch_case) is int:
+                branch_case # TODO ?
+            elif type(branch_case) is tuple:
+                value = branch_case[0]
+                mask = branch_case[1]
+                #[     // TODO masked values not supported yet
+            elif type(branch_case) is p4.p4_parse_value_set:
+                value_set = branch_case
+                #[     // TODO value sets not supported yet
+                continue
+
+            if type(branch_case) is int or type(branch_case) is tuple:
+                value = branch_case
+                value_len, l = int_to_byte_array(value)
+                #[     uint8_t ${value_name}[${value_len}] = {
+                for c in l:
+                    #[         ${c},
+                #[     };
+                #[     if ( memcmp(key, ${value_name}, ${value_len}) == 0)
+                if isinstance(next_state, p4.p4_parse_state):
+                    #[     return parse_state_${next_state.name}(pd, buf, tables);
+                else:
+                    #[     return apply_table_${next_state.name}(pd, tables);
+        if not has_default_case:
+            #[     return NULL;
+    #[ }
+    #[ 
+
+
+
+# TODO This initialisation shouldn't be done for each and every packet. Perhaps we need a generated packet initialisation function that is invoked on main initialisation, and the main_loop would only set the ingress_port metadata field for each packet.
+
+#[ void init_metadata_headers(packet_descriptor_t* packet_desc) {
+for hn,hi in hlir.p4_header_instances.items():
+    if hi.metadata and not hn is 'standard_metadata':
+        n = hdr_prefix(hn)
+        #[ packet_desc->headers[${n}] = (header_descriptor_t) { .type = ${n}, .length = header_instance_byte_width[${n}],
+        #[                               .pointer = calloc(header_instance_byte_width[${n}], sizeof(uint8_t)) };
+#[ }
+#[
+
+#[ void parse_packet(packet_descriptor_t* pd, lookup_table_t** tables) {
+#[     init_metadata_headers(pd);
+#[     parse_state_start(pd, pd->pointer, tables);
+#[ }
+

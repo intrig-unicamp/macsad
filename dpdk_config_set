@@ -1,0 +1,7 @@
+modprobe uio
+sudo insmod ~/p4eric/dpdk/dpdk-2.1.0/build/kmod/igb_uio.ko
+sudo ~/p4eric/dpdk/dpdk-2.1.0/tools/dpdk_nic_bind.py --bind=igb_uio eth0
+sudo ~/p4eric/dpdk/dpdk-2.1.0/tools/dpdk_nic_bind.py --bind=igb_uio eth1
+sudo ~/p4eric/dpdk/dpdk-2.1.0/tools/dpdk_nic_bind.py --bind=igb_uio eth2
+echo 1024 | sudo tee /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+sudo mount -t hugetlbfs nodev /mnt/huge

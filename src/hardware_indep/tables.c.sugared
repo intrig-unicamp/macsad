@@ -1,0 +1,18 @@
+from utils import getTypeAndLength
+
+#[ #include "dataplane.h"
+#[ #include "actions.h"
+#[ #include "data_plane_data.h"
+#[
+#[ lookup_table_t table_config[NB_TABLES] = {
+for table in hlir.p4_tables.values():
+    table_type, key_length = getTypeAndLength(table)
+    #[ {
+    #[  .name= "${table.name}",
+    #[  .type = ${table_type},
+    #[  .key_size = ${key_length},
+    #[  .val_size = sizeof(struct ${table.name}_action),
+    #[  .min_size = 0, //${table.min_size},
+    #[  .max_size = 255 //${table.max_size}
+    #[ },
+#[ };

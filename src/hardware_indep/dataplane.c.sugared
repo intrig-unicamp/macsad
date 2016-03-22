@@ -1,0 +1,98 @@
+import p4_hlir.hlir.p4 as p4
+from utils import getTypeAndLength
+from header_info import fld_prefix
+
+def fld_id(f): return fld_prefix(f.instance.name + "_" + f.name)
+
+#[ #include <stdlib.h>
+#[ #include <string.h>
+#[ #include "odp_lib.h"
+#[ #include "actions.h"
+#[ 
+#[ extern void parse_packet(packet_descriptor_t* pd, lookup_table_t** tables);
+#[
+for table in hlir.p4_tables.values():
+    #[ void apply_table_${table.name}(packet_descriptor_t* pd, lookup_table_t** tables);
+#[
+
+def match_type_order(t):
+    if t is p4.p4_match_type.P4_MATCH_EXACT:   return 0
+    if t is p4.p4_match_type.P4_MATCH_LPM:     return 1
+    if t is p4.p4_match_type.P4_MATCH_TERNARY: return 2
+
+for table in hlir.p4_tables.values():
+    table_type, key_length = getTypeAndLength(table)
+    #[ void table_${table.name}_key(packet_descriptor_t* pd, uint8_t* key) {
+    sortedfields = sorted(table.match_fields, key=lambda field: match_type_order(field[1]))
+    for match_field, match_type, match_mask in sortedfields:
+        if match_field.width <= 32:
+            #[ EXTRACT_32BITS(pd, ${fld_id(match_field)}, *(uint32_t*)key)
+            #[ key += sizeof(uint32_t);
+        elif match_field.width > 32 and match_field.width % 8 == 0:
+            byte_width = (match_field.width+7)/8
+            #[ EXTRACT_BYTEBUF(pd, ${fld_id(match_field)}, key)
+            #[ key += ${byte_width};
+        else:
+            print "Unsupported field %s ignored in key calculation." % fld_id(match_field)
+    if table_type == "LOOKUP_LPM":
+        #[ key -= ${key_length};
+        #[ uint8_t *reverse;
+        #[ int c, d;
+        #[ reverse = (uint8_t*)malloc(sizeof(uint8_t)*${key_length});
+        #[ for(c = ${key_length-1}, d = 0; c >= 0; c--, d++) *(reverse+d) = *(key+c);
+        #[ for(c = 0; c < ${key_length}; c++) *(key+c) = *(reverse+c);
+        #[ free(reverse);
+    #[ }
+    #[
+
+for table in hlir.p4_tables.values():
+    table_type, key_length = getTypeAndLength(table)
+    lookupfun = {'LOOKUP_LPM':'lpm_lookup', 'LOOKUP_EXACT':'exact_lookup', 'LOOKUP_TERNARY':'ternary_lookup'}
+    #[ void apply_table_${table.name}(packet_descriptor_t* pd, lookup_table_t** tables)
+    #[ {
+    #[     #if debug == 1
+    #[     printf("  :::: EXECUTING TABLE ${table.name}\n");
+    #[     #endif
+    #[     uint8_t* key[${key_length}];
+    #[     table_${table.name}_key(pd, (uint8_t*)key);
+    #[     struct ${table.name}_action* res = (struct ${table.name}_action*)${lookupfun[table_type]}(tables[TABLE_${table.name}], (uint8_t*)key);
+    #[     if(res == NULL) {
+    #[         #if debug == 1
+    #[         printf("    :: NO RESULT, NO DEFAULT ACTION, IGNORING PACKET... key:0x%08x\n", (unsigned)*key);
+    #[         #endif
+    #[         return;
+    #[     }
+    #[     switch (res->action_id) {
+    for action in table.actions:
+        #[ case action_${action.name}:
+        #[   #if debug == 1
+        #[   printf("    :: EXECUTING ACTION ${action.name}...\n");
+        #[   #endif
+        if action.signature:
+            #[ action_code_${action.name}(pd, tables, res->${action.name}_params);
+        else:
+            #[ action_code_${action.name}(pd, tables);
+        #[     break;
+    #[     }
+    if "hit" in table.next_:
+        #[ // apply_table_${table.next_['hit'].name}(pd, tables);
+        #[ // apply_table_${table.next_['miss'].name}(pd, tables);
+    else:
+        #[ switch (res->action_id) {
+        for action, nexttable in table.next_.items():
+            if nexttable != None:
+                #[ case action_${action.name}:
+                #[     apply_table_${nexttable.name}(pd, tables);
+                #[     break;
+        #[ }
+    #[ }
+    #[
+
+#[ 
+#[ void handle_packet(packet_descriptor_t* pd, lookup_table_t** tables)
+#[ {
+#[     #if debug == 1
+#[     printf("### HANDLING PACKET ARRIVING AT PORT %" PRIu32 "...\n", extract_intvalue(pd, field_desc(field_instance_standard_metadata_ingress_port)));
+#[     #endif
+#[     parse_packet(pd, tables);
+#[ }

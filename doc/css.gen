@@ -1,0 +1,34 @@
+
+<style type="text/css">
+code
+{
+	color: blue;
+
+  	font-family:monospace,monospace;
+  	font-size: 1em;
+}
+
+code.gray
+{
+	color: gray;
+  	font-family:serif;
+
+    white-space: pre-wrap;       /* CSS 3 */
+    white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+    white-space: -pre-wrap;      /* Opera 4-6 */
+    white-space: -o-pre-wrap;    /* Opera 7 */
+    word-wrap: break-word;       /* Internet Explorer 5.5+ */
+}
+
+pre.sourceCode
+{
+  	font-family:monospace,monospace;
+  	font-size: 1em;
+
+	margin-left: 3em;
+	padding: 0.5em;
+
+	border: 0.1em green solid !important;
+}
+</style>
+
