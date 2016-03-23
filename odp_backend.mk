@@ -50,7 +50,7 @@ LIBS = -lodp -lodphelper -lpthread
 
 OBJS = $(SRCS-y:.c=.o)
 
-MAIN = example_odp1
+MAIN = mac_ad
 
 all: $(MAIN)
 	@echo  Simple program named example has been compiled

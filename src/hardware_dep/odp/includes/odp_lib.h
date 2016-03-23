@@ -1,31 +1,24 @@
 #ifndef ODP_LIB_H
 #define ODP_LIB_H
 
-//=============================================================================
-
 #include <getopt.h>
 
-//=============================================================================
-
+#include <stdint.h>
+#include <stdio.h>
 #include "data_plane_data.h"
 #include "backend.h"
 #include "dataplane.h" // lookup_table_t
 #include "odp_tables.h"
 #include "ctrl_plane_backend.h"
-#include <stdint.h>
-#include <stdio.h>
 #include <net/ethernet.h>
-//=============================================================================
-// Backend-specific aliases
 
+// Backend-specific aliases
 #include "aliases.h"
 
 #define parse_as rte_pktmbuf_mtod
 #define MAX_ETHPORTS 32
 
-//=============================================================================
 // Shared types and constants
-
 extern uint32_t enabled_port_mask;
 extern int promiscuous_on;
 extern int numa_on;

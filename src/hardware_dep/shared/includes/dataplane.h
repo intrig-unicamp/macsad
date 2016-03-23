@@ -86,9 +86,8 @@ typedef struct packet_descriptor_s {
 
 extern lookup_table_t table_config[];
 
-//void handle_packet(packet_descriptor_t* packet, lookup_table_t** tables);
-void handle_packet(packet_descriptor_t* packet);
-
+void handle_packet(packet_descriptor_t* packet, lookup_table_t** tables);
+//void handle_packet(packet_descriptor_t* packet);
 
 #define FIELD_BYTE_ADDR(p, f) (((uint8_t*)(p)->headers[f.header].pointer)+f.byteoffset)
 
