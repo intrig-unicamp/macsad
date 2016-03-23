@@ -28,6 +28,10 @@
 *.x86_64
 *.hex
 
+#proj generated files
+src/*.pyc
+build/
+
 # Debug files
 *.dSYM/
 
