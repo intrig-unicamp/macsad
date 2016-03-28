@@ -8,9 +8,18 @@
 #include "data_plane_data.h"
 #include "backend.h"
 #include "dataplane.h" // lookup_table_t
-#include "odp_tables.h"
 #include "ctrl_plane_backend.h"
 #include <net/ethernet.h>
+
+// ODP headers
+#include "odp_api.h"
+#include <odp/helper/linux.h>
+#include <odp_api.h>
+#include <odp/helper/eth.h>
+#include <odp/helper/ip.h>
+#include <odp/helper/table.h>
+#include <net/ethernet.h>
+#include "odp_tables.h"
 
 // Backend-specific aliases
 #include "aliases.h"
@@ -22,6 +31,8 @@
 extern uint32_t enabled_port_mask;
 extern int promiscuous_on;
 extern int numa_on;
+
+#define debug 1
 
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1 // rte_log.h
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1 // rte_log.h
@@ -65,6 +76,16 @@ struct mbuf_table {
 #define NB_REPLICA 2
 
 #define SOCKET_DEF 0
+
+struct macs_conf{
+        odp_pktio_t if0, if1;
+        odp_pktin_queue_t if0in, if1in;
+        odp_pktout_queue_t if0out, if1out;
+        odph_ethaddr_t src, dst;
+	lookup_table_t* tables[NB_TABLES];
+} macs_conf;
+
+extern struct macs_conf gconf; //global config structure
 
 lookup_table_t *tables_on_sockets[NB_SOCKETS][NB_TABLES][NB_REPLICA];
 int active_replica[NB_SOCKETS][NB_TABLES];

@@ -3,24 +3,27 @@
 #include "odp_tables.h"
 #include "odp_api.h"
 #include "stdio.h"
+
+
+#ifndef debug
+#define debug 1
+#endif
+
 //#include <helper/odph_hashtable.h>
 // ============================================================================
 // LOOKUP TABLE IMPLEMENTATIONS
 
 #include "ternary_naive.h"  // TERNARY
 
-#if 0
+//TODO need to verify again. What is the functionality of it? How default_val is used?
 static uint8_t*
 copy_to_socket(uint8_t* src, int length, int socketid) {
-    uint8_t* dst = rte_malloc_socket("uint8_t", sizeof(uint8_t)*length, 0, socketid);
+//    uint8_t* dst = rte_malloc_socket("uint8_t", sizeof(uint8_t)*length, 0, socketid);
+    uint8_t* dst =	malloc(sizeof(uint8_t)*length);
     memcpy(dst, src, length);
     return dst;
 }
-#endif
-static uint8_t*
-copy_to_socket(uint8_t* src, int length, int socketid) {
-    return 0;
-}
+
 // ============================================================================
 // SIMPLE HASH FUNCTION FOR EXACT TABLES
 
@@ -92,6 +95,10 @@ create_ext_table(lookup_table_t* t, void* table, int socketid)
 	extended_table_t* ext = NULL;
         odp_shm_t shm;
 	/* Reserve memory for args from shared mem */
+	if ((shm =odp_shm_lookup("ext_table")) != NULL) {
+             odp_shm_free(shm);
+	}
+
 	shm = odp_shm_reserve("ext_table", sizeof(extended_table_t),
 			ODP_CACHE_LINE_SIZE, 0);
 	ext = odp_shm_addr(shm);
@@ -101,12 +108,13 @@ create_ext_table(lookup_table_t* t, void* table, int socketid)
 	}
 	memset(ext, 0, sizeof(*ext));
 
-//    extended_table_t* ext = rte_malloc_socket("extended_table_t", sizeof(extended_table_t), 0, socketid);
-//    ext->content = rte_malloc_socket("uint8_t*", sizeof(uint8_t*)*TABLE_MAX, 0, socketid);
 	ext->odp_table = table;
 	ext->size = 0;
 
 	/* Reserve memory for args from shared mem */
+	if ((shm =odp_shm_lookup("ext_table_content")) != NULL) {
+             odp_shm_free(shm);
+	}
 	shm = odp_shm_reserve("ext_table_content", sizeof(uint8_t*)*TABLE_MAX,
 			ODP_CACHE_LINE_SIZE, 0);
 	ext->content = odp_shm_addr(shm);
@@ -136,9 +144,14 @@ table_create(lookup_table_t* t, int socketid)
             snprintf(name, sizeof(name), "%s_exact_%d", t->name, socketid);
 //            table = odph_table_create(name, TABLE_SIZE, t->key_size, TABLE_VALUE_SIZE);
             //*table = test_ops->f_create(name, TABLE_SIZE, t->key_size, TABLE_VALUE_SIZE);
-            table = test_ops->f_create("test", 2, 4, 16);
+	if ((table = test_ops->f_lookup("test1")) != NULL){
+	printf("table test1 already present \n");
+	test_ops->f_des(table);
+
+}
+            table = test_ops->f_create("test1", 2, 4, 16);
 	if(table == NULL) {
-	printf("table create fail\n");
+	printf("table test1 create fail\n");
 exit(0);
 }
 
@@ -233,14 +246,18 @@ ternary_add(lookup_table_t* t, uint8_t* key, uint8_t* mask, uint8_t* value)
 uint8_t*
 exact_lookup(lookup_table_t* t, uint8_t* key)
 {
+//TODO add lookup logic for ODP table
 #if 0
     printf("lookup %p\n", t);
     int ret = 0;
     ret = rte_hash_lookup(ext->rte_table, key);
-    return (ret < 0)? t->default_val : ext->content[ret % 256];
+	return (ret < 0)? t->default_val : ext->content[ret % 256];
 #endif
 //return any int, remove later
-    return 0;
+#if debug == 1
+	printf("  :: EXECUTING TABLE exact lookup\n");
+#endif
+	return t->default_val;
 }
 
 uint8_t*
@@ -259,3 +276,10 @@ ternary_lookup(lookup_table_t* t, uint8_t* key)
 //return int, remove later
     return 0;
 }
+
+
+//---------
+//DELETE
+void table_del ();
+void shm_release ();
+

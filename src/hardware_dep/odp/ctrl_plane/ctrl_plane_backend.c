@@ -19,6 +19,10 @@
 
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
 
+#ifndef debug
+#define debug 1
+#endif
+
 typedef struct mem_cell_st {
 	char* data;
 	uint16_t length;
@@ -315,7 +319,9 @@ int send_digest(backend bg, digest d, uint32_t receiver_id)
 {
 	digest_t* dt = (digest_t*)d;
 	backend_t* bgt = (backend_t*)bg;
-
+#if debug == 1
+    printf(":::: EXECUTING send digest \n");
+#endif
 	netconv_p4_header((struct p4_header*)(dt->digest));
 	if (fifo_add_msg(&(bgt->output_queue), dt->mem_cell)==0)
 		return -1;
@@ -328,6 +334,9 @@ digest create_digest(backend bg, char* name)
 {
 	backend_t* bgt = (backend_t*) bg;
 	digest_t* dg;
+#if debug == 1
+    printf(":::: EXECUTING create digest \n");
+#endif
 
 	dg = (digest_t*) malloc( sizeof(digest_t) );
 	if (dg==0)
@@ -364,7 +373,9 @@ digest add_digest_field(digest d, void* value, uint32_t length)
 	digest_t* dg = (digest_t*) d;
 	struct p4_digest_field* dfield;
 	uint32_t bytelength = (length-1)/8+1;
-
+#if debug == 1
+    printf(":::: EXECUTING add digest field \n");
+#endif
 	dfield = add_p4_digest_field( dg->digest, dg->mem_cell->length );
 /*	if (strlen( name ) > P4_MAX_FIELD_NAME_LENGTH-1)
 	{

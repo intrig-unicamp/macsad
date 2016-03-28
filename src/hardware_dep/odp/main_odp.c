@@ -42,14 +42,6 @@ uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 // note: this much space MUST be able to hold all deparsed content
 #define DEPARSE_BUFFER_SIZE 1024
 
-//odp global struct. Need to change it to generic structrures and put in .h
-struct {
-        odp_pktio_t if0, if1;
-        odp_pktin_queue_t if0in, if1in;
-        odp_pktout_queue_t if0out, if1out;
-        odph_ethaddr_t src, dst;
-} global;
-
 //=============================================================================
 
 /* Send burst of packets on an output interface */
@@ -154,6 +146,24 @@ bitcnt(uint32_t v)
         return (n);
 }
 
+
+/* send one pkt each time */
+static void
+opd_send_packet(struct odp_packet_t *p, uint8_t port)
+{
+	int sent;
+//	struct odp_packet_t pkt = *p;
+	struct macs_conf *macs = &gconf;
+
+	sent = odp_pktout_send(macs->if1out, p, 1);
+//	sent = odp_pktout_send(gconf.if1out, p, 1);
+	if (sent < 0)
+	{
+		printf("pkt sent failed \n");
+		sent = 0;
+	}
+}
+
 #define EXTRACT_EGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/6) & /*mask*/0x7fc) >> /*bitoffset*/2
 #define EXTRACT_INGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/0) & /*mask*/0x1ff) >> /*bitoffset*/0
 
@@ -168,7 +178,7 @@ send_packet(packet_descriptor_t* pd)
     dbg_print_headers(pd);
     printf("    :: deparsing headers\n");
     printf("    :: sendPacket called\n");
-    printf("ingress port is %d an egress port is %d", inport, port);
+    printf("ingress port is %d and egress port is %d \n", inport, port);
 
 	//port = -1;
 /*
@@ -177,7 +187,7 @@ send_packet(packet_descriptor_t* pd)
 	else
 		dpdk_send_packet((struct rte_mbuf *)pd->packet, port, lcore_id);
 */
-
+  opd_send_packet((struct odp_packet_t *)pd->packet, port);
 	return 0;
 }
 
@@ -213,14 +223,13 @@ init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 void
 packet_received(odp_packet_t *p, unsigned portid)
 {
+   struct macs_conf *macs = &gconf;
     packet_descriptor_t packet_desc;
-    //packet_desc.pointer = rte_pktmbuf_mtod(p, uint8_t *);
     packet_desc.pointer = (uint8_t *)odp_packet_data(*p);
-    //packet_desc.pointer = odp_packet_data((odp_packet_t *)p);
     packet_desc.packet = (packet *)p;
     init_metadata(&packet_desc, portid);
 
- //   handle_packet(&packet_desc);
+    handle_packet(&packet_desc, macs->tables);
     printf("packet recieved level 1\n");
     send_packet(&packet_desc);
 }
@@ -231,13 +240,15 @@ odp_main_worker (void)
         odp_packet_t pkt_tbl[MAX_PKT_BURST];
         int pkts, i;
 	int portid;
+	struct macs_conf *macs = &gconf;
 
-        if (odp_pktio_start(global.if0)) {
+        if (odp_pktio_start(macs->if0)) {
                 printf("unable to start input interface\n");
                 exit(1);
         }
         printf("started input interface\n");
-        if (odp_pktio_start(global.if1)) {
+
+        if (odp_pktio_start(macs->if1)) {
                 printf("unable to start output interface\n");
                 exit(1);
         }
@@ -250,7 +261,7 @@ load when there are no packets available.
 		pkts = odp_pktin_recv_tmo(global.if0in, pkt_tbl, MAX_PKT_BURST,
 					  ODP_PKTIN_WAIT);
 */
-		pkts = odp_pktin_recv(global.if0in, pkt_tbl, MAX_PKT_BURST);
+		pkts = odp_pktin_recv(macs->if0in, pkt_tbl, MAX_PKT_BURST);
                 if (odp_unlikely(pkts <= 0))
                         continue;
                 for (i = 0; i < pkts; i++) {

@@ -41,13 +41,14 @@ static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 #define POOL_SEG_LEN 1856
 #define MAX_PKT_BURST 32
 
+/*
 struct {
         odp_pktio_t if0, if1;
         odp_pktin_queue_t if0in, if1in;
         odp_pktout_queue_t if0out, if1out;
         odph_ethaddr_t src, dst;
 } global;
-
+*/
 extern void
 odp_main_worker (void);
 
@@ -293,9 +294,16 @@ create_tables_on_socket (int socketid)
 int init_lookup_tables()
 {
   int socketid = SOCKET_DEF;
+  int i = 0;
+  struct macs_conf *macs = &gconf;
+
   printf("Initializing tables...\n");
   if (tables_on_sockets[socketid][0][0] == NULL)
-//	  create_tables_on_socket(socketid);
+	  create_tables_on_socket(socketid);
+
+        for(i = 0; i < NB_TABLES; i++) {
+                macs->tables[i] = tables_on_sockets[socketid][i][0];
+        }
     printf("Initializing tables Done.\n");
     return 0;
 }
@@ -393,6 +401,7 @@ odp_initialize(int argc, char **argv)
         odp_pool_param_t params;
         odp_cpumask_t cpumask;
         odph_linux_pthread_t thd;
+	struct macs_conf *macs = &gconf;
 
 	/* initialize ports */
 	int nb_ports = 2;
@@ -421,16 +430,15 @@ odp_initialize(int argc, char **argv)
         }	
 
         //global.if0 = create_pktio(argv[1], pool, &global.if0in, &global.if0out);
-        global.if0 = create_pktio("eth1", pool, &global.if0in, &global.if0out);
+        macs->if0 = create_pktio("veth1.0", pool, &(macs->if0in), &macs->if0out);
         //global.if1 = create_pktio(argv[2], pool, &global.if1in, &global.if1out);	
-        global.if1 = create_pktio("eth2", pool, &global.if1in, &global.if1out);	
+        macs->if1 = create_pktio("veth2.1", pool, &(macs->if1in), &macs->if1out);	
 
-/* ToDo dpdk */
+/* ToDo */
 /* check if similar thing on ODP */
 //	check_all_ports_link_status(nb_ports, enabled_port_mask);
 /* for now only exact table is possible on ODP-hash table */
 	init_lookup_tables();
-/* dpdk */	
 
 /* initiate control plane */
 	init_control_plane();

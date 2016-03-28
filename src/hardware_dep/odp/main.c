@@ -1,6 +1,8 @@
 #include "odp_lib.h"
 
 extern uint8_t odp_initialize(int argc, char **argv);
+struct macs_conf gconf;
+
 
 int main(int argc, char** argv)
 {

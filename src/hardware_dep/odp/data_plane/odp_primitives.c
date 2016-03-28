@@ -18,7 +18,7 @@ add_header(packet_descriptor_t* p, header_reference_t h)
                 .pointer = address,
                 .length = h.bytewidth // max_width?
             };
-    } else {
+    } else a
         printf("Cannot add a header instance already present in the packet\n");
     }
 }
@@ -39,6 +39,7 @@ remove_header(packet_descriptor_t* p, header_reference_t h)
 
 #define FIELD_BYTE_ADDR(p, f) ((uint8_t*)(p)->headers[f.header].pointer)+f.byteoffset
 
+#endif
 uint32_t
 extract_intvalue(packet_descriptor_t* p, field_reference_t f)
 {
@@ -61,6 +62,7 @@ extract_bytebuf(packet_descriptor_t* p, field_reference_t f)
 }
 
 
+#if 0
 /*
 static void
 add_int_values(uint8_t *dst_ptr, const uint8_t *src_ptr1, const int src_len1, const uint8_t *src_ptr2, const int src_len2)
