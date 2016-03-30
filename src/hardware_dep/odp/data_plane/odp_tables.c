@@ -48,18 +48,6 @@ static uint32_t crc32(const void *data, uint32_t data_len,	uint32_t init_val) {
 // LOWER LEVEL TABLE MANAGEMENT
 
 #if 0
-int32_t
-hash_add_key(struct rte_hash* h, void *key)
-{
-    int32_t ret;
-    ret = rte_hash_add_key(h,(void *) key);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Unable to add entry to the hash.\n");
-    return ret;
-}
-#endif
-
-#if 0
 void
 lpm4_add(struct rte_lpm* l, uint32_t key, uint8_t depth, uint8_t value)
 {
@@ -89,12 +77,12 @@ lpm6_add(struct rte_lpm6* l, uint8_t key[16], uint8_t depth, uint8_t value)
 // ----------------------------------------------------------------------------
 // CREATE
 
-static void
-create_ext_table(lookup_table_t* t, void* table, int socketid)
+static void create_ext_table(lookup_table_t* t, void* table, int socketid)
 {
 	extended_table_t* ext = NULL;
-        odp_shm_t shm;
+    odp_shm_t shm;
 	/* Reserve memory for args from shared mem */
+
 	if ((shm =odp_shm_lookup("ext_table")) != NULL) {
              odp_shm_free(shm);
 	}
@@ -102,6 +90,8 @@ create_ext_table(lookup_table_t* t, void* table, int socketid)
 	shm = odp_shm_reserve("ext_table", sizeof(extended_table_t),
 			ODP_CACHE_LINE_SIZE, 0);
 	ext = odp_shm_addr(shm);
+
+//	ext = malloc();
 	if (ext == NULL) {
 //		EXAMPLE_ERR("Error: shared mem alloc failed.\n");
 		exit(EXIT_FAILURE);
@@ -112,13 +102,13 @@ create_ext_table(lookup_table_t* t, void* table, int socketid)
 	ext->size = 0;
 
 	/* Reserve memory for args from shared mem */
-	if ((shm =odp_shm_lookup("ext_table_content")) != NULL) {
+	if ((shm = odp_shm_lookup("ext_table_content")) != NULL) {
              odp_shm_free(shm);
 	}
 	shm = odp_shm_reserve("ext_table_content", sizeof(uint8_t*)*TABLE_MAX,
 			ODP_CACHE_LINE_SIZE, 0);
 	ext->content = odp_shm_addr(shm);
-	if (ext == NULL) {
+	if (ext->content == NULL) {
 		//EXAMPLE_ERR("Error: shared mem alloc failed.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -127,67 +117,40 @@ create_ext_table(lookup_table_t* t, void* table, int socketid)
 	t->table = ext;
 }
 
-void
-table_create(lookup_table_t* t, int socketid)
+void table_create(lookup_table_t* t, int socketid)
 {
-    char name[64];
-    t->socketid = socketid;
-    odph_table_t table;
-    odph_table_ops_t *test_ops;
+	char name[64];
+	t->socketid = socketid;
+	odph_table_t tbl;
+	odph_table_ops_t *test_ops;
 
 	printf("test hash table:\n");
-        test_ops = &odph_hash_table_ops;
+	switch(t->type)
+	{
+		case LOOKUP_EXACT:
+			test_ops = &odph_hash_table_ops;
+			snprintf(name, sizeof(name), "%s_exact_%d", t->name, socketid);
+			if ((tbl = test_ops->f_lookup("test1")) != NULL){
+				printf("table %s already present \n", name);
+				test_ops->f_des(tbl);
+			}
+// name, capacity, key_size, value size
+			tbl = test_ops->f_create("test1", 2, t->key_size, t->val_size);
+			if(tbl == NULL) {
+				printf("table %s create fail\n", name);
+			    exit(0);
+			}
 
-    switch(t->type)
-    {
-        case LOOKUP_EXACT:
-            snprintf(name, sizeof(name), "%s_exact_%d", t->name, socketid);
-//            table = odph_table_create(name, TABLE_SIZE, t->key_size, TABLE_VALUE_SIZE);
-            //*table = test_ops->f_create(name, TABLE_SIZE, t->key_size, TABLE_VALUE_SIZE);
-	if ((table = test_ops->f_lookup("test1")) != NULL){
-	printf("table test1 already present \n");
-	test_ops->f_des(table);
-
-}
-            table = test_ops->f_create("test1", 2, 4, 16);
-	if(table == NULL) {
-	printf("table test1 create fail\n");
-exit(0);
-}
-
-            //struct rte_hash* h = hash_create(socketid, name, t->key_size, crc32);
-            create_ext_table(t, table, socketid);
+            create_ext_table(t, tbl, socketid);
             break;
-#if 0
-        case LOOKUP_LPM:
-            snprintf(name, sizeof(name), "%s_lpm_%d", t->name, socketid);
-            if(t->key_size <= 4)
-            {
-                struct rte_lpm* l = lpm4_create(socketid, name, t->max_size);
-                create_ext_table(t, l, socketid);
-                break;
-            }
-            else if(t->key_size <= 16)
-            {
-                struct rte_lpm6* l = lpm6_create(socketid, name, t->max_size);
-                create_ext_table(t, l, socketid);
-                break;
-            }
-            else
-                rte_exit(EXIT_FAILURE, "LPM: key_size not supported\n");
-        case LOOKUP_TERNARY:
-            t->table = naive_ternary_create(t->key_size, t->max_size);
-            break;
-#endif
     }
-    printf("Created table of type %d on socket %d\n", t->type, socketid);
+    printf("Created %s table of type %d on socket %d\n", name, t->type, socketid);
 }
 
 // ----------------------------------------------------------------------------
 // SET DEFAULT VALUE
 
-void
-table_setdefault(lookup_table_t* t, uint8_t* value)
+void table_setdefault(lookup_table_t* t, uint8_t* value)
 {
    printf("set_default - %d, %d, %p\n", t->val_size, t->socketid, t);
     t->default_val = copy_to_socket(value, t->val_size, t->socketid);
@@ -196,20 +159,23 @@ table_setdefault(lookup_table_t* t, uint8_t* value)
 // ----------------------------------------------------------------------------
 // ADD
 
-void
-exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
+void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
 {
-#if 0
+	int ret = 0;
+	odph_table_ops_t *test_ops;
+	test_ops = &odph_hash_table_ops;
     extended_table_t* ext = (extended_table_t*)t->table;
-    uint32_t index = rte_hash_add_key(ext->rte_table, (void*) key);
-    if(index < 0)
-        rte_exit(EXIT_FAILURE, "HASH: add failed\n");
+	ret = test_ops->f_put(ext->odp_table, key, value);
+   	if (ret != 0) {
+		printf("EXACT table add key failed \n");
+		exit(EXIT_FAILURE);
+	}
+#if 0
     ext->content[index%256] = copy_to_socket(value, t->val_size, t->socketid);
 #endif
 }
 
-void
-lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
+void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
 {
 #if 0
     extended_table_t* ext = (extended_table_t*)t->table;
@@ -246,18 +212,22 @@ ternary_add(lookup_table_t* t, uint8_t* key, uint8_t* mask, uint8_t* value)
 uint8_t*
 exact_lookup(lookup_table_t* t, uint8_t* key)
 {
-//TODO add lookup logic for ODP table
-#if 0
-    printf("lookup %p\n", t);
-    int ret = 0;
-    ret = rte_hash_lookup(ext->rte_table, key);
-	return (ret < 0)? t->default_val : ext->content[ret % 256];
-#endif
-//return any int, remove later
+	int ret = 0;
+	void *buffer = NULL;
+	odph_table_ops_t *test_ops;
+	test_ops = &odph_hash_table_ops;
+	extended_table_t* ext = (extended_table_t*)t->table;
 #if debug == 1
-	printf("  :: EXECUTING TABLE exact lookup\n");
+	printf(":::: EXECUTING TABLE exact lookup\n");
+	printf("lookup %p\n", t);
 #endif
-	return t->default_val;
+	ret = test_ops->f_get(ext->odp_table, key, buffer, t->val_size);
+	if (ret != 0) {
+		printf("EXACT table lookup failed \n");
+		//		exit(EXIT_FAILURE);
+		return t->default_val;
+	}
+	return buffer;
 }
 
 uint8_t*
@@ -273,10 +243,9 @@ ternary_lookup(lookup_table_t* t, uint8_t* key)
     uint8_t* ret = naive_ternary_lookup(t->table, key);
     return ret == NULL ? t->default_val : ret;
 #endif
-//return int, remove later
+//TODO return int, remove later
     return 0;
 }
-
 
 //---------
 //DELETE

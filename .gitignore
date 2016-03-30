@@ -32,6 +32,7 @@ mac_ad
 #proj generated files
 src/*.pyc
 build/
+dpdk_controller
 
 # Debug files
 *.dSYM/

@@ -20,10 +20,10 @@ typedef struct msg_buf_st
 
 typedef struct controller_st
 {
-        threadpool tpool;
-        fifo_t input_queue;
-        fifo_t output_queue;
-        int controller_fd;
+	threadpool tpool;
+	fifo_t input_queue;
+	fifo_t output_queue;
+	int controller_fd;
 	digest_handler dh;
 	int port;
 } controller_t;
@@ -37,38 +37,38 @@ typedef struct threadinfo_st {
 void input_processor(void *t)
 {
 	threadinfo_t* ti = (threadinfo_t*)t;
-        controller_t* ct = ti->ct;
-        msg_buf_t* mem_cell;
+	controller_t* ct = ti->ct;
+	msg_buf_t* mem_cell;
 
-        while ( 1 )
-        {
-                fifo_wait( &(ct->input_queue) );
-                mem_cell = fifo_remove_msg(&(ct->input_queue));
+	while ( 1 )
+	{
+		fifo_wait( &(ct->input_queue) );
+		mem_cell = fifo_remove_msg(&(ct->input_queue));
 
-                if (mem_cell==0) continue;
+		if (mem_cell==0) continue;
 
-                ct->dh( mem_cell->data );
+		ct->dh( mem_cell->data );
 
 
-                free( mem_cell );
-        }
+		free( mem_cell );
+	}
 }
 
 void output_processor(void *t)
 {
 	threadinfo_t* ti = (threadinfo_t*)t;
-        controller_t* ct = ti->ct;
-        msg_buf_t* mem_cell;
+	controller_t* ct = ti->ct;
+	msg_buf_t* mem_cell;
 
-        while ( 1 )
-        {
-                fifo_wait( &(ct->output_queue) );
-                mem_cell = fifo_remove_msg(&(ct->output_queue));
+	while ( 1 )
+	{
+		fifo_wait( &(ct->output_queue) );
+		mem_cell = fifo_remove_msg(&(ct->output_queue));
 
-                if (mem_cell==0) continue;
-                write_p4_msg(ti->sock_fd, mem_cell->data, mem_cell->length);
+		if (mem_cell==0) continue;
+		write_p4_msg(ti->sock_fd, mem_cell->data, mem_cell->length);
 		free ( mem_cell );
-        }
+	}
 }
 
 controller create_controller(uint16_t port, int number_of_threads, digest_handler dh)

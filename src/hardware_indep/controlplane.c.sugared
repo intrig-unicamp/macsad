@@ -23,6 +23,7 @@ for table in hlir.p4_tables.values():
 
 for table in hlir.p4_tables.values():
     table_type, key_length = getTypeAndLength(table)
+    #[ 
     #[ void
     #[ ${table.name}_add(
     for match_field, match_type, match_mask in table.match_fields:
@@ -71,6 +72,7 @@ for table in hlir.p4_tables.values():
 
 
 for table in hlir.p4_tables.values():
+    #[ 
     #[ void
     #[ ${table.name}_add_table_entry(struct p4_ctrl_msg* ctrl_m) {
     for i, m in enumerate(table.match_fields):
@@ -99,6 +101,7 @@ for table in hlir.p4_tables.values():
         #[ }
     #[ }
 
+#[ 
 #[ void recv_from_controller(struct p4_ctrl_msg* ctrl_m) {
 #[     if (ctrl_m->type == P4T_ADD_TABLE_ENTRY) {
 for table in hlir.p4_tables.values():
@@ -109,6 +112,7 @@ for table in hlir.p4_tables.values():
 
 
 
+#[ 
 #[ backend bg;
 #[ void init_control_plane()
 #[ {

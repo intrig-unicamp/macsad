@@ -41,22 +41,9 @@ static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 #define POOL_SEG_LEN 1856
 #define MAX_PKT_BURST 32
 
-/*
-struct {
-        odp_pktio_t if0, if1;
-        odp_pktin_queue_t if0in, if1in;
-        odp_pktout_queue_t if0out, if1out;
-        odph_ethaddr_t src, dst;
-} global;
-*/
 extern void
 odp_main_worker (void);
 
-/*
-void init_control_plane() {
-    printf("init control plane stub");
-}
-*/
 //=============================================================================
 
 #define UNUSED(x) (void)(x)
@@ -275,7 +262,7 @@ print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 static void
 create_tables_on_socket (int socketid)
 {
-	// if the table is defined from p4
+	//only if the table is defined in p4 prog
 	if (table_config == NULL) return;
 	int i;
 	for (i=0;i < NB_TABLES; i++) {

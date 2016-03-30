@@ -2,8 +2,8 @@
 
 nodeCount=2
 
-sudo echo 1 > /proc/sys/net/ipv4/ip_forward
-sudo iptables -t nat -A POSTROUTING -j MASQUERADE
+#sudo echo 1 > /proc/sys/net/ipv4/ip_forward
+#sudo iptables -t nat -A POSTROUTING -j MASQUERADE
 
 for (( i = 1 ; i <= ${nodeCount} ; i++ )); do
   sudo ip link add dev veth${i}.0 type veth peer name veth${i}.1
