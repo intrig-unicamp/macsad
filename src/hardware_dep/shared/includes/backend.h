@@ -17,7 +17,7 @@ int           launch       (void);
 
 typedef struct lookup_table_s lookup_table_t;
 
-void        table_create (lookup_table_t* t, int socketid);
+void        table_create (lookup_table_t* t, int socketid, int replicaid);
 
 void    table_setdefault (lookup_table_t* t,                              uint8_t* value);
 

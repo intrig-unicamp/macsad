@@ -45,6 +45,7 @@ dpdk_controller
 .Trashes
 ehthumbs.db
 Thumbs.db
+.swp
 
 #Tools generated files
 tags

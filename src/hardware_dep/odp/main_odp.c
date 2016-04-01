@@ -208,8 +208,7 @@ modify_field_to_const(packet_descriptor_t* p, field_reference_t f, uint8_t *src,
 #endif
 } 
 
-static void
-init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
+static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 {
     packet_desc->headers[header_instance_standard_metadata] =
       (header_descriptor_t) {
@@ -220,22 +219,20 @@ init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
     modify_field_to_const(packet_desc, field_desc(field_instance_standard_metadata_ingress_port), (uint8_t*)&inport, 2);
 }
 
-void
-packet_received(odp_packet_t *p, unsigned portid)
+void packet_received(odp_packet_t *p, unsigned portid)
 {
-   struct macs_conf *macs = &gconf;
-    packet_descriptor_t packet_desc;
-    packet_desc.pointer = (uint8_t *)odp_packet_data(*p);
-    packet_desc.packet = (packet *)p;
-    init_metadata(&packet_desc, portid);
+	struct macs_conf *macs = &gconf;
+	printf(":::: EXECUTING packet recieved\n");
+	packet_descriptor_t packet_desc;
+	packet_desc.pointer = (uint8_t *)odp_packet_data(*p);
+	packet_desc.packet = (packet *)p;
 
-    handle_packet(&packet_desc, macs->tables);
-    printf("packet recieved level 1\n");
-    send_packet(&packet_desc);
+	init_metadata(&packet_desc, portid);
+	handle_packet(&packet_desc, macs->tables);
+	send_packet(&packet_desc);
 }
 
-void
-odp_main_worker (void)
+void odp_main_worker (void)
 {
         odp_packet_t pkt_tbl[MAX_PKT_BURST];
         int pkts, i;
