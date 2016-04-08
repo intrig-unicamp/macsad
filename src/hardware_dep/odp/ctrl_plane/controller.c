@@ -134,6 +134,7 @@ void execute_controller(controller c)
 	FD_ZERO(&master);
 	FD_SET(ct->controller_fd, &master);
 
+	printf(" :::: inside execute_controller \n");
 	while (1) { /*TODO - replace this stupid implementation*/
 
 		readfds = master;
@@ -161,8 +162,10 @@ void execute_controller(controller c)
 					mem_cell->length = 2048;
 					if ((rv=read_p4_msg(i, mem_cell->data, mem_cell->length)) > 0)
                         		{
+					printf(" :: after read_p4_msg -> fifo_add_msg \n");
                			                 fifo_add_msg( &(ct->input_queue), (void*)mem_cell );
 		                        } else if (rv==0) {
+					printf(" :: after read_p4_msg \n");
 						FD_CLR(i, &master);
 						close(i);
 						free(mem_cell);

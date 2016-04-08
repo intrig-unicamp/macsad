@@ -32,6 +32,7 @@ mac_ad
 #proj generated files
 src/*.pyc
 build/
+dpdk_controller
 
 # Debug files
 *.dSYM/
@@ -44,6 +45,7 @@ build/
 .Trashes
 ehthumbs.db
 Thumbs.db
+.swp
 
 #Tools generated files
 tags

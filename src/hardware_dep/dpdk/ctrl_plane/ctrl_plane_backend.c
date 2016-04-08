@@ -31,13 +31,13 @@ typedef struct backend_st {
 	mem_cell_t* unused_head;
 	mem_cell_t* used_head;
 	pthread_mutex_t memlock;
-	pthread_cond_t mem_not_empty;     /*non empty and empty condidtion variables*/
-        pthread_cond_t mem_empty;
-        int shutdown;
-        int dont_accept;
+	pthread_cond_t mem_not_empty; /*non empty and empty condidtion variables*/
+    pthread_cond_t mem_empty;
+    int shutdown;
+    int dont_accept;
 	threadpool tpool;
 	int controller_fd;
-	struct sockaddr_in controller_addr;  /*Assuming single controller, digest-receiver TODO: EXTEND IT FOR HANDLING MULTIPLE receivers and/or controllers */
+	struct sockaddr_in controller_addr; /*Assuming single controller, digest-receiver TODO: EXTEND IT FOR HANDLING MULTIPLE receivers and/or controllers */
 	int controller_sock;
 	fifo_t input_queue; /* one queue per controller should be needed */
 	fifo_t output_queue; /* one queue per digest-receiver should be needed */
@@ -146,7 +146,7 @@ backend create_backend(int num_of_threads, int queue_size, char* controller_name
 	if (bg->msg_buffer == 0) {
                 fprintf(stderr, "Out of memory creating a new msg_buffer!\n");
                 return 0;
-        }
+    }
 
 	bg->unused_head = 0;
 	bg->used_head = 0;
@@ -215,26 +215,26 @@ void launch_backend(backend bg)
 {
 	backend_t *bgt = (backend_t*) bg;
 
-        if( connect( bgt->controller_sock, (struct sockaddr *) &(bgt->controller_addr), sizeof(struct sockaddr_in) ) == -1 )
-        {
-                fprintf(stdout, "Connecting stream socket\n" );
-                return;
-        }  
+	if( connect( bgt->controller_sock, (struct sockaddr *) &(bgt->controller_addr), sizeof(struct sockaddr_in) ) == -1 )
+	{
+		fprintf(stdout, "Connecting stream socket\n" );
+		return;
+	}  
 
 	/* !!!!!!!!!!! Launch the client thread connecting to the controller  */
 
-        dispatch(bgt->tpool, backend_processor, (void*)bgt);
-					sleep(1);
-        dispatch(bgt->tpool, input_processor, (void*)bgt);
-					sleep(1);
-        dispatch(bgt->tpool, output_processor, (void*)bgt);
+	dispatch(bgt->tpool, backend_processor, (void*)bgt);
+	sleep(1);
+	dispatch(bgt->tpool, input_processor, (void*)bgt);
+	sleep(1);
+	dispatch(bgt->tpool, output_processor, (void*)bgt);
 }
 
 void stop_backend(backend bg)
 {
 	backend_t *bgt = (backend_t*) bg;
 	bgt->shutdown = 1;
-	
+
 	destroy_threadpool(bgt->tpool);	
 }
 
@@ -360,7 +360,6 @@ digest create_digest(backend bg, char* name)
 	return (digest) dg;
 }
 
-
 digest add_digest_field(digest d, void* value, uint32_t length)
 {
 	digest_t* dg = (digest_t*) d;
@@ -389,5 +388,3 @@ digest add_digest_field(digest d, void* value, uint32_t length)
 
 	return d;
 }
-
-	

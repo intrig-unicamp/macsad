@@ -135,9 +135,7 @@ threadpool create_threadpool(int num_threads_in_pool) {
   return (threadpool) pool;
 }
 
-
-void dispatch(threadpool from_me, dispatch_fn dispatch_to_here,
-	      void *arg) {
+void dispatch(threadpool from_me, dispatch_fn dispatch_to_here, void *arg) {
   _threadpool *pool = (_threadpool *) from_me;
 	work_t * cur;
 
@@ -194,4 +192,3 @@ void destroy_threadpool(threadpool destroyme) {
 	pthread_cond_destroy(&(pool->q_not_empty));
 	return;
 }
-

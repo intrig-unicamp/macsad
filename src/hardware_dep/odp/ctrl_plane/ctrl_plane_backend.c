@@ -30,6 +30,10 @@ typedef struct mem_cell_st {
 	struct mem_cell_st* prev;
 } mem_cell_t;
 
+
+/* understanding: 
+ * unused_head : point to head of the queue.
+ */
 typedef struct backend_st {
 	char* msg_buffer; /* Slow memory allcoted for storing outgoing digest and incoming controll messages */
 	mem_cell_t* unused_head;
@@ -128,7 +132,10 @@ void output_processor(void *bg)
                 detouch_mem_cell( bgt, mem_cell );
         }
 }
-backend create_backend(int num_of_threads, int queue_size, char* controller_name, int controller_port, p4_msg_callback cb)
+
+backend create_backend(int num_of_threads, int queue_size, 
+		               char* controller_name, int controller_port,
+					   p4_msg_callback cb)
 {
 	backend_t *bg;
 	mem_cell_t *tmp;
@@ -190,11 +197,11 @@ backend create_backend(int num_of_threads, int queue_size, char* controller_name
 	fifo_init(&(bg->output_queue));
 
 	bg->controller_sock = socket( AF_INET, SOCK_STREAM, 0 );
-        if( bg->controller_sock == -1 )
-        {
-                fprintf(stderr, "opening stream socket" );
-                return 0;
-        }
+	if( bg->controller_sock == -1 )
+	{
+		fprintf(stderr, "opening stream socket" );
+		return 0;
+	}
 
 	/* Resolving controller's address */
 	server = gethostbyname(controller_name);
@@ -202,7 +209,7 @@ backend create_backend(int num_of_threads, int queue_size, char* controller_name
 	        fprintf(stderr,"ERROR, Controller cannot be found, no such host: %s\n", controller_name);
         	return 0;
 	}
-	
+
 	memset((void*) &(bg->controller_addr), 0, sizeof(struct sockaddr_in));
 	bg->controller_addr.sin_family = AF_INET;
 	memcpy( (void*) &(bg->controller_addr.sin_addr), (void*) (server->h_addr), server->h_length);
@@ -217,19 +224,18 @@ void launch_backend(backend bg)
 {
 	backend_t *bgt = (backend_t*) bg;
 
-        if( connect( bgt->controller_sock, (struct sockaddr *) &(bgt->controller_addr), sizeof(struct sockaddr_in) ) == -1 )
-        {
-                fprintf(stdout, "Connecting stream socket\n" );
-                return;
-        }  
+	if( connect( bgt->controller_sock, (struct sockaddr *) &(bgt->controller_addr), sizeof(struct sockaddr_in) ) == -1 )
+	{
+		fprintf(stdout, "Connecting stream socket\n" );
+		return;
+	}  
 
 	/* !!!!!!!!!!! Launch the client thread connecting to the controller  */
-
-        dispatch(bgt->tpool, backend_processor, (void*)bgt);
-					sleep(1);
-        dispatch(bgt->tpool, input_processor, (void*)bgt);
-					sleep(1);
-        dispatch(bgt->tpool, output_processor, (void*)bgt);
+	dispatch(bgt->tpool, backend_processor, (void*)bgt);
+	sleep(1);
+	dispatch(bgt->tpool, input_processor, (void*)bgt);
+	sleep(1);
+	dispatch(bgt->tpool, output_processor, (void*)bgt);
 }
 
 void stop_backend(backend bg)

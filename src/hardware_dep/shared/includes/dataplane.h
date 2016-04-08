@@ -11,6 +11,8 @@
 #define LOOKUP_LPM     1
 #define LOOKUP_TERNARY 2
 
+#define MACS_TABLE_NAME_LEN 64
+
 struct type_field_list {
     uint8_t fields_quantity;
     uint8_t** field_offsets;

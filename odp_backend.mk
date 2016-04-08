@@ -10,6 +10,7 @@ VPATH += $(ODP_SDK)/platform/linux-generic/include
 VPATH += $(ODP_SDK)/platform/linux-generic/arch/x86
 VPATH += $(ODP_SDK)/share
 VPATH += $(ODP_SDK)/helper/include
+VPATH += $(ODP_SDK)/helper
 VPATH += $(ODP_SDK)/helper/include/odp
 
 # odp main
@@ -39,6 +40,7 @@ CFLAGS += -I "$(ODP_SDK)/platform/linux-generic/include"
 CFLAGS += -I "$(ODP_SDK)/platform/linux-generic/arch/x86"
 CFLAGS += -I "$(ODP_SDK)/share"
 CFLAGS += -I "$(ODP_SDK)/helper/include"
+CFLAGS += -I "$(ODP_SDK)/helper"
 CFLAGS += -I "$(ODP_SDK)/helper/include/odp"
 
 LDFLAGS += -L $(ODP_SDK)/lib/
@@ -52,7 +54,7 @@ OBJS = $(SRCS-y:.c=.o)
 MAIN = mac_ad
 
 all: $(MAIN)
-	@echo  Simple program named example has been compiled
+	@echo  $(MAIN) successfully compiled
 
 $(MAIN):
 #	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS)

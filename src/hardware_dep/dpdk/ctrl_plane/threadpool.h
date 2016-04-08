@@ -5,22 +5,9 @@
  * your implementation of a threadpool.
  */
 
-
 #define MAXT_IN_POOL 200
 
-
-
-
-
-
-
 typedef void *threadpool;
-
-
-
-
-
-
 
 typedef void (*dispatch_fn)(void *);
 
@@ -30,7 +17,6 @@ typedef void (*dispatch_fn)(void *);
  * "threadpool", else it returns NULL.
  */
 threadpool create_threadpool(int num_threads_in_pool);
-
 
 /**
  * dispatch sends a thread off to do some work.  If
