@@ -9,6 +9,7 @@ def fld_id(f): return fld_prefix(f.instance.name + "_" + f.name)
 #[ #include "actions.h"
 #[ #include <unistd.h>
 #[ #include <arpa/inet.h>
+#[ extern void increase_counter (int counterid, int index);
 
 actions = hlir.p4_actions
 useractions = userActions(actions)
@@ -101,11 +102,26 @@ def add_to_field(fun, call):
             addError("generating add_to_field", "bytebufs cannot be modified yet.")
     return generated_code
 
-def create_generate_digest(call, fun_params, fun):
+def count(fun, call):
+    generated_code = ""
+
+    args = call[1]
+    counter = args[0]
+    index = args[1]
+    if isinstance(index, int): # TODO
+        #[ value32 = ${val};
+    elif isinstance(index, p4_field): # TODO
+        #[ EXTRACT_INT32(pkt, ${fld_id(index)}, value32)
+    elif isinstance(val, p4_signature_ref):
+        #[ value32 = TODO;
+    #[ increase_counter(COUNTER_${counter.name}, value32);
+    return generated_code
+
+def generate_digest(fun, call):
     generated_code = ""
     
     ## TODO make this proper
-    fun_params += ["\"mac_learn_digest\""]
+    fun_params = ["bg", "\"mac_learn_digest\""]
     for p in call[1]:
         if isinstance(p, int):
             fun_params += "0" #[str(p)]
@@ -133,14 +149,11 @@ def create_generate_digest(call, fun_params, fun):
     #[    generate_digest(${params}); sleep(1);
     return generated_code
 
-def create_drop(call, fun_params, fun):
-    params = ",".join(fun_params)
-    val = "drop(%s);" % params
-    return val
+def drop(fun, call):
+	return "drop(pkt);"
 
 #[ extern backend bg;
 #[
-
 
 for fun in useraction_objs:
     hasParam = fun.signature
@@ -149,25 +162,12 @@ for fun in useraction_objs:
     name = fun.name
     params = ", struct action_%s_params parameters" % (name) if hasParam else ""
     #[ ${modifiers} ${ret_val_type} action_code_${name}(packet_descriptor_t* pkt, lookup_table_t** tables ${params}) {
-    #[     uint32_t value32, res32;
-    #[     (void)value32;
-    #[     (void)res32;
+    #[     (void)value32; (void)res32;
     for i,call in enumerate(fun.call_sequence):
-        # NOTE: called functions require the packet as the first argument
-        fun_params = ["pkt"]
-        if call[0].name == "modify_field":
-            #[ ${modify_field(fun, call)}
-        elif call[0].name == "add_to_field":
-            #[ ${add_to_field(fun, call)}
-        elif call[0].name == "generate_digest":
-            fun_params = ["bg"]
-            generated_code += create_generate_digest(call, fun_params, fun);
-        elif call[0].name == "drop":
-            code = create_drop(call, fun_params, fun)
-            #[ ${code}
-        else:
-            addWarning("generating actions.c", "Unhandled primitive function: " +  call[0].name)     
-            
+       if call[0].name in locals().keys():
+           #[ ${locals()[call[0].name](fun, call)}
+       else:
+           addWarning("generating actions.c", "Unhandled primitive function: " +  call[0].name)     
     #[ }
     #[
 

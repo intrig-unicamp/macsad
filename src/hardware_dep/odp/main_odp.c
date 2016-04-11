@@ -153,7 +153,7 @@ opd_send_packet(struct odp_packet_t *p, uint8_t port)
 {
 	int sent;
 //	struct odp_packet_t pkt = *p;
-	struct macs_conf *macs = &gconf;
+	struct macs_conf *macs = &mconf_list[0];;
 
 	sent = odp_pktout_send(macs->if1out, p, 1);
 //	sent = odp_pktout_send(gconf.if1out, p, 1);
@@ -221,14 +221,16 @@ static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 
 void packet_received(odp_packet_t *p, unsigned portid)
 {
-	struct macs_conf *macs = &gconf;
+	struct macs_conf *macs = &mconf_list[0];;
 	printf(":::: EXECUTING packet recieved\n");
 	packet_descriptor_t packet_desc;
 	packet_desc.pointer = (uint8_t *)odp_packet_data(*p);
 	packet_desc.packet = (packet *)p;
 
 	init_metadata(&packet_desc, portid);
-	handle_packet(&packet_desc, macs->tables);
+	struct lcore_state *state_tmp = &macs->state;
+	handle_packet(&packet_desc, state_tmp->tables);
+//	handle_packet(&packet_desc, &state->tables);
 	send_packet(&packet_desc);
 }
 
@@ -237,7 +239,7 @@ void odp_main_worker (void)
         odp_packet_t pkt_tbl[MAX_PKT_BURST];
         int pkts, i;
 	int portid;
-	struct macs_conf *macs = &gconf;
+	struct macs_conf *macs = &mconf_list[0];;
 
         if (odp_pktio_start(macs->if0)) {
                 printf("unable to start input interface\n");
@@ -287,3 +289,4 @@ load when there are no packets available.
         }
         return;
 }
+

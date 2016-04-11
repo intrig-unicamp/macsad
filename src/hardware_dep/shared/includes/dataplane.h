@@ -6,6 +6,8 @@
 #include "parser.h"
 
 #include <odp_api.h>
+//TODO
+//#include <rte_atomic.h>
 
 #define LOOKUP_EXACT   0
 #define LOOKUP_LPM     1
@@ -31,6 +33,15 @@ typedef struct lookup_table_s {
     int socketid;
 } lookup_table_t;
 
+typedef struct counter_s {
+	char* name;
+	uint8_t type;
+	uint8_t min_width;
+	uint8_t size;
+//TODO
+//	rte_atomic32_t *cnt; // volatile ints
+	int socketid;
+} counter_t;
 
 // TODO remove these, or change packets.h
 typedef enum field_data_type_e      field_data_type_t;
@@ -87,6 +98,7 @@ typedef struct packet_descriptor_s {
 // Callbacks
 
 extern lookup_table_t table_config[];
+extern counter_t counter_config[];
 
 void handle_packet(packet_descriptor_t* packet, lookup_table_t** tables);
 //void handle_packet(packet_descriptor_t* packet);

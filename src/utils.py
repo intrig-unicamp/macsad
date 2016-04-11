@@ -42,12 +42,6 @@ def userActions(actions):
             useractions += [key]
     return useractions
 
-def fieldMacro():
-    return "#define FIELD(name, length) uint8_t name[(length + 7) / 8];"
-
-def addField(field):
-    return "   FIELD(%s, FIELD_LENGTH__%s)" % (field, field)
-
 def getTypeAndLength(table) : 
    key_length = 0
    lpm = 0

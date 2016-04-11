@@ -9,6 +9,7 @@
 #include "backend.h"
 #include "dataplane.h" // lookup_table_t
 #include "ctrl_plane_backend.h"
+#include "odp_tables.h"
 #include <net/ethernet.h>
 
 // ODP headers
@@ -19,7 +20,6 @@
 #include <odp/helper/ip.h>
 #include <odp/helper/table.h>
 #include <net/ethernet.h>
-#include "odp_tables.h"
 
 // Backend-specific aliases
 #include "aliases.h"
@@ -65,6 +65,10 @@ struct mbuf_table {
 #define MAX_RX_QUEUE_PER_PORT 1//128
 
 #define NB_SOCKETS 8
+
+//TODO update this counter variable
+#define NB_COUNTERS 0
+
 //#define	BAD_PORT	((uint16_t)-1)
 
 #ifndef NB_TABLES
@@ -72,23 +76,36 @@ struct mbuf_table {
 #endif
 
 // TODO: Is it used somewhere???? Why do we need this in addition to lcore_conf???
-
+#define ODP_MAX_LCORE 1
 #define NB_REPLICA 2
-
 #define SOCKET_DEF 0
 
+struct lcore_state {
+	//ptrs to the containing socket's instance
+	lookup_table_t * tables	  [NB_TABLES];
+	counter_t      * counters [NB_COUNTERS];
+};
+
+struct socket_state {
+    // pointers to the instances created on each socket
+    lookup_table_t * tables         [NB_TABLES][NB_REPLICA];
+    int            * active_replica [NB_TABLES];
+    counter_t      * counters       [NB_COUNTERS];
+}; 
+
+struct socket_state state[NB_SOCKETS];
+
 struct macs_conf{
-        odp_pktio_t if0, if1;
-        odp_pktin_queue_t if0in, if1in;
-        odp_pktout_queue_t if0out, if1out;
-        odph_ethaddr_t src, dst;
-	lookup_table_t* tables[NB_TABLES];
+	odp_pktio_t if0, if1;
+	odp_pktin_queue_t if0in, if1in;
+	odp_pktout_queue_t if0out, if1out;
+	odph_ethaddr_t src, dst;
+	//ptr to statefull memories
+	struct lcore_state state;
 } macs_conf;
 
-extern struct macs_conf gconf; //global config structure
-
-lookup_table_t *tables_on_sockets[NB_SOCKETS][NB_TABLES][NB_REPLICA];
-int active_replica[NB_SOCKETS][NB_TABLES];
+struct macs_conf mconf_list[ODP_MAX_LCORE];
+//extern struct macs_conf gconf; //global config structure
 
 #define TABCHANGE_DELAY 50 // microseconds
 
@@ -100,5 +117,7 @@ struct l2fwd_port_statistics {
 } __rte_cache_aligned;
 
 extern struct l2fwd_port_statistics port_statistics[MAX_ETHPORTS];
+
+uint8_t odpc_initialize(int argc, char **argv);
 
 #endif // ODP_LIB_H

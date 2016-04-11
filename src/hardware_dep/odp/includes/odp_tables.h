@@ -34,4 +34,7 @@ odph_table_ops_t odph_hash_table_ops;
 #define TABLE_KEY_SIZE 4 //key_size    fixed size of the 'key' in bytes.
 #define TABLE_VALUE_SIZE 16 //value_size  fixed size of the 'value' in bytes.
 
+int odpc_lookup_tbls_init();
+int odpc_lookup_tbls_des();
+
 #endif

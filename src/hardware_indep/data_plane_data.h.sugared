@@ -1,15 +1,22 @@
 from utils import *
 
-tables = hlir.p4_tables
-
 #[ #ifndef __DATA_PLANE_DATA_H__
 #[ #define __DATA_PLANE_DATA_H__
 #[
 #[ #include "parser.h"
 #[
-#[ #define NB_TABLES ${len(tables)}
+#[ #define NB_TABLES ${len(hlir.p4_tables)}
 #[
-for i, table in enumerate(tables.values()):
-    #[ #define TABLE_${table.name} ${i}
+#[ enum table_names {
+for table in hlir.p4_tables.values():
+    #[ TABLE_${table.name},
+#[ };
+#[
+#[ #define NB_COUNTERS ${len(hlir.p4_counters)}
+#[
+#[ enum counter_names {
+for counter in hlir.p4_counters.values():
+    #[ COUNTER_${counter.name},
+#[ };
 #[ 
 #[ #endif // __DATA_PLANE_DATA_H__

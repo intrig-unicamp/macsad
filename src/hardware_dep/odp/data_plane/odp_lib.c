@@ -13,13 +13,16 @@
 #include <odp/helper/table.h>
 #include <net/ethernet.h>
 
+struct socket_state state[NB_SOCKETS];
+
 //=   shared   ================================================================
 extern void init_control_plane();
 //extern __m128i val_eth[MAX_ETHPORTS];
 
 extern uint32_t enabled_port_mask;
 int promiscuous_on = 0; /**< Ports set in promiscuous mode off by default. */
-int numa_on = 1; /**< NUMA is enabled by default. */
+//TODO
+int numa_on = 0; /**< NUMA is not enabled by default. */
 
 #define MAX_LCORE_PARAMS 1024
 uint16_t nb_lcore_params;
@@ -254,102 +257,196 @@ static void print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 #endif
 }
 
-static void create_tables_on_socket (int socketid)
+//int init_lcore_confs()
+int odpc_lcore_conf_init ()
 {
-	//only if the table is defined in p4 prog
-	if (table_config == NULL) return;
-	int i;
-	for (i=0;i < NB_TABLES; i++) {
-		printf("creting table with tableID  %d \n", i);
-		lookup_table_t t = table_config[i];
-		int j;
-		for(j = 0; j < NB_REPLICA; j++) {
-			tables_on_sockets[socketid][i][j] = malloc(sizeof(lookup_table_t));
-			memcpy(tables_on_sockets[socketid][i][j], &t, sizeof(lookup_table_t));
-//			printf(" ::tables_on_socket %p \n",tables_on_sockets[socketid][i][j]);
-			table_create(tables_on_sockets[socketid][i][j], socketid, j);
+	printf("Configuring lcore structs...\n");
+	struct macs_conf *qconf;
+	int socketid;
+	unsigned lcore_id;
+	for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) {
+/*		if (rte_lcore_is_enabled(lcore_id) == 0) continue;
+		if (numa_on) socketid = rte_lcore_to_socket_id(lcore_id);
+		else socketid = 0;
+		if (socketid >= NB_SOCKETS) {
+			rte_exit(EXIT_FAILURE, "Socket %d of lcore %u is out of range %d\n",
+					socketid, lcore_id, NB_SOCKETS);
+			printf("socket is out of range.\n");
 		}
-		active_replica[socketid][i] = 0;
+		*/
+		//TODO remove below socketid set and uncomment above code
+		socketid = 0;
+		qconf = &mconf_list[lcore_id];
+		int i;
+		for(i = 0; i < NB_TABLES; i++)
+			qconf->state.tables[i] = state[socketid].tables[i][0];
+		for(i = 0; i < NB_COUNTERS; i++)
+			qconf->state.counters[i] = state[socketid].counters[i];
 	}
-}
-
-int init_lookup_tables()
-{
-	int socketid = SOCKET_DEF;
-	int i = 0, j;
-	struct macs_conf *macs = &gconf;
-
-	printf("Initializing tables...\n");
-	if (tables_on_sockets[socketid][0][0] == NULL)
-		create_tables_on_socket(socketid);
-
-	for(i = 0; i < NB_TABLES; i++) {
-		macs->tables[i] = tables_on_sockets[socketid][i][0];
-	}
-#if 0
-		int k = 0;
-for (i=0;i < NB_TABLES; i++) {
-	for (j=0;j < NB_REPLICA; j++) {      
-	printf(" %d tables on sockets %p \n", ++k, tables_on_sockets[socketid][i][j]);
-	}}
-#endif
-	printf("Initializing tables Done.\n");
 	return 0;
 }
 
 static void change_replica(int socketid, int tid, int replica) {
-#if 0
-	struct lcore_conf *qconf;
-	int core_socketid;
-	unsigned lcore_id;
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (rte_lcore_is_enabled(lcore_id) == 0) continue;
-		core_socketid = rte_lcore_to_socket_id(lcore_id);
-		if(core_socketid != socketid) continue;
-		qconf = &lcore_conf[lcore_id];
-		qconf->tables[tid] = tables_on_sockets[socketid][tid][replica]; // TODO should this be atomic?
-		active_replica[socketid][tid] = replica;
-		//printf("\n\n\nCHANGING REPLICA of TABLE %d: core %d on socket %d now uses replica %d\n\n\n", tid, lcore_id, socketid, replica);
-		//    }
-#endif
-	return;
+	/*
+	   struct lcore_conf *qconf;
+	   int core_socketid;
+	   unsigned lcore_id;
+	   for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+	   if (rte_lcore_is_enabled(lcore_id) == 0) continue;
+	   core_socketid = rte_lcore_to_socket_id(lcore_id);
+	   if(core_socketid != socketid) continue;
+	   qconf = &lcore_conf[lcore_id];
+	   qconf->state.tables[tid] = state[socketid].tables[tid][replica]; // TODO should this be atomic?
+	   state[socketid].active_replica[tid] = replica;
+	//printf("\n\n\nCHANGING REPLICA of TABLE %d: core %d on socket %d now uses replica %d\n\n\n", tid, lcore_id, socketid, replica);
+	}
+	*/
 }
 
+//	int current_replica = active_replica[socketid][tableid];
+//	fun(tables_on_sockets[socketid][tableid][next_replica], par);
+//		if(current_replica != next_replica) fun(tables_on_sockets[socketid][tableid][current_replica], par); 
 #define CHANGE_TABLE(fun, par...) \
 { \
-	int current_replica = active_replica[socketid][tableid]; \
+    int current_replica = state[socketid].active_replica[tableid]; \
 	int next_replica = (current_replica+1)%NB_REPLICA; \
-	fun(tables_on_sockets[socketid][tableid][next_replica], par); \
+    fun(state[socketid].tables[tableid][next_replica], par);	\
 	change_replica(socketid, tableid, next_replica); \
 	usleep(TABCHANGE_DELAY); \
 	for(current_replica = 0; current_replica < NB_REPLICA; current_replica++) \
-	if(current_replica != next_replica) fun(tables_on_sockets[socketid][tableid][current_replica], par); \
+		if(current_replica != next_replica) fun(state[socketid].tables[tableid][current_replica], par); \
 }
 
+//if(tables_on_sockets[socketid][0][0] != NULL)
 #define FORALLNUMANODES(b) \
 	int socketid; \
 for(socketid = 0; socketid < NB_SOCKETS; socketid++) \
-if(tables_on_sockets[socketid][0][0] != NULL) \
+if(state[socketid].tables[0][0] != NULL) \
 b
 
-void exact_add_promote(int tableid, uint8_t* key, uint8_t* value) {
+void exact_add_promote(int tableid, uint8_t* key, uint8_t* value) 
+{
 //	printf(":::: EXECUTING exact add promote \n");
 	FORALLNUMANODES(CHANGE_TABLE(exact_add, key, value))
 }
-void lpm_add_promote(int tableid, uint8_t* key, uint8_t depth, uint8_t* value) {
+void lpm_add_promote(int tableid, uint8_t* key, uint8_t depth, uint8_t* value) 
+{
 	FORALLNUMANODES(CHANGE_TABLE(lpm_add, key, depth, value))
 }
 void ternary_add_promote(int tableid, uint8_t* key, uint8_t* mask, uint8_t* value) {
 	FORALLNUMANODES(CHANGE_TABLE(ternary_add, key, mask, value))
 }
 
-void table_setdefault_promote(int tableid, uint8_t* value) {
+void table_setdefault_promote(int tableid, uint8_t* value) 
+{
 	FORALLNUMANODES(CHANGE_TABLE(table_setdefault, value))
 }
 
+/*
+static void
+create_counters_on_socket(int socketid)
+{
+    if(counter_config == NULL) return;
+    printf("Initializing counters on socket %d\n", socketid);
+    int i;
+    for(i = 0; i < NB_COUNTERS; i++) {
+        printf("Creating counter %d on socket %d\n", i, socketid);
+        counter_t c = counter_config[i];
+        state[socketid].counters[i] = malloc(sizeof(counter_t));
+        memcpy(state[socketid].counters[i], &c, sizeof(counter_t));
+        // init
+        printf("Initializing counter %d on socket %d\n", i, c.size);
+        state[socketid].counters[i]->cnt = (rte_atomic32_t*)rte_malloc_socket("rte_atomic32_t", sizeof(rte_atomic32_t)*c.size, 0, socketid);
+        int index;
+        for(index = 0; index < c.size; index++)
+            rte_atomic32_init(&state[socketid].counters[i]->cnt[index]);
+    }
+}
+*/
+
+void increase_counter(int counterid, int index)
+{
+    struct macs_conf *conf;
+ //   int lcore_id = rte_lcore_id();
+	int lcore_id = 0;
+    conf = &mconf_list[lcore_id];
+//TODO
+//    rte_atomic32_inc(&conf->state.counters[counterid]->cnt[index]);
+}
+ 
+uint32_t read_counter(int counterid, int index) 
+{
+    uint32_t cnt = 0;
+    int socketid;
+//TODO
+//    for(socketid = 0; socketid < NB_SOCKETS; socketid++)
+//        if(state[socketid].tables[0][0] != NULL)
+//            cnt += rte_atomic32_read(&state[socketid].counters[counterid]->cnt[index]);
+    return cnt;
+}
+
+/*
+static int
+init_mem(unsigned nb_mbuf)
+{
+    unsigned lcore_id;
+    char s[64];
+
+    for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+        if (rte_lcore_is_enabled(lcore_id) == 0)
+            continue;
+
+        int socketid = get_socketid(lcore_id);
+
+        if (socketid >= NB_SOCKETS) {
+            rte_exit(EXIT_FAILURE, "Socket %d of lcore %u is out of range %d\n",
+                socketid, lcore_id, NB_SOCKETS);
+        }
+        if (pktmbuf_pool[socketid] == NULL) {
+            snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
+            pktmbuf_pool[socketid] =
+                rte_mempool_create(s, nb_mbuf, MBUF_SIZE, MEMPOOL_CACHE_SIZE,
+                    sizeof(struct rte_pktmbuf_pool_private),
+                    rte_pktmbuf_pool_init, NULL,
+                    rte_pktmbuf_init, NULL,
+                    socketid, 0);
+            if (pktmbuf_pool[socketid] == NULL)
+                rte_exit(EXIT_FAILURE,
+                        "Cannot init mbuf pool on socket %d\n", socketid);
+            else
+                printf("Allocated mbuf pool on socket %d\n", socketid);
+        }
+    }
+    return 0;
+}
+*/
+
+/*
+int odpc_stfull_memories_init()
+{
+    printf("Initializing stateful memories...\n");
+    int socketid;
+    unsigned lcore_id;
+    for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+        if (rte_lcore_is_enabled(lcore_id) == 0) continue;
+        if (numa_on) socketid = rte_lcore_to_socket_id(lcore_id);
+        else socketid = 0;
+        if (socketid >= NB_SOCKETS) {
+            rte_exit(EXIT_FAILURE, "Socket %d of lcore %u is out of range %d\n",
+                socketid, lcore_id, NB_SOCKETS);
+        }
+        if (state[socketid].tables[0][0] == NULL) {
+            create_tables_on_socket(socketid);
+            create_counters_on_socket(socketid);
+        }
+    }
+    return 0;
+}
+*/
+
 static odp_pktio_t create_pktio(const char *name, odp_pool_t pool,
-		odp_pktin_queue_t *pktin,
-		odp_pktout_queue_t *pktout)
+								odp_pktin_queue_t *pktin,
+								odp_pktout_queue_t *pktout)
 {
 	odp_pktio_param_t pktio_param;
 	odp_pktin_queue_param_t in_queue_param;
@@ -395,13 +492,13 @@ static void *launch_worker(void *arg ODP_UNUSED)
 	return NULL;
 }
 
-uint8_t odp_initialize(int argc, char **argv)
+uint8_t odpc_initialize(int argc, char **argv)
 {
 	odp_pool_t pool;
 	odp_pool_param_t params;
 	odp_cpumask_t cpumask;
 	odph_linux_pthread_t thd;
-	struct macs_conf *macs = &gconf;
+	struct macs_conf *macs = &mconf_list[0];
 
 	/* initialize ports */
 	int nb_ports = 2;
@@ -429,19 +526,24 @@ uint8_t odp_initialize(int argc, char **argv)
 		exit(1);
 	}	
 
+//    macs->if0 = create_pktio("pcap:in=mac.pcap", pool, &(macs->if0in), &macs->if0out);
+//    macs->if0 = create_pktio(argv[1], pool, &(macs->if0in), &macs->if0out);
 	macs->if0 = create_pktio("veth1.0", pool, &(macs->if0in), &macs->if0out);
-	//     macs->if0 = create_pktio("pcap:in=mac.cap", pool, &(macs->if0in), &macs->if0out);
-	//global.if1 = create_pktio(argv[2], pool, &global.if1in, &global.if1out);	
+//	global.if1 = create_pktio(argv[2], pool, &global.if1in, &global.if1out);	
 	macs->if1 = create_pktio("veth2.1", pool, &(macs->if1in), &macs->if1out);	
 
 	/* ToDo */
 	/* check if similar thing on ODP */
-	//	check_all_ports_link_status(nb_ports, enabled_port_mask);
-	/* for now only exact table is possible on ODP-hash table */
-	init_lookup_tables();
+//	check_all_ports_link_status(nb_ports, enabled_port_mask);
+
+	/* Initialize all the tables defined in p4 src */
+	odpc_lookup_tbls_init();
 
 	/* initiate control plane */
 	init_control_plane();
+
+	// TODO
+	odpc_lcore_conf_init();
 
 	odp_cpumask_default_worker(&cpumask, 1);
 	odph_linux_pthread_create(&thd, &cpumask, launch_worker, NULL,
@@ -451,8 +553,14 @@ uint8_t odp_initialize(int argc, char **argv)
 	return nb_ports;
 }
 
-uint8_t odpc_des () {
+uint8_t odpc_des () 
+{
 #if 0
+	if (odpc_lookup_tbls_des()) {
+		printf("Lookup table destroy failed.\n");
+	}
+
+
 	if (odp_term_local()) {
 		LOG_ERR("Error: ODP local term failed.\n");
 		exit(EXIT_FAILURE);

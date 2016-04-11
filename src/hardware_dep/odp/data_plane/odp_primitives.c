@@ -158,7 +158,7 @@ void copy_header(packet* p1, packet* p2, header_idx h1, header_idx h2, length l)
     // TODO
 }
 
-void drop(packet* p)
+void drop(packet_descriptor_t* p)
 {
     // TODO
 }

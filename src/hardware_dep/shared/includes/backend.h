@@ -58,6 +58,9 @@ void add_fields             (packet_descriptor_t* p, field_reference_t dstf, fie
 //void add_field_const        (packet_descriptor_t* p, field_reference_t dstf, field_reference_t srcf, uint8_t *src, int srclen);
 //void add_consts             (packet_descriptor_t* p, field_reference_t dstf, uint8_t *src1, int src1len, uint8_t *src2, int src2len);
 
+// PRIMITIVE: DROP
+void drop (packet_descriptor_t* p);
+
 // EXTRA
 uint32_t extract_intvalue   (packet_descriptor_t* p, field_reference_t f);
 uint8_t* extract_bytebuf    (packet_descriptor_t* p, field_reference_t f);
@@ -75,7 +78,6 @@ void add_to_field           (packet* p, field* f, void* value);
 void add                    (packet* p, field* f, void* value1, void* value2);
 void set_field_to_hash_index(packet* p, field* f, field* flc, int base, int size);
 void truncate_pkg           (packet* p, unsigned length);
-void drop                   (packet* p);
 void no_op                  ();
 void push                   (packet* p, header_idx* hdr_array);
 void push_n                 (packet* p, header_idx* hdr_array, unsigned count);

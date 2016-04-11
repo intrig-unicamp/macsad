@@ -4,6 +4,7 @@
 #include "odp_api.h"
 #include "stdio.h"
 #include "odph_list_internal.h"
+#include "odp_lib.h"
 #ifndef debug
 #define debug 1
 #endif
@@ -23,23 +24,23 @@ copy_to_socket(uint8_t* src, int length, int socketid) {
 }
 
 /* TODO to be removed later */
-/** @inner element structure of hash table                                       
- *  * To resolve the hash confict:                                                  
- *   * we put the elements with different keys but a same HASH-value                 
- *    * into a list                                                                   
- *     */                                                                              
+/* inner element structure of hash table                                       
+ * To resolve the hash confict:                                                  
+ * we put the elements with different keys but a same HASH-value                 
+ * into a list                                                                   
+ */                                                                              
 typedef struct odph_hash_node {                                                  
 	/** list structure,for list opt */                                           
 	odph_list_object list_node;                                                  
-	/** Flexible Array,memory will be alloced when table has been
-	 * created        
-	 *      * Its length is key_size + value_size,                                      
-	 *           * suppose key_size = m; value_size = n;                                     
-	 *                * its structure is like:                                                    
-	 *                     * k_byte1 k_byte2...k_byten v_byte1...v_bytem                               
-	 *                          */                                                                          
+	/* Flexible Array,memory will be alloced when table has been created
+	 * Its length is key_size + value_size,         
+	 * suppose key_size = m; value_size = n;
+	 * its structure is like:                                                    
+	 * k_byte1 k_byte2...k_byten v_byte1...v_bytem                               
+	 */                                                                          
 	char content[0];                                                             
 } odph_hash_node;
+
 typedef struct {                                                                 
 	uint32_t magicword; /**< for check */                                        
 	uint32_t key_size; /**< input param when create,in Bytes */                  
@@ -60,7 +61,6 @@ typedef struct {
 	char rsv[7]; /**< Reserved,for alignment */                                  
 	char name[ODPH_TABLE_NAME_LEN]; /**< table name */                           
 } odph_hash_table_imp;                                                           
-
 
 // ============================================================================
 // SIMPLE HASH FUNCTION FOR EXACT TABLES
@@ -96,37 +96,6 @@ static void create_ext_table(lookup_table_t* t, void* table, int socketid)
 {
 	extended_table_t* ext = NULL;
 
-#if 0
-	odp_shm_t shm;
-
-	/* Reserve memory for args from shared mem */
-
-	if ((shm =odp_shm_lookup("ext_table")) != NULL) {
-             odp_shm_free(shm);
-	}
-
-	shm = odp_shm_reserve("ext_table", sizeof(extended_table_t),
-			ODP_CACHE_LINE_SIZE, 0);
-	ext = odp_shm_addr(shm);
-	if (ext == NULL) {
-		exit(EXIT_FAILURE);
-	}
-	memset(ext, 0, sizeof(*ext));
-
-	ext->odp_table = table;
-	ext->size = 0;
-
-	/* Reserve memory for args from shared mem */
-	if ((shm = odp_shm_lookup("ext_table_content")) != NULL) {
-             odp_shm_free(shm);
-	}
-	shm = odp_shm_reserve("ext_table_content", sizeof(uint8_t*)*TABLE_MAX,
-			ODP_CACHE_LINE_SIZE, 0);
-	ext->content = odp_shm_addr(shm);
-	if (ext->content == NULL) {
-		exit(EXIT_FAILURE);
-	}
-#endif
 	ext = malloc(sizeof(extended_table_t));
 	memset(ext, 0, sizeof(extended_table_t));
 	ext->odp_table = table;
@@ -143,6 +112,7 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
 	t->socketid = socketid;
 	odph_table_t tbl;
 	odph_table_ops_t *test_ops;
+	if(t->key_size == 0) return; // we don't create the table if there are no keys (it's a fake table for an element in the pipeline)
 	printf(":::: EXECUTING table create:\n");
 	switch(t->type) {
 		case LOOKUP_EXACT:
@@ -162,10 +132,11 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
             create_ext_table(t, tbl, socketid);
             break;
     }
-	odph_hash_table_imp *tbl_tmp = (odph_hash_table_imp *)tbl;
-	extended_table_t * ext = t->table;
-	printf("  ::Table odp %p %s, lval_size %d created \n", tbl_tmp, tbl_tmp->name, tbl_tmp->value_size);
+//	odph_hash_table_imp *tbl_tmp = (odph_hash_table_imp *)tbl;
+//	printf("  ::Table odp %p %s, lval_size %d created \n", tbl_tmp, tbl_tmp->name, tbl_tmp->value_size);
+
 //printf("  ::Table lookup %p %s,type %d, lval_size %d, socket %d\n", t, t->name, t->type,t->val_size, socketid);
+//	extended_table_t * ext = t->table;
 //printf(" ::lookup %p, ext %p, tbl %p \n", t, t->table, ext->odp_table);
 }
 
@@ -187,6 +158,7 @@ void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
 	odph_table_ops_t *test_ops;
 	test_ops = &odph_hash_table_ops;
 	extended_table_t* ext = (extended_table_t*)t->table;
+if(t->key_size == 0) return; // don't add lines to keyless tables
 	printf(":::: EXECUTING exact add on table %s \n", t->name);
 	printf("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
 	ret = test_ops->f_put(ext->odp_table, key, value);
@@ -238,6 +210,7 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 {
 	int ret = 0;
 	void *buffer = NULL;
+	if(t->key_size == 0) return t->default_val;
 	// TODO need to free the memory somewhere ??
 	buffer = malloc(sizeof(char)*t->val_size);
 	memset(buffer, 0, t->val_size);
@@ -270,13 +243,84 @@ uint8_t* ternary_lookup(lookup_table_t* t, uint8_t* key)
 //---------
 //DELETE
 //TODO need to implement cleanup
-void table_des (lookup_table_t* t){
-//	clean up shm reserve mem
-//	destroy odph table
+void odpc_tbl_des (lookup_table_t* t){
+//	Use destroy odph table apis
 	return;
 }
 
-void shm_release ()
+// ============================================================================
+// HIGHER LEVEL TABLE MANAGEMENT
+
+/*
+	Create table for each socket (CPU).
+	Create replica set of tables too.
+*/
+static void create_tables_on_socket (int socketid)                               
+{                                                                                
+	//only if the table is defined in p4 prog                                    
+	if (table_config == NULL) return;                                            
+	int i;                                                                       
+	for (i=0;i < NB_TABLES; i++) {                                               
+		printf("creting table with tableID  %d \n", i);                          
+		lookup_table_t t = table_config[i];                                      
+		int j;                                                                   
+		for(j = 0; j < NB_REPLICA; j++) {                                        
+			state[socketid].tables[i][j] = malloc(sizeof(lookup_table_t));
+			memcpy(state[socketid].tables[i][j], &t, sizeof(lookup_table_t));
+			table_create(state[socketid].tables[i][j], socketid, j);
+		}                                                                        
+		state[socketid].active_replica[i] = 0;		
+	}                                                                            
+}                                                                                
+
+/*
+ Initialize the lookup tables for dataplane.
+TODO make it void
+*/                                                                               
+int odpc_lookup_tbls_init()                                                      
+{                                                                                
+    int socketid = SOCKET_DEF;                                                   
+    unsigned lcore_id;
+	printf("Initializing tables...\n");                                          
+    for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) {
+/*
+        if (rte_lcore_is_enabled(lcore_id) == 0) continue;
+        if (numa_on) socketid = rte_lcore_to_socket_id(lcore_id);
+        else socketid = 0;
+      if (socketid >= NB_SOCKETS) {
+            rte_exit(EXIT_FAILURE, "Socket %d of lcore %u is out of range %d\n",
+                socketid, lcore_id, NB_SOCKETS);
+        }
+*/
+        if (state[socketid].tables[0][0] == NULL) {
+            create_tables_on_socket(socketid);
+//            create_counters_on_socket(socketid);
+        }
+    }
+    printf("Initializing tables Done.\n");                                       
+    return 0;                                                                    
+}
+
+/*
+ Initialize the lookup tables for dataplane.
+TODO make it void
+*/                                                                               
+int odpc_lookup_tbls_des() 
 {
-	return;
+    int socketid = SOCKET_DEF;                                                   
+	int i, j;  
+	unsigned lcore_id;	
+	printf("Destroying Lookup tables...\n");                                          
+	for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) { 
+		for(i = 0; i < NB_TABLES; i++) {                                             
+			for(j = 0; j < NB_REPLICA; j++) {                                        
+				if (state[socketid].tables[i][j] != NULL){                               
+					odpc_tbl_des (state[socketid].tables[0][0]);
+				}
+			}
+		}
+	}
+	/* Success */
+	printf("Destroying Lookup tables done.\n");                                          
+	return 0;
 }
