@@ -162,7 +162,8 @@ for fun in useraction_objs:
     name = fun.name
     params = ", struct action_%s_params parameters" % (name) if hasParam else ""
     #[ ${modifiers} ${ret_val_type} action_code_${name}(packet_descriptor_t* pkt, lookup_table_t** tables ${params}) {
-    #[     (void)value32; (void)res32;
+## TODO 
+##    #[     (void)value32; (void)res32;
     for i,call in enumerate(fun.call_sequence):
        if call[0].name in locals().keys():
            #[ ${locals()[call[0].name](fun, call)}

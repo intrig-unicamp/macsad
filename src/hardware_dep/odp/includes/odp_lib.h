@@ -120,4 +120,8 @@ extern struct l2fwd_port_statistics port_statistics[MAX_ETHPORTS];
 
 uint8_t odpc_initialize(int argc, char **argv);
 
+//TODO where to defien these two
+uint32_t value32;
+uint32_t res32;
+
 #endif // ODP_LIB_H

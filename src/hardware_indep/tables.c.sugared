@@ -16,12 +16,12 @@ for table in hlir.p4_tables.values():
     #[  .max_size = 255 //${table.max_size}
     #[ },
 #[ };
-
-#[ counter_t counter_config[NB_COUNTERS] = {
-for counter in hlir.p4_counters.values():
-    #[ {
-    #[  .name= "${counter.name}",
-    #[  .size = ${counter.instance_count},
-    #[  .min_width = ${counter.min_width}
-    #[ },
-#[ };
+if (len(hlir.p4_counters)):
+	#[ counter_t counter_config[NB_COUNTERS] = {
+	for counter in hlir.p4_counters.values():
+		#[ {
+		#[  .name= "${counter.name}",
+		#[  .size = ${counter.instance_count},
+		#[  .min_width = ${counter.min_width}
+		#[ },
+	#[ };
