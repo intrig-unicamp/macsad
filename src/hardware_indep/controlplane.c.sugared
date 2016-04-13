@@ -73,7 +73,7 @@ for table in hlir.p4_tables.values():
 for table in hlir.p4_tables.values():
     #[ 
     #[ void ${table.name}_add_table_entry(struct p4_ctrl_msg* ctrl_m)
-#[ {
+    #[ {
     for i, m in enumerate(table.match_fields):
         match_field, match_type, match_mask = m
         if match_type is p4.p4_match_type.P4_MATCH_EXACT:

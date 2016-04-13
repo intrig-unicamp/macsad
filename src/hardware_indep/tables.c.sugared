@@ -16,7 +16,7 @@ for table in hlir.p4_tables.values():
     #[  .max_size = 255 //${table.max_size}
     #[ },
 #[ };
-+
+
 #[ counter_t counter_config[NB_COUNTERS] = {
 for counter in hlir.p4_counters.values():
     #[ {

@@ -58,7 +58,7 @@ for table in hlir.p4_tables.values():
     #[     struct ${table.name}_action* res = (struct ${table.name}_action*)${lookupfun[table_type]}(tables[TABLE_${table.name}], (uint8_t*)key);
     #[     if(res == NULL) {
     #[         #if debug == 1
-	#[         printf("    :: NO RESULT, NO DEFAULT ACTION, IGNORING PACKET.\n");
+    #[         printf("    :: NO RESULT, NO DEFAULT ACTION, IGNORING PACKET.\n");
     #[         #endif
     #[         return;
     #[     }

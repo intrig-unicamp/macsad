@@ -1,6 +1,6 @@
-
 import utils
 from data_plane_analyser_utils import *
+from utils import *
 
 from subprocess import call
 
@@ -169,27 +169,6 @@ def write_file(filename, text):
         except OSError:
             pass
 
-
-def analyse_data_plane():
-    import createfuns
-    import createunions
-
-
-    initDataPlane()        
-    createfuns.build()
-    createunions.build()
-    endDataPlane()
-
-    decl_text, code, error = result()
-
-    write_file(join("build", "src_hardware_indep", "data_plane_data.h"), decl_text)
-    write_file(join("build", "src_hardware_indep", "data_plane_data.c"), code)
-
-    if error != "":
-        print "Errors while analysing data plane:"
-        print error
-
-
 def generate_parser_file(p4_path, hlir):
     from hardware_indep.parser import parser
 
@@ -212,14 +191,8 @@ def main():
     print("generate_all_in_dir called in main")
     generate_all_in_dir(compiler_files_path, desugared_path, generated_path, hlir)
 
-    init_data_plane_analyser(p4_path)
-    
-   
     utils.showErrors()
     utils.showWarnings()
-    #analyse_data_plane()
-
-    #generate_parser_file(p4_path, hlir)
 
 
 main()
