@@ -37,39 +37,24 @@ struct l2fwd_port_statistics port_statistics[MAX_ETHPORTS];
 static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
-/* odp */
-#define POOL_NUM_PKT 8192
-#define POOL_SEG_LEN 1856
+/** @def PKT_POOL_SIZE
+ * @brief Size of the shared memory block
+ */
+#define PKT_POOL_SIZE 8192
+/** @def PKT_POOL_BUF_SIZE 
+ * @brief Buffer size of the packet pool buffer
+ */
+#define PKT_POOL_BUF_SIZE 1856
+/** @def MAX_PKT_BURST 
+ * @brief Maximum number of packet in a burst
+ */
 #define MAX_PKT_BURST 32
 
 extern void
 odp_main_worker (void);
-
-/* cmd options */
-#define CMD_LINE_OPT_CONFIG "config"
-#define CMD_LINE_OPT_NO_NUMA "no-numa"
-#define CMD_LINE_OPT_ENABLE_JUMBO "enable-jumbo"
-#define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
 //=============================================================================
 
 #define UNUSED(x) (void)(x)
-
-/* display usage */
-	static void
-print_usage(const char *prgname)
-{
-	printf ("%s [EAL options] -- -p PORTMASK -P"
-			"  [--config (port,queue,lcore)[,(port,queue,lcore]]"
-			"  [--enable-jumbo [--max-pkt-len PKTLEN]]\n"
-			"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
-			"  -P : enable promiscuous mode\n"
-			"  --config (port,queue,lcore): rx queues configuration\n"
-			"  --no-numa: optional, disable numa awareness\n"
-			"  --enable-jumbo: enable jumbo frame"
-			" which max packet len is PKTLEN in decimal (64-9600)\n"
-			"  --hash-entry-num: specify the hash entry number in hexadecimal to be setup\n",
-			prgname);
-}
 
 static int parse_max_pkt_len(const char *pktlen)
 {
@@ -101,151 +86,6 @@ static int parse_portmask(const char *portmask)
 		return -1;
 
 	return pm;
-}
-
-static int parse_config(const char *q_arg)
-{
-#if 0
-	char s[256];
-	const char *p, *p0 = q_arg;
-	char *end;
-	enum fieldnames {
-		FLD_PORT = 0,
-		FLD_QUEUE,
-		FLD_LCORE,
-		_NUM_FLD
-	};
-	unsigned long int_fld[_NUM_FLD];
-	char *str_fld[_NUM_FLD];
-	int i;
-	unsigned size;
-
-	nb_lcore_params = 0;
-
-	while ((p = strchr(p0,'(')) != NULL) {
-		++p;
-		if((p0 = strchr(p,')')) == NULL)
-			return -1;
-
-		size = p0 - p;
-		if(size >= sizeof(s))
-			return -1;
-
-		snprintf(s, sizeof(s), "%.*s", size, p);
-		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
-			return -1;
-		for (i = 0; i < _NUM_FLD; i++){
-			errno = 0;
-			int_fld[i] = strtoul(str_fld[i], &end, 0);
-			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
-				return -1;
-		}
-		if (nb_lcore_params >= MAX_LCORE_PARAMS) {
-			printf("exceeded max number of lcore params: %hu\n",
-					nb_lcore_params);
-			return -1;
-		}
-		lcore_params_array[nb_lcore_params].port_id = (uint8_t)int_fld[FLD_PORT];
-		lcore_params_array[nb_lcore_params].queue_id = (uint8_t)int_fld[FLD_QUEUE];
-		lcore_params_array[nb_lcore_params].lcore_id = (uint8_t)int_fld[FLD_LCORE];
-		++nb_lcore_params;
-	}
-	lcore_params = lcore_params_array;
-#endif
-	return 0;
-}
-
-
-/* Parse the argument given in the command line of the application */
-static int parse_args(int argc, char **argv)
-{
-	int ret;
-#if 0
-	int opt;
-	char **argvopt;
-	int option_index;
-	char *prgname = argv[0];
-	static struct option lgopts[] = {
-		{CMD_LINE_OPT_CONFIG, 1, 0, 0},
-		{CMD_LINE_OPT_NO_NUMA, 0, 0, 0},
-		{CMD_LINE_OPT_ENABLE_JUMBO, 0, 0, 0},
-		{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, 0},
-		{NULL, 0, 0, 0}
-	};
-
-	argvopt = argv;
-
-	while ((opt = getopt_long(argc, argvopt, "p:P",
-					lgopts, &option_index)) != EOF) {
-
-		switch (opt) {
-			/* portmask */
-			case 'p':
-				enabled_port_mask = parse_portmask(optarg);
-				if (enabled_port_mask == 0) {
-					printf("invalid portmask\n");
-					print_usage(prgname);
-					return -1;
-				}
-				break;
-			case 'P':
-				printf("Promiscuous mode selected\n");
-				promiscuous_on = 1;
-				break;
-
-				/* long options */
-			case 0:
-				if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_CONFIG,
-							sizeof (CMD_LINE_OPT_CONFIG))) {
-					ret = parse_config(optarg);
-					if (ret) {
-						printf("invalid config\n");
-						print_usage(prgname);
-						return -1;
-					}
-				}
-
-				if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_NO_NUMA,
-							sizeof(CMD_LINE_OPT_NO_NUMA))) {
-					printf("numa is disabled \n");
-					numa_on = 0;
-				}
-
-				if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ENABLE_JUMBO,
-							sizeof (CMD_LINE_OPT_ENABLE_JUMBO))) {
-					struct option lenopts = {"max-pkt-len", required_argument, 0, 0};
-
-					printf("jumbo frame is enabled - disabling simple TX path\n");
-					port_conf.rxmode.jumbo_frame = 1;
-
-					/* if no max-pkt-len set, use the default value ETHER_MAX_LEN */
-					if (0 == getopt_long(argc, argvopt, "", &lenopts, &option_index)) {
-						ret = parse_max_pkt_len(optarg);
-						if ((ret < 64) || (ret > MAX_JUMBO_PKT_LEN)){
-							printf("invalid packet length\n");
-							print_usage(prgname);
-							return -1;
-						}
-						port_conf.rxmode.max_rx_pkt_len = ret;
-					}
-					printf("set jumbo frame max packet length to %u\n",
-							(unsigned int)port_conf.rxmode.max_rx_pkt_len);
-				}
-				break;
-
-			default:
-				print_usage(prgname);
-				return -1;
-		}
-	}
-
-	if (optind >= 0)
-		argv[optind-1] = prgname;
-
-	ret = optind-1;
-	optind = 0; /* reset getopt lib */
-#endif 
-	return ret;
 }
 
 static void print_ethaddr(const char *name, const struct ether_addr *eth_addr)
@@ -342,7 +182,7 @@ void table_setdefault_promote(int tableid, uint8_t* value)
 	FORALLNUMANODES(CHANGE_TABLE(table_setdefault, value))
 }
 
-/*
+#if 0
 static void
 create_counters_on_socket(int socketid)
 {
@@ -353,16 +193,14 @@ create_counters_on_socket(int socketid)
         printf("Creating counter %d on socket %d\n", i, socketid);
         counter_t c = counter_config[i];
         state[socketid].counters[i] = malloc(sizeof(counter_t));
-        memcpy(state[socketid].counters[i], &c, sizeof(counter_t));
-        // init
-        printf("Initializing counter %d on socket %d\n", i, c.size);
-        state[socketid].counters[i]->cnt = (rte_atomic32_t*)rte_malloc_socket("rte_atomic32_t", sizeof(rte_atomic32_t)*c.size, 0, socketid);
-        int index;
-        for(index = 0; index < c.size; index++)
-            rte_atomic32_init(&state[socketid].counters[i]->cnt[index]);
-    }
+		memcpy(state[socketid].counters[i], &c, sizeof(counter_t));
+		// init
+		printf("Initializing counter %d on socket %d\n", i, socketid);
+		state[socketid].counters[i]->values = (vector_t*)malloc(sizeof(vector_t));
+		vector_init(state[socketid].counters[i]->values, 1 /* initial size */, c.size, sizeof(odp_atomic32_t), &odp_atomic32_init, socketid);
+	}
 }
-*/
+#endif 
 
 void increase_counter(int counterid, int index)
 {
@@ -492,39 +330,243 @@ static void *launch_worker(void *arg ODP_UNUSED)
 	return NULL;
 }
 
+
+
+/**
+ * Prinf usage information
+ */
+static void usage(char *progname)
+{
+    printf("\n"
+           "MACSAD forwarding plane\n"
+           "\n"
+           "Usage: %s OPTIONS\n"
+           "  E.g. %s -i eth0,eth1,eth2,eth3 \n"
+           "\n"
+           "Mandatory OPTIONS:\n"
+           "  -i, --interface Eth interfaces (comma-separated, no spaces)\n"
+           "                  Interface count min 1, max %i\n"
+           "\n"
+           "Optional OPTIONS:\n"
+           "  -c, --count <number> CPU count.\n"
+           "  -h, --help           Display help and exit.\n\n"
+           "\n", NO_PATH(progname), NO_PATH(progname), MAX_PKTIOS
+        );
+}
+
+/**
+ * Parse and store the command line arguments
+ *
+ * @param argc       argument count
+ * @param argv[]     argument vector
+ * @param appl_args  Store application arguments here
+ */
+static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
+{
+    int opt;
+    int long_index;
+    char *token;
+    char *addr_str;
+    size_t len;
+    int i;
+    static struct option longopts[] = {
+        {"count", required_argument, NULL, 'c'},
+        {"interface", required_argument, NULL, 'i'},
+        {"help", no_argument, NULL, 'h'},
+        {NULL, 0, NULL, 0}
+    };
+
+    while (1) {
+        opt = getopt_long(argc, argv, "+c:+t:+a:i:m:o:r:d:s:e:h",
+                  longopts, &long_index);
+
+        if (opt == -1)
+            break;  /* No more options */
+
+        switch (opt) {
+        case 'c':
+            appl_args->cpu_count = atoi(optarg);
+            break;
+        case 'i':
+            len = strlen(optarg);
+            if (len == 0) {
+                usage(argv[0]);
+                exit(EXIT_FAILURE);
+            }
+            len += 1;   /* add room for '\0' */
+
+            appl_args->if_str = malloc(len);
+            if (appl_args->if_str == NULL) {
+                usage(argv[0]);
+                exit(EXIT_FAILURE);
+            }
+
+            /* count the number of tokens separated by ',' */
+            strcpy(appl_args->if_str, optarg);
+            for (token = strtok(appl_args->if_str, ","), i = 0;
+                 token != NULL;
+                 token = strtok(NULL, ","), i++)
+                ;
+
+            appl_args->if_count = i;
+
+            if (appl_args->if_count < 1 ||
+                appl_args->if_count > MAX_PKTIOS) {
+                usage(argv[0]);
+                exit(EXIT_FAILURE);
+            }
+
+            /* allocate storage for the if names */
+            appl_args->if_names =
+                calloc(appl_args->if_count, sizeof(char *));
+
+            /* store the if names (reset names string) */
+            strcpy(appl_args->if_str, optarg);
+            for (token = strtok(appl_args->if_str, ","), i = 0;
+                 token != NULL; token = strtok(NULL, ","), i++) {
+                appl_args->if_names[i] = token;
+            }
+            break;
+        case 'h':
+            usage(argv[0]);
+            exit(EXIT_SUCCESS);
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (appl_args->if_count == 0) {
+        usage(argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    optind = 1;     /* reset 'extern optind' from the getopt lib */
+}
+
+/**
+ * Print system and application info
+ */
+static void print_info(char *progname, appl_args_t *appl_args)
+{
+    int i;
+
+    printf("\n"
+           "ODP system info\n"
+           "---------------\n"
+           "ODP API version: %s\n"
+           "ODP impl name:   %s\n"
+           "CPU model:       %s\n"
+           "CPU freq (hz):   %" PRIu64 "\n"
+           "Cache line size: %i\n"
+           "CPU count:       %i\n"
+           "\n",
+           odp_version_api_str(), odp_version_impl_name(),
+           odp_cpu_model_str(), odp_cpu_hz_max(),
+           odp_sys_cache_line_size(), odp_cpu_count());
+
+    printf("Running ODP appl: \"%s\"\n"
+           "-----------------\n"
+           "IF-count:        %i\n"
+           "Using IFs:      ",
+           progname, appl_args->if_count);
+    for (i = 0; i < appl_args->if_count; ++i)
+        printf(" %s", appl_args->if_names[i]);
+    printf("\n\n");
+    fflush(NULL);
+}
+
+static void gbl_args_init(args_t *args)
+{
+    int pktio, queue;
+
+    memset(args, 0, sizeof(args_t));
+
+    for (pktio = 0; pktio < MAX_PKTIOS; pktio++) {
+        args->pktios[pktio].pktio = ODP_PKTIO_INVALID;
+
+        for (queue = 0; queue < MAX_QUEUES; queue++)
+            args->pktios[pktio].rx_q[queue] = ODP_QUEUE_INVALID;
+    }
+}
+
 uint8_t odpc_initialize(int argc, char **argv)
 {
 	odp_pool_t pool;
 	odp_pool_param_t params;
 	odp_cpumask_t cpumask;
+	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
 	odph_linux_pthread_t thd;
 	struct macs_conf *macs = &mconf_list[0];
+	int num_workers;
+	
+	//parse args
+	odp_shm_t shm;
 
 	/* initialize ports */
 	int nb_ports = 2;
 
-	/* init ODP */
+	/* init ODP  before calling anything else */
 	if (odp_init_global(NULL, NULL)) {
 		printf("Error: ODP global init failed.\n");
 		exit(1);
 	}
+
+	/* init this thread */
 	if (odp_init_local(ODP_THREAD_CONTROL)) {
 		printf("Error: ODP local init failed.\n");
 		exit(1);
 	}
 
+    /* Reserve memory for args from shared mem */
+    shm = odp_shm_reserve("shm_args", sizeof(args_t),
+                  ODP_CACHE_LINE_SIZE, 0);
+    gbl_args = odp_shm_addr(shm);
+
+    if (gbl_args == NULL) {
+        LOG_ERR("Error: shared mem alloc failed.\n");
+        exit(EXIT_FAILURE);
+    }
+    gbl_args_init(gbl_args);
+
+    /* Parse and store the application arguments */
+    parse_args(argc, argv, &gbl_args->appl);
+
+    /* Print both system and application information */
+    print_info(NO_PATH(argv[0]), &gbl_args->appl);
+
+	/* Default to system CPU count unless user specified */
+    num_workers = MAX_WORKERS;
+    if (gbl_args->appl.cpu_count)
+        num_workers = gbl_args->appl.cpu_count;
+
+    /* Get default worker cpumask */
+    num_workers = odp_cpumask_default_worker(&cpumask, num_workers);
+    (void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
+
+    for (i = 0; i < num_workers; i++)
+        gbl_args->thread[i].thr_idx = i;
+
+    if_count = gbl_args->appl.if_count;
+
+    printf("num worker threads: %i\n", num_workers);
+    printf("first CPU:          %i\n", odp_cpumask_first(&cpumask));
+    printf("cpu mask:           %s\n", cpumaskstr);	
+	
 	/* create the packet pool */
 	odp_pool_param_init(&params);
-	params.pkt.seg_len = POOL_SEG_LEN;
-	params.pkt.len     = POOL_SEG_LEN;
-	params.pkt.num     = POOL_NUM_PKT;
+	params.pkt.seg_len = PKT_POOL_BUF_SIZE;
+	params.pkt.len     = PKT_POOL_BUF_SIZE;
+	params.pkt.num     = PKT_POOL_SIZE;
 	params.type        = ODP_POOL_PACKET;
 
 	pool = odp_pool_create("packet pool", &params);
 	if (pool == ODP_POOL_INVALID) {
+		LOG_ERR("Error: packet pool create failed.\n");
 		printf("Error: packet pool create failed.\n");
 		exit(1);
 	}	
+//    odp_pool_print(pool);
 
 //    macs->if0 = create_pktio("pcap:in=mac.pcap", pool, &(macs->if0in), &macs->if0out);
 //    macs->if0 = create_pktio(argv[1], pool, &(macs->if0in), &macs->if0out);

@@ -152,13 +152,24 @@ void table_setdefault(lookup_table_t* t, uint8_t* value)
 // ----------------------------------------------------------------------------
 // ADD
 
+#if 0
+static uint8_t* add_index(uint8_t* value, int val_size, int index)
+{
+	realloc doesn't work in this case ("invalid old size")
+		uint8_t* value2 = malloc(val_size+sizeof(int));
+	memcpy(value2, value, val_size);
+	*(value+val_size) = index;
+	return value2;
+}
+#endif
+
 void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
 {
 	int ret = 0;
 	odph_table_ops_t *test_ops;
 	test_ops = &odph_hash_table_ops;
 	extended_table_t* ext = (extended_table_t*)t->table;
-if(t->key_size == 0) return; // don't add lines to keyless tables
+	if(t->key_size == 0) return; // don't add lines to keyless tables
 	printf(":::: EXECUTING exact add on table %s \n", t->name);
 	printf("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
 	ret = test_ops->f_put(ext->odp_table, key, value);

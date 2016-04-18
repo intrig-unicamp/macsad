@@ -73,7 +73,6 @@ void fill_dmac_table(uint8_t port, uint8_t mac[6])
 }
 
 void mac_learn_digest(void* b) {
-    int i;
     uint8_t mac[6];
     uint8_t port[2];
     uint16_t offset=0;
@@ -88,11 +87,6 @@ void mac_learn_digest(void* b) {
     printf("Ctrl: mac_learn_digest PORT: %d MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", p, mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     fill_dmac_table(p, mac);
     fill_smac_table(p, mac);
-
-    for (i=0;i<6;++i)
-	mac[i]=255;
-    fill_dmac_table(1,mac);
-    
 }
 
 void test_learn_ip(void* b) {
@@ -118,8 +112,6 @@ void test_learn_ip(void* b) {
     offset += sizeof(struct p4_digest_field);
     df = netconv_p4_digest_field(unpack_p4_digest_field(b, offset));
     memcpy(&i3, df->value, 4);
-
-    printf("test_learn_ip\n");
 
     char buffer[2048]; /* TODO: ugly */
     struct p4_header* h;

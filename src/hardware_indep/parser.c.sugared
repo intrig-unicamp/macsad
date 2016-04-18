@@ -161,13 +161,13 @@ for state_name, parse_state in hlir.p4_parse_states.items():
             #[     #if debug == 1
             #[     printf("  :::: PACKET PARSED\n");
             #[     printf("    :: ethernet srcaddr: ");
-            #[     print_mac(extract_bytebuf(pd, field_desc(field_instance_ethernet_srcAddr)));
+            #[     print_mac(FIELD_BYTE_ADDR(pd, field_desc(field_instance_ethernet_srcAddr)));
             #[     printf("    :: ethernet dstaddr: ");
-            #[     print_mac(extract_bytebuf(pd, field_desc(field_instance_ethernet_dstAddr)));
+            #[     print_mac(FIELD_BYTE_ADDR(pd, field_desc(field_instance_ethernet_dstAddr)));
             #[     //printf("    :: IP src: "); 
-            #[     //print_ip(extract_bytebuf(pd, field_desc(field_instance_ipv4_srcAddr))); 
+            #[     //print_ip(FIELD_BYTE_ADDR(pd, field_desc(field_instance_ipv4_srcAddr))); 
             #[     //printf("    :: IP dst: "); 
-            #[     //print_ip(extract_bytebuf(pd, field_desc(field_instance_ipv4_dstAddr)));
+            #[     //print_ip(FIELD_BYTE_ADDR(pd, field_desc(field_instance_ipv4_dstAddr)));
             #[     for (int i = 0; i < HEADER_INSTANCE_COUNT; ++i) {
             #[         printf("    :: header %d (type=%d, len=%d) = ", i, pd->headers[i].type, pd->headers[i].length);
             #[         for (int j = 0; j < pd->headers[i].length; ++j) {

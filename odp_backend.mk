@@ -29,6 +29,7 @@ SRCS-y += $(CDIR)/src/hardware_dep/odp/ctrl_plane/threadpool.c
 SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/odp_lib.c
 SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/odp_tables.c
 SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/odp_primitives.c
+SRCS-Y += vector.c
 #SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/ternary_naive.c
 
 CFLAGS += -I "$(CDIR)/src/hardware_dep/odp/includes"

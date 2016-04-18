@@ -155,8 +155,11 @@ opd_send_packet(struct odp_packet_t *p, uint8_t port)
 //	struct odp_packet_t pkt = *p;
 	struct macs_conf *macs = &mconf_list[0];;
 
+	/* Send packets directly to an interface output queue.
+	 * op_mode set to ODP_PKTIO_OP_MT_UNSAFE for o/p queue for
+	 * single thread operation.
+	 * */
 	sent = odp_pktout_send(macs->if1out, p, 1);
-//	sent = odp_pktout_send(gconf.if1out, p, 1);
 	if (sent < 0)
 	{
 		printf("pkt sent failed \n");
