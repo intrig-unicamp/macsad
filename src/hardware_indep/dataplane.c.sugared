@@ -28,11 +28,11 @@ for table in hlir.p4_tables.values():
     sortedfields = sorted(table.match_fields, key=lambda field: match_type_order(field[1]))
     for match_field, match_type, match_mask in sortedfields:
         if match_field.width <= 32:
-            #[ EXTRACT_32BITS(pd, ${fld_id(match_field)}, *(uint32_t*)key)
+            #[ EXTRACT_32BITS(pd, ${fld_id(match_field)}, *(uint32_t*)key);
             #[ key += sizeof(uint32_t);
         elif match_field.width > 32 and match_field.width % 8 == 0:
             byte_width = (match_field.width+7)/8
-            #[ EXTRACT_BYTEBUF(pd, ${fld_id(match_field)}, key)
+            #[ EXTRACT_BYTEBUF(pd, ${fld_id(match_field)}, key);
             #[ key += ${byte_width};
         else:
             print "Unsupported field %s ignored in key calculation." % fld_id(match_field)
@@ -99,7 +99,7 @@ for table in hlir.p4_tables.values():
 #[ {
 #[     #if debug == 1
 #[     int value32;
-#[     EXTRACT_INT32(pd, field_instance_standard_metadata_ingress_port, value32)
+#[     EXTRACT_INT32(pd, field_instance_standard_metadata_ingress_port, value32);
 #[     printf("### HANDLING PACKET ARRIVING AT PORT %" PRIu32 "...\n", value32);
 #[     #endif
 #[     parse_packet(pd, tables);

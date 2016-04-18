@@ -18,12 +18,12 @@ SRCS-y += $(CDIR)/src/hardware_dep/odp/main.c
 SRCS-y += $(CDIR)/src/hardware_dep/odp/main_odp.c
 
 # control plane related sources
-SRCS-y += $(CDIR)/src/hardware_dep/odp/ctrl_plane/ctrl_plane_backend.c
-SRCS-y += $(CDIR)/src/hardware_dep/odp/ctrl_plane/fifo.c
-SRCS-y += $(CDIR)/src/hardware_dep/odp/ctrl_plane/handlers.c
-SRCS-y += $(CDIR)/src/hardware_dep/odp/ctrl_plane/messages.c
-SRCS-y += $(CDIR)/src/hardware_dep/odp/ctrl_plane/sock_helpers.c
-SRCS-y += $(CDIR)/src/hardware_dep/odp/ctrl_plane/threadpool.c
+SRCS-y += $(CDIR)/src/hardware_dep/shared/ctrl_plane/ctrl_plane_backend.c
+SRCS-y += $(CDIR)/src/hardware_dep/shared/ctrl_plane/fifo.c
+SRCS-y += $(CDIR)/src/hardware_dep/shared/ctrl_plane/handlers.c
+SRCS-y += $(CDIR)/src/hardware_dep/shared/ctrl_plane/messages.c
+SRCS-y += $(CDIR)/src/hardware_dep/shared/ctrl_plane/sock_helpers.c
+SRCS-y += $(CDIR)/src/hardware_dep/shared/ctrl_plane/threadpool.c
 
 # data plane related includes
 SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/odp_lib.c

@@ -11,6 +11,7 @@
 #include "ctrl_plane_backend.h"
 #include "odp_tables.h"
 #include <net/ethernet.h>
+#include "odp_primitives.h"
 
 // ODP headers
 #include "odp_api.h"
@@ -69,13 +70,10 @@ struct mbuf_table {
 //TODO update this counter variable
 #define NB_COUNTERS 0
 
-//#define	BAD_PORT	((uint16_t)-1)
-
 #ifndef NB_TABLES
 #define NB_TABLES 0
 #endif
 
-// TODO: Is it used somewhere???? Why do we need this in addition to lcore_conf???
 #define ODP_MAX_LCORE 1
 #define NB_REPLICA 2
 #define SOCKET_DEF 0

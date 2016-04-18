@@ -50,12 +50,121 @@ static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
  */
 #define MAX_PKT_BURST 32
 
+/** @def MAX_WORKERS
+ *  * @brief Maximum number of worker threads
+ *   */
+#define MAX_WORKERS            32
+
+/** Maximum number of pktio queues per interface */
+#define MAX_QUEUES             32
+
+/** Maximum number of pktio interfaces */
+#define MAX_PKTIOS             8
+
 extern void
 odp_main_worker (void);
 //=============================================================================
 
 #define UNUSED(x) (void)(x)
 
+/**
+ * Packet input mode
+ **/
+typedef enum pktin_mode_t {
+	DIRECT_RECV,
+	PLAIN_QUEUE,
+	SCHED_PARALLEL,
+	SCHED_ATOMIC,
+	SCHED_ORDERED,
+} pktin_mode_t;
+
+/**
+ *Packet output modes
+ **/
+typedef enum pktout_mode_t {
+	PKTOUT_DIRECT,
+	PKTOUT_QUEUE
+} pktout_mode_t;
+
+/** Get rid of path in filename - only for unix-type paths using '/' */
+#define NO_PATH(file_name) (strrchr((file_name), '/') ? \
+		                strrchr((file_name), '/') + 1 : (file_name))
+
+/**
+ * Parsed command line application arguments
+ */
+typedef struct {
+    int cpu_count;
+    int if_count;       /**< Number of interfaces to be used */
+    int addr_count;     /**< Number of dst addresses to be used */
+    int num_workers;    /**< Number of worker threads */
+    char **if_names;    /**< Array of pointers to interface names */
+    odph_ethaddr_t addrs[MAX_PKTIOS]; /**< Array of dst addresses */
+    pktin_mode_t in_mode;   /**< Packet input mode */
+    pktout_mode_t out_mode; /**< Packet output mode */
+    int time;       /**< Time in seconds to run. */
+    int accuracy;       /**< Number of seconds to get and print statistics */
+    char *if_str;       /**< Storage for interface names */
+    int dst_change;     /**< Change destination eth addresses */
+    int src_change;     /**< Change source eth addresses */
+    int error_check;        /**< Check packet errors */
+} appl_args_t;
+
+static int exit_threads;    /**< Break workers loop if set to 1 */
+
+/**
+ * Statistics
+ */
+typedef union {
+    struct {
+        /** Number of forwarded packets */
+        uint64_t packets;
+        /** Packets dropped due to receive error */
+        uint64_t rx_drops;
+        /** Packets dropped due to transmit error */
+        uint64_t tx_drops;
+    } s;
+
+    uint8_t padding[ODP_CACHE_LINE_SIZE];
+} stats_t ODP_ALIGNED_CACHE;
+
+typedef struct thread_args_t {
+    int thr_idx;
+    int num_pktio;
+
+    struct {
+        odp_pktio_t rx_pktio;
+        odp_pktio_t tx_pktio;
+        odp_pktin_queue_t pktin;
+        odp_pktout_queue_t pktout;
+        odp_queue_t rx_queue;
+        odp_queue_t tx_queue;
+        int rx_idx;
+        int tx_idx;
+        int rx_queue_idx;
+        int tx_queue_idx;
+    } pktio[MAX_PKTIOS];
+
+    stats_t *stats; /**< Pointer to per thread stats */
+} thread_args_t;
+
+/**
+ * Grouping of all global data
+ */
+typedef struct {
+    /** Per thread packet stats */
+    stats_t stats[MAX_WORKERS];
+    /** Application (parsed) arguments */
+    appl_args_t appl;
+    /** Thread specific arguments */
+    thread_args_t thread[MAX_WORKERS];
+} args_t;
+
+/** Global pointer to args */
+static args_t *gbl_args;
+/** Global barrier to synchronize main and workers */
+static odp_barrier_t barrier;
+//--------
 static int parse_max_pkt_len(const char *pktlen)
 {
 	char *end = NULL;
@@ -476,6 +585,7 @@ static void print_info(char *progname, appl_args_t *appl_args)
     fflush(NULL);
 }
 
+#if 0
 static void gbl_args_init(args_t *args)
 {
     int pktio, queue;
@@ -489,6 +599,7 @@ static void gbl_args_init(args_t *args)
             args->pktios[pktio].rx_q[queue] = ODP_QUEUE_INVALID;
     }
 }
+#endif
 
 uint8_t odpc_initialize(int argc, char **argv)
 {
@@ -497,8 +608,9 @@ uint8_t odpc_initialize(int argc, char **argv)
 	odp_cpumask_t cpumask;
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
 	odph_linux_pthread_t thd;
+	/* using CPU0 always */
 	struct macs_conf *macs = &mconf_list[0];
-	int num_workers;
+	int num_workers, i, if_count;
 	
 	//parse args
 	odp_shm_t shm;
@@ -524,10 +636,10 @@ uint8_t odpc_initialize(int argc, char **argv)
     gbl_args = odp_shm_addr(shm);
 
     if (gbl_args == NULL) {
-        LOG_ERR("Error: shared mem alloc failed.\n");
+        printf("Error: shared mem alloc failed.\n");
         exit(EXIT_FAILURE);
     }
-    gbl_args_init(gbl_args);
+//    gbl_args_init(gbl_args);
 
     /* Parse and store the application arguments */
     parse_args(argc, argv, &gbl_args->appl);
@@ -562,7 +674,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 
 	pool = odp_pool_create("packet pool", &params);
 	if (pool == ODP_POOL_INVALID) {
-		LOG_ERR("Error: packet pool create failed.\n");
+		printf("Error: packet pool create failed.\n");
 		printf("Error: packet pool create failed.\n");
 		exit(1);
 	}	
@@ -604,12 +716,12 @@ uint8_t odpc_des ()
 
 
 	if (odp_term_local()) {
-		LOG_ERR("Error: ODP local term failed.\n");
+		printf("Error: ODP local term failed.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (odp_term_global()) {
-		LOG_ERR("Error: ODP global term failed.\n");
+		printf("Error: ODP global term failed.\n");
 		exit(EXIT_FAILURE);
 	}
 #endif

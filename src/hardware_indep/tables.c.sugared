@@ -34,4 +34,3 @@ for counter in hlir.p4_counters.values():
     #[  .saturating = ${1 if counter.saturating else 0}
     #[ },
 #[ };
-~     

@@ -28,10 +28,10 @@ def modify_field(fun, call):
         if dst.width <= 32:
             if not dst.instance.metadata:
                 #[ value32 = htonl(value32);
-            #[ MODIFY_INT32_INT32(pkt, ${fld_id(dst)}, value32)
+            #[ MODIFY_INT32_INT32(pkt, ${fld_id(dst)}, value32);
         else:
             if dst.width % 8 == 0 and dst.offset % 8 == 0:
-                #[ MODIFY_BYTEBUF_INT32(pkt, ${fld_id(dst)}, value32)
+                #[ MODIFY_BYTEBUF_INT32(pkt, ${fld_id(dst)}, value32);
             else:
                 addError("generating modify_field", "Improper bytebufs cannot be modified yet.")
     elif isinstance(src, p4_field):
@@ -44,7 +44,7 @@ def modify_field(fun, call):
             addError("generating modify_field", "bytebuf field-to-field of different widths is not supported yet")
         else:
             if dst.width % 8 == 0 and dst.offset % 8 == 0 and src.width % 8 == 0 and src.offset % 8 == 0 and src.instance.metadata == dst.instance.metadata:
-                #[ MODIFY_BYTEBUF_BYTEBUF(pkt, ${fld_id(dst)}, FIELD_BYTE_ADDR(pkt, field_desc(${fld_id(src)})), (field_desc(${fld_id(dst)})).bytewidth)
+                #[ MODIFY_BYTEBUF_BYTEBUF(pkt, ${fld_id(dst)},FIELD_BYTE_ADDR(pkt, field_desc(${fld_id(src)})),(field_desc(${fld_id(dst)})).bytewidth);
             else:
                 addError("generating modify_field", "Improper bytebufs cannot be modified yet.")
     elif isinstance(src, p4_signature_ref):
@@ -53,10 +53,10 @@ def modify_field(fun, call):
         if dst.width <= 32 and l <= 32:
             if not dst.instance.metadata:
                 #[ value32 = htonl(value32);
-            #[ MODIFY_INT32_BYTEBUF(pkt, ${fld_id(dst)}, ${p}, ${(l+7)/8})
+            #[ MODIFY_INT32_BYTEBUF(pkt, ${fld_id(dst)}, ${p}, ${(l+7)/8});
         else:
             if dst.width % 8 == 0 and dst.offset % 8 == 0 and l % 8 == 0: #and dst.instance.metadata:
-                #[ MODIFY_BYTEBUF_BYTEBUF(pkt, ${fld_id(dst)}, ${p}, (field_desc(${fld_id(dst)})).bytewidth)
+                #[ MODIFY_BYTEBUF_BYTEBUF(pkt, ${fld_id(dst)}, ${p},(field_desc(${fld_id(dst)})).bytewidth);
             else:
                 addError("generating modify_field", "Improper bytebufs cannot be modified yet.")        
     return generated_code
@@ -77,7 +77,7 @@ def add_to_field(fun, call):
             #[ value32 += res32;
             if not dst.instance.metadata:
                 #[ value32 = htonl(value32);
-            #[ MODIFY_INT32_INT32(pkt, ${fld_id(dst)}, value32)
+            #[ MODIFY_INT32_INT32(pkt, ${fld_id(dst)}, value32);
         else:
             addError("generating modify_field", "Bytebufs cannot be modified yet.")
     elif isinstance(val, p4_field):
@@ -87,7 +87,7 @@ def add_to_field(fun, call):
             #[ value32 += res32;
             if not val.instance.metadata:
                 #[ value32 = ntohl(value32);
-            #[ MODIFY_INT32_INT32(pkt, ${fld_id(dst)}, value32)
+            #[ MODIFY_INT32_INT32(pkt, ${fld_id(dst)}, value32);
         else:
             addError("generating add_to_field", "bytebufs cannot be modified yet.")
     elif isinstance(val, p4_signature_ref):
