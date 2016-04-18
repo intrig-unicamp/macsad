@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <linux/if_packet.h>
+#include <linux/if_vlan.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -18,7 +19,7 @@
 #define MY_DEST_MAC4    0x01
 #define MY_DEST_MAC5    0x01
 
-#define DEFAULT_IF      "tapvm02"
+#define DEFAULT_IF      "veth1.1"
 #define BUF_SIZ         1024
 
 #define IP4_HDRLEN 20         // IPv4 header length
@@ -36,7 +37,7 @@ int main(int argc, char *argv[])
         int tx_len = 0;
         char sendbuf[BUF_SIZ];
         struct ether_header *eh = (struct ether_header *) sendbuf;
-        struct iphdr *iph = (struct iphdr *) (sendbuf + sizeof(struct ether_header));
+ 		struct iphdr *iph = (struct iphdr *) (sendbuf + sizeof(struct ether_header));
         struct sockaddr_ll socket_address;
         char ifName[IFNAMSIZ];
 

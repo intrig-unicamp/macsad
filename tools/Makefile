@@ -2,11 +2,12 @@ CC=gcc
 CFLAGS=-Wall -pthread
 LIB=
 
-all: sendRawIP
+all: sendRaw
 
-sendRawIP:
+sendRaw:
 	$(CC) $(CFLAGS) $(LIB) sendRawIP.c -o sendRawIP
+#	$(CC) $(CFLAGS) $(LIB) vlan_send.c -o sendRaw
 
 clean:
-	rm -f sendRawIP
+	rm -f sendRaw
 
