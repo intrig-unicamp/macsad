@@ -513,7 +513,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 		exit(1);
 	}
 
-	/* create the packet pool */
+	/* create packet pool */
 	odp_pool_param_init(&params);
 	params.pkt.seg_len = POOL_SEG_LEN;
 	params.pkt.len     = POOL_SEG_LEN;
@@ -526,6 +526,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 		exit(1);
 	}	
 
+	/* Create a pktio instance for each interface */
 //    macs->if0 = create_pktio("pcap:in=mac.pcap", pool, &(macs->if0in), &macs->if0out);
 //    macs->if0 = create_pktio(argv[1], pool, &(macs->if0in), &macs->if0out);
 	macs->if0 = create_pktio("veth1.0", pool, &(macs->if0in), &macs->if0out);
@@ -548,6 +549,8 @@ uint8_t odpc_initialize(int argc, char **argv)
 	odp_cpumask_default_worker(&cpumask, 1);
 	odph_linux_pthread_create(&thd, &cpumask, launch_worker, NULL,
 			ODP_THREAD_WORKER);
+
+	/* Master thread waits for other threads to exit */
 	odph_linux_pthread_join(&thd, 1);
 
 	return nb_ports;

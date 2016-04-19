@@ -71,7 +71,7 @@ action forward(port) {
     modify_field(standard_metadata.egress_spec, port);
 }
 
-action broadcast() {
+action bcast() {
 	modify_field(standard_metadata.egress_port, 100); 
 }
 
@@ -80,7 +80,7 @@ table dmac {
         ethernet.dstAddr : exact;
         intrinsic_metadata.vid : exact;
     }
-    actions {forward; broadcast;}
+    actions {forward; bcast;}
     size : 512;
 }
 

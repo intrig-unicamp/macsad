@@ -191,23 +191,6 @@ send_packet(packet_descriptor_t* pd)
 	return 0;
 }
 
-//remove this after enabling odp_primitives file
-void
-modify_field_to_const(packet_descriptor_t* p, field_reference_t f, uint8_t *src, int srclen)
-{
-#if 0
-    if(f.bytewidth <= 4) {
-        uint32_t src_val = 0;
-        memcpy(&src_val, src, srclen);
-        modify_field_to_const32(p, f, src_val);
-    }
-    else if(f.bytewidth == srclen)
-        memcpy(FIELD_BYTE_ADDR(p, f), src, srclen);
-    //else
-    //    TODO
-#endif
-} 
-
 static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 {
     packet_desc->headers[header_instance_standard_metadata] =
