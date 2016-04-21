@@ -7,7 +7,7 @@
 
 #include "odp_lib.h"
 #include <odp/helper/linux.h>
-#include <odp_api.h>
+//#include <odp_api.h>
 #include <odp/helper/eth.h>
 #include <odp/helper/ip.h>
 #include <odp/helper/table.h>
@@ -37,40 +37,15 @@ struct l2fwd_port_statistics port_statistics[MAX_ETHPORTS];
 static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
-/* odp */
-#define POOL_NUM_PKT 8192
-#define POOL_SEG_LEN 1856
-#define MAX_PKT_BURST 32
-
 extern void
 odp_main_worker (void);
-
-/* cmd options */
-#define CMD_LINE_OPT_CONFIG "config"
-#define CMD_LINE_OPT_NO_NUMA "no-numa"
-#define CMD_LINE_OPT_ENABLE_JUMBO "enable-jumbo"
-#define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
 //=============================================================================
 
 #define UNUSED(x) (void)(x)
 
-/* display usage */
-	static void
-print_usage(const char *prgname)
-{
-	printf ("%s [EAL options] -- -p PORTMASK -P"
-			"  [--config (port,queue,lcore)[,(port,queue,lcore]]"
-			"  [--enable-jumbo [--max-pkt-len PKTLEN]]\n"
-			"  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
-			"  -P : enable promiscuous mode\n"
-			"  --config (port,queue,lcore): rx queues configuration\n"
-			"  --no-numa: optional, disable numa awareness\n"
-			"  --enable-jumbo: enable jumbo frame"
-			" which max packet len is PKTLEN in decimal (64-9600)\n"
-			"  --hash-entry-num: specify the hash entry number in hexadecimal to be setup\n",
-			prgname);
-}
-
+/** Global barrier to synchronize main and workers */
+static odp_barrier_t barrier;
+//--------
 static int parse_max_pkt_len(const char *pktlen)
 {
 	char *end = NULL;
@@ -103,151 +78,6 @@ static int parse_portmask(const char *portmask)
 	return pm;
 }
 
-static int parse_config(const char *q_arg)
-{
-#if 0
-	char s[256];
-	const char *p, *p0 = q_arg;
-	char *end;
-	enum fieldnames {
-		FLD_PORT = 0,
-		FLD_QUEUE,
-		FLD_LCORE,
-		_NUM_FLD
-	};
-	unsigned long int_fld[_NUM_FLD];
-	char *str_fld[_NUM_FLD];
-	int i;
-	unsigned size;
-
-	nb_lcore_params = 0;
-
-	while ((p = strchr(p0,'(')) != NULL) {
-		++p;
-		if((p0 = strchr(p,')')) == NULL)
-			return -1;
-
-		size = p0 - p;
-		if(size >= sizeof(s))
-			return -1;
-
-		snprintf(s, sizeof(s), "%.*s", size, p);
-		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') != _NUM_FLD)
-			return -1;
-		for (i = 0; i < _NUM_FLD; i++){
-			errno = 0;
-			int_fld[i] = strtoul(str_fld[i], &end, 0);
-			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
-				return -1;
-		}
-		if (nb_lcore_params >= MAX_LCORE_PARAMS) {
-			printf("exceeded max number of lcore params: %hu\n",
-					nb_lcore_params);
-			return -1;
-		}
-		lcore_params_array[nb_lcore_params].port_id = (uint8_t)int_fld[FLD_PORT];
-		lcore_params_array[nb_lcore_params].queue_id = (uint8_t)int_fld[FLD_QUEUE];
-		lcore_params_array[nb_lcore_params].lcore_id = (uint8_t)int_fld[FLD_LCORE];
-		++nb_lcore_params;
-	}
-	lcore_params = lcore_params_array;
-#endif
-	return 0;
-}
-
-
-/* Parse the argument given in the command line of the application */
-static int parse_args(int argc, char **argv)
-{
-	int ret;
-#if 0
-	int opt;
-	char **argvopt;
-	int option_index;
-	char *prgname = argv[0];
-	static struct option lgopts[] = {
-		{CMD_LINE_OPT_CONFIG, 1, 0, 0},
-		{CMD_LINE_OPT_NO_NUMA, 0, 0, 0},
-		{CMD_LINE_OPT_ENABLE_JUMBO, 0, 0, 0},
-		{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, 0},
-		{NULL, 0, 0, 0}
-	};
-
-	argvopt = argv;
-
-	while ((opt = getopt_long(argc, argvopt, "p:P",
-					lgopts, &option_index)) != EOF) {
-
-		switch (opt) {
-			/* portmask */
-			case 'p':
-				enabled_port_mask = parse_portmask(optarg);
-				if (enabled_port_mask == 0) {
-					printf("invalid portmask\n");
-					print_usage(prgname);
-					return -1;
-				}
-				break;
-			case 'P':
-				printf("Promiscuous mode selected\n");
-				promiscuous_on = 1;
-				break;
-
-				/* long options */
-			case 0:
-				if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_CONFIG,
-							sizeof (CMD_LINE_OPT_CONFIG))) {
-					ret = parse_config(optarg);
-					if (ret) {
-						printf("invalid config\n");
-						print_usage(prgname);
-						return -1;
-					}
-				}
-
-				if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_NO_NUMA,
-							sizeof(CMD_LINE_OPT_NO_NUMA))) {
-					printf("numa is disabled \n");
-					numa_on = 0;
-				}
-
-				if (!strncmp(lgopts[option_index].name, CMD_LINE_OPT_ENABLE_JUMBO,
-							sizeof (CMD_LINE_OPT_ENABLE_JUMBO))) {
-					struct option lenopts = {"max-pkt-len", required_argument, 0, 0};
-
-					printf("jumbo frame is enabled - disabling simple TX path\n");
-					port_conf.rxmode.jumbo_frame = 1;
-
-					/* if no max-pkt-len set, use the default value ETHER_MAX_LEN */
-					if (0 == getopt_long(argc, argvopt, "", &lenopts, &option_index)) {
-						ret = parse_max_pkt_len(optarg);
-						if ((ret < 64) || (ret > MAX_JUMBO_PKT_LEN)){
-							printf("invalid packet length\n");
-							print_usage(prgname);
-							return -1;
-						}
-						port_conf.rxmode.max_rx_pkt_len = ret;
-					}
-					printf("set jumbo frame max packet length to %u\n",
-							(unsigned int)port_conf.rxmode.max_rx_pkt_len);
-				}
-				break;
-
-			default:
-				print_usage(prgname);
-				return -1;
-		}
-	}
-
-	if (optind >= 0)
-		argv[optind-1] = prgname;
-
-	ret = optind-1;
-	optind = 0; /* reset getopt lib */
-#endif 
-	return ret;
-}
-
 static void print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 {
 #if 0
@@ -261,7 +91,7 @@ static void print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 int odpc_lcore_conf_init ()
 {
 	printf("Configuring lcore structs...\n");
-	struct macs_conf *qconf;
+//	struct macs_conf *qconf;
 	int socketid;
 	unsigned lcore_id;
 	for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) {
@@ -276,12 +106,12 @@ int odpc_lcore_conf_init ()
 		*/
 		//TODO remove below socketid set and uncomment above code
 		socketid = 0;
-		qconf = &mconf_list[lcore_id];
+//		qconf = &mconf_list[lcore_id];
 		int i;
 		for(i = 0; i < NB_TABLES; i++)
-			qconf->state.tables[i] = state[socketid].tables[i][0];
+			gconf->state.tables[i] = state[socketid].tables[i][0];
 		for(i = 0; i < NB_COUNTERS; i++)
-			qconf->state.counters[i] = state[socketid].counters[i];
+			gconf->state.counters[i] = state[socketid].counters[i];
 	}
 	return 0;
 }
@@ -305,7 +135,7 @@ static void change_replica(int socketid, int tid, int replica) {
 
 //	int current_replica = active_replica[socketid][tableid];
 //	fun(tables_on_sockets[socketid][tableid][next_replica], par);
-//		if(current_replica != next_replica) fun(tables_on_sockets[socketid][tableid][current_replica], par); 
+//		if(current_replica != next_replica) fun(tables_on_sockets[socketid][tableid][current_replica], par);
 #define CHANGE_TABLE(fun, par...) \
 { \
     int current_replica = state[socketid].active_replica[tableid]; \
@@ -324,12 +154,12 @@ for(socketid = 0; socketid < NB_SOCKETS; socketid++) \
 if(state[socketid].tables[0][0] != NULL) \
 b
 
-void exact_add_promote(int tableid, uint8_t* key, uint8_t* value) 
+void exact_add_promote(int tableid, uint8_t* key, uint8_t* value)
 {
 //	printf(":::: EXECUTING exact add promote \n");
 	FORALLNUMANODES(CHANGE_TABLE(exact_add, key, value))
 }
-void lpm_add_promote(int tableid, uint8_t* key, uint8_t depth, uint8_t* value) 
+void lpm_add_promote(int tableid, uint8_t* key, uint8_t depth, uint8_t* value)
 {
 	FORALLNUMANODES(CHANGE_TABLE(lpm_add, key, depth, value))
 }
@@ -337,12 +167,12 @@ void ternary_add_promote(int tableid, uint8_t* key, uint8_t* mask, uint8_t* valu
 	FORALLNUMANODES(CHANGE_TABLE(ternary_add, key, mask, value))
 }
 
-void table_setdefault_promote(int tableid, uint8_t* value) 
+void table_setdefault_promote(int tableid, uint8_t* value)
 {
 	FORALLNUMANODES(CHANGE_TABLE(table_setdefault, value))
 }
 
-/*
+#if 0
 static void
 create_counters_on_socket(int socketid)
 {
@@ -353,35 +183,27 @@ create_counters_on_socket(int socketid)
         printf("Creating counter %d on socket %d\n", i, socketid);
         counter_t c = counter_config[i];
         state[socketid].counters[i] = malloc(sizeof(counter_t));
-        memcpy(state[socketid].counters[i], &c, sizeof(counter_t));
-        // init
-        printf("Initializing counter %d on socket %d\n", i, c.size);
-        state[socketid].counters[i]->cnt = (rte_atomic32_t*)rte_malloc_socket("rte_atomic32_t", sizeof(rte_atomic32_t)*c.size, 0, socketid);
-        int index;
-        for(index = 0; index < c.size; index++)
-            rte_atomic32_init(&state[socketid].counters[i]->cnt[index]);
-    }
+		memcpy(state[socketid].counters[i], &c, sizeof(counter_t));
+		// init
+		printf("Initializing counter %d on socket %d\n", i, socketid);
+		state[socketid].counters[i]->values = (vector_t*)malloc(sizeof(vector_t));
+		vector_init(state[socketid].counters[i]->values, 1 /* initial size */, c.size, sizeof(odp_atomic32_t), &odp_atomic32_init, socketid);
+	}
 }
-*/
+#endif
 
 void increase_counter(int counterid, int index)
 {
-    struct macs_conf *conf;
- //   int lcore_id = rte_lcore_id();
-	int lcore_id = 0;
-    conf = &mconf_list[lcore_id];
-//TODO
-//    rte_atomic32_inc(&conf->state.counters[counterid]->cnt[index]);
+    odp_atomic_inc_u32(&gconf->state.counters[counterid]->values[index]);
 }
- 
-uint32_t read_counter(int counterid, int index) 
+
+uint32_t read_counter(int counterid, int index)
 {
     uint32_t cnt = 0;
     int socketid;
-//TODO
-//    for(socketid = 0; socketid < NB_SOCKETS; socketid++)
-//        if(state[socketid].tables[0][0] != NULL)
-//            cnt += rte_atomic32_read(&state[socketid].counters[counterid]->cnt[index]);
+    for(socketid = 0; socketid < NB_SOCKETS; socketid++)
+        if(state[socketid].tables[0][0] != NULL)
+            cnt += odp_atomic_load_u32(&state[socketid].counters[counterid]->values[index]);
     return cnt;
 }
 
@@ -444,26 +266,51 @@ int odpc_stfull_memories_init()
 }
 */
 
-static odp_pktio_t create_pktio(const char *name, odp_pool_t pool,
-								odp_pktin_queue_t *pktin,
-								odp_pktout_queue_t *pktout)
+static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int mode)
 {
 	odp_pktio_param_t pktio_param;
+	odp_pktin_queue_param_t pktin_param;
 	odp_pktin_queue_param_t in_queue_param;
 	odp_pktout_queue_param_t out_queue_param;
 	odp_pktio_t pktio;
 
+	int ret;
+
 	odp_pktio_param_init(&pktio_param);
 
+	switch (mode) {
+		case  APPL_MODE_PKT_BURST:
+			pktio_param.in_mode = ODP_PKTIN_MODE_DIRECT;
+			break;
+		case APPL_MODE_PKT_QUEUE:
+			pktio_param.in_mode = ODP_PKTIN_MODE_QUEUE;
+			break;
+		case APPL_MODE_PKT_SCHED:
+			pktio_param.in_mode = ODP_PKTIN_MODE_SCHED;
+			break;
+		default:
+			printf("invalid mode %d\n", mode);
+	}
+
+    /* Open a packet IO instance */
 	pktio = odp_pktio_open(name, pool, &pktio_param);
 	if (pktio == ODP_PKTIO_INVALID) {
-		printf("Failed to open %s\n", name);
+		printf("Error: pktio create failed for %s\n", name);
 		exit(1);
 	}
 
-	odp_pktin_queue_param_init(&in_queue_param);
-	odp_pktout_queue_param_init(&out_queue_param);
+//	odp_pktin_queue_param_init(&in_queue_param);
+//	odp_pktout_queue_param_init(&out_queue_param);
 
+    odp_pktin_queue_param_init(&pktin_param);
+
+	if (odp_pktin_queue_config(pktio, &pktin_param))
+		printf("Error: pktin config failed for %s\n", name);
+
+	if (odp_pktout_queue_config(pktio, NULL))
+		printf("Error: pktout config failed for %s\n", name);
+
+#if 0
 	in_queue_param.op_mode = ODP_PKTIO_OP_MT_UNSAFE;
 	if (odp_pktin_queue_config(pktio, &in_queue_param)) {
 		printf("Failed to config input queue for %s\n", name);
@@ -475,14 +322,29 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool,
 		printf("Failed to config output queue for %s\n", name);
 		exit(1);
 	}
+
+/* Get the pktin queue handle in burst mode */
 	if (odp_pktin_queue(pktio, pktin, 1) != 1) {
 		printf("pktin queue query failed for %s\n", name);
 		exit(1);
 	}
+/* Get the pktout queue handle in burst mode */
 	if (odp_pktout_queue(pktio, pktout, 1) != 1) {
 		printf("pktout queue query failed for %s\n", name);
 		exit(1);
 	}
+#endif
+
+	ret = odp_pktio_start(pktio);
+	if (ret != 0)
+		printf("Error: unable to start %s\n", name);
+
+	printf("  created pktio:%02" PRIu64
+			", dev:%s, queue mode (ATOMIC queues)\n"
+			"  \tdefault pktio%02" PRIu64 "\n",
+			odp_pktio_to_u64(pktio), name,
+			odp_pktio_to_u64(pktio));
+
 	return pktio;
 }
 
@@ -492,50 +354,331 @@ static void *launch_worker(void *arg ODP_UNUSED)
 	return NULL;
 }
 
+
+
+/**
+ * Prinf usage information
+ */
+static void usage(char *progname)
+{
+    printf("\n"
+           "MACSAD forwarding plane\n"
+           "\n"
+           "Usage: %s OPTIONS\n"
+           "  E.g. %s -i eth0,eth1,eth2,eth3 \n"
+           "\n"
+           "Mandatory OPTIONS:\n"
+           "  -i, --interface Eth interfaces (comma-separated, no spaces)\n"
+           "                  Interface count min 1, max %i\n"
+           "\n"
+           "Optional OPTIONS:\n"
+           "  -c, --count <number> CPU count.\n"
+           "  -m, --mode      0: Receive and send directly (no queues)\n"
+           "                  1: Receive and send via queues.\n"
+           "                  2: Receive via scheduler, send via queues.\n"
+           "  -h, --help           Display help and exit.\n\n"
+           "\n", NO_PATH(progname), NO_PATH(progname), MAX_PKTIOS
+        );
+}
+
+/**
+ * Parse and store the command line arguments
+ *
+ * @param argc       argument count
+ * @param argv[]     argument vector
+ * @param appl_args  Store application arguments here
+ */
+static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
+{
+    int opt;
+    int long_index;
+    char *token;
+    char *addr_str;
+    size_t len;
+    int i;
+    static struct option longopts[] = {
+        {"count", required_argument, NULL, 'c'},
+        {"interface", required_argument, NULL, 'i'},
+        {"mode", required_argument, NULL, 'm'},     /* return 'm' */
+        {"help", no_argument, NULL, 'h'},
+        {NULL, 0, NULL, 0}
+    };
+
+    while (1) {
+        opt = getopt_long(argc, argv, "+c:+t:+a:i:m:o:r:d:s:e:h",
+                  longopts, &long_index);
+
+        if (opt == -1)
+            break;  /* No more options */
+
+        switch (opt) {
+        case 'c':
+            appl_args->cpu_count = atoi(optarg);
+            break;
+        case 'i':
+            len = strlen(optarg);
+            if (len == 0) {
+                usage(argv[0]);
+                exit(EXIT_FAILURE);
+            }
+            len += 1;   /* add room for '\0' */
+
+            appl_args->if_str = malloc(len);
+            if (appl_args->if_str == NULL) {
+                usage(argv[0]);
+                exit(EXIT_FAILURE);
+            }
+
+            /* count the number of tokens separated by ',' */
+            strcpy(appl_args->if_str, optarg);
+            for (token = strtok(appl_args->if_str, ","), i = 0;
+                 token != NULL;
+                 token = strtok(NULL, ","), i++)
+                ;
+
+            appl_args->if_count = i;
+
+            if (appl_args->if_count < 1 ||
+                appl_args->if_count > MAX_PKTIOS) {
+                usage(argv[0]);
+                exit(EXIT_FAILURE);
+            }
+
+            /* allocate storage for the if names */
+            appl_args->if_names =
+                calloc(appl_args->if_count, sizeof(char *));
+
+            /* store the if names (reset names string) */
+            strcpy(appl_args->if_str, optarg);
+            for (token = strtok(appl_args->if_str, ","), i = 0;
+                 token != NULL; token = strtok(NULL, ","), i++) {
+                appl_args->if_names[i] = token;
+            }
+            break;
+
+        case 'm':
+            i = atoi(optarg);
+            switch (i) {
+            case 0:
+                appl_args->mode = APPL_MODE_PKT_BURST;
+                break;
+            case 1:
+                appl_args->mode = APPL_MODE_PKT_QUEUE;
+                break;
+            case 2:
+                appl_args->mode = APPL_MODE_PKT_SCHED;
+                break;
+            default:
+                usage(argv[0]);
+                exit(EXIT_FAILURE);
+            }
+            break;
+
+        case 'h':
+            usage(argv[0]);
+            exit(EXIT_SUCCESS);
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (appl_args->if_count == 0) {
+        usage(argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    optind = 1;     /* reset 'extern optind' from the getopt lib */
+}
+
+/**
+ * Print system and application info
+ */
+static void print_info(char *progname, appl_args_t *appl_args)
+{
+    int i;
+
+    printf("\n"
+           "ODP system info\n"
+           "---------------\n"
+           "ODP API version: %s\n"
+           "ODP impl name:   %s\n"
+           "CPU model:       %s\n"
+           "CPU freq (hz):   %" PRIu64 "\n"
+           "Cache line size: %i\n"
+           "CPU count:       %i\n"
+           "\n",
+           odp_version_api_str(), odp_version_impl_name(),
+           odp_cpu_model_str(), odp_cpu_hz_max(),
+           odp_sys_cache_line_size(), odp_cpu_count());
+
+    printf("Running ODP appl: \"%s\"\n"
+           "-----------------\n"
+           "IF-count:        %i\n"
+           "Using IFs:      ",
+           progname, appl_args->if_count);
+    for (i = 0; i < appl_args->if_count; ++i)
+        printf(" %s", appl_args->if_names[i]);
+    printf("\n"
+           "Mode:            ");
+#if 0
+	switch (appl_args->mode) {
+    case APPL_MODE_PKT_BURST:
+        PRINT_APPL_MODE(APPL_MODE_PKT_BURST);
+        break;
+    case APPL_MODE_PKT_QUEUE:
+        PRINT_APPL_MODE(APPL_MODE_PKT_QUEUE);
+        break;
+    case APPL_MODE_PKT_SCHED:
+        PRINT_APPL_MODE(APPL_MODE_PKT_SCHED);
+        break;
+    }
+#endif
+    printf("\n\n");
+    fflush(NULL);
+}
+
+static void gconf_init(mac_global_t *gconf)
+{
+	int pktio, queue;
+
+	memset(gconf, 0, sizeof(mac_global_t));
+
+	for (pktio = 0; pktio < MAX_PKTIOS; pktio++) {
+		gconf->pktios[pktio].pktio = ODP_PKTIO_INVALID;
+
+		for (queue = 0; queue < MAX_QUEUES; queue++)
+			gconf->pktios[pktio].rx_q[queue] = ODP_QUEUE_INVALID;
+	}
+}
+
 uint8_t odpc_initialize(int argc, char **argv)
 {
+	odph_linux_pthread_t thd;
 	odp_pool_t pool;
 	odp_pool_param_t params;
 	odp_cpumask_t cpumask;
-	odph_linux_pthread_t thd;
-	struct macs_conf *macs = &mconf_list[0];
+	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
+	int num_workers, i, cpu;
+
+	//parse args
+	odp_shm_t shm;
 
 	/* initialize ports */
 	int nb_ports = 2;
 
-	/* init ODP */
+	/* init ODP  before calling anything else */
 	if (odp_init_global(NULL, NULL)) {
 		printf("Error: ODP global init failed.\n");
 		exit(1);
 	}
+
+	/* init this thread */
 	if (odp_init_local(ODP_THREAD_CONTROL)) {
 		printf("Error: ODP local init failed.\n");
 		exit(1);
 	}
 
-	/* create packet pool */
+	/* Reserve memory for args from shared mem */
+	shm = odp_shm_reserve("shm_args", sizeof(mac_global_t),
+			ODP_CACHE_LINE_SIZE, 0);
+	gconf = odp_shm_addr(shm);
+
+	if (gconf == NULL) {
+		printf("Error: shared mem alloc failed.\n");
+		//exit(EXIT_FAILURE);
+		exit(1);
+	}
+	gconf_init(gconf);
+
+	/* Parse and store the application arguments */
+	parse_args(argc, argv, &gconf->appl);
+
+	/* Print both system and application information */
+	print_info(NO_PATH(argv[0]), &gconf->appl);
+
+	/* Default to system CPU count unless user specified */
+	num_workers = ODP_MAX_LCORE;
+	printf("odp_max num worker threads: %i\n", num_workers);
+	if (gconf->appl.cpu_count)
+		num_workers = gconf->appl.cpu_count;
+	printf(" cpucnt args num worker threads: %i\n", num_workers);
+
+	/* Get default worker cpumask */
+	odp_cpumask_default_worker(&cpumask, num_workers);
+	(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
+
+	for (i = 0; i < num_workers; i++)
+		gconf->mconf[i].thr_idx = i;
+
+	printf("num worker threads: %i\n", num_workers);
+	printf("first CPU:          %i\n", odp_cpumask_first(&cpumask));
+	printf("cpu mask:           %s\n", cpumaskstr);
+
+	/* create the packet pool */
 	odp_pool_param_init(&params);
-	params.pkt.seg_len = POOL_SEG_LEN;
-	params.pkt.len     = POOL_SEG_LEN;
-	params.pkt.num     = POOL_NUM_PKT;
+	params.pkt.seg_len = PKT_POOL_BUF_SIZE;
+	params.pkt.len     = PKT_POOL_BUF_SIZE;
+	params.pkt.num     = PKT_POOL_SIZE;
 	params.type        = ODP_POOL_PACKET;
 
 	pool = odp_pool_create("packet pool", &params);
 	if (pool == ODP_POOL_INVALID) {
 		printf("Error: packet pool create failed.\n");
 		exit(1);
-	}	
+	}
+	/* TODO implement this function */
+	//    odp_pool_print(pool);
+
+	//  macs->if0 = create_pktie("pcap:in=mac.pcap", pool, &(macs->if0in), &macs->if0out);
+	//	global.if1 = create_pktio(argv[2], pool, &global.if1in, &global.if1out);
+	//	macs->if0 = create_pktio("veth1.0", pool, &(macs->if0in), &macs->if0out);
+	//	macs->if1 = create_pktio("veth2.1", pool, &(macs->if1in), &macs->if1out);
 
 	/* Create a pktio instance for each interface */
-//    macs->if0 = create_pktio("pcap:in=mac.pcap", pool, &(macs->if0in), &macs->if0out);
-//    macs->if0 = create_pktio(argv[1], pool, &(macs->if0in), &macs->if0out);
-	macs->if0 = create_pktio("veth1.0", pool, &(macs->if0in), &macs->if0out);
-//	global.if1 = create_pktio(argv[2], pool, &global.if1in, &global.if1out);	
-	macs->if1 = create_pktio("veth2.1", pool, &(macs->if1in), &macs->if1out);	
+	for (i = 0; i < gconf->appl.if_count; ++i)
+		create_pktio(gconf->appl.if_names[i], pool, gconf->appl.mode);
+
+	/* Create and init worker threads */
+	memset(gconf->thread_tbl, 0, sizeof(gconf->thread_tbl));
+
+	cpu = odp_cpumask_first(&cpumask);
+	for (i = 0; i < num_workers; ++i) {
+		odp_cpumask_t thd_mask;
+		void *(*thr_run_func) (void *);
+		int if_idx;
+
+		if_idx = i % gconf->appl.if_count;
+
+		gconf->mconf[i].pktio_dev = gconf->appl.if_names[if_idx];
+		gconf->mconf[i].mode = gconf->appl.mode;
+		printf("if %s\n ", gconf->appl.if_names[i]);
+
+		if (gconf->appl.mode == APPL_MODE_PKT_BURST)
+			thr_run_func = launch_worker;
+		//            thr_run_func = pktio_ifburst_thread;
+		//      else /* APPL_MODE_PKT_QUEUE */
+		//        thr_run_func = pktio_queue_thread;
+		/*
+		 * Create threads one-by-one instead of all-at-once,
+		 * because each thread might get different arguments.
+		 * Calls odp_thread_create(cpu) for each thread
+		 */
+		odp_cpumask_zero(&thd_mask);
+		odp_cpumask_set(&thd_mask, cpu);
+		printf("count in threadmask %d\n ", odp_cpumask_count(&thd_mask));
+		odph_linux_pthread_create(&gconf->thread_tbl[i], &thd_mask,
+				thr_run_func,
+				&gconf->mconf[i],
+				ODP_THREAD_WORKER);
+		/* when we have multiple CPU, we will use this to assign different
+		 * threads to different CPU */
+		// cpu = odp_cpumask_next(&cpumask, cpu);
+	}
 
 	/* ToDo */
 	/* check if similar thing on ODP */
-//	check_all_ports_link_status(nb_ports, enabled_port_mask);
+	//	check_all_ports_link_status(nb_ports, enabled_port_mask);
 
 	/* Initialize all the tables defined in p4 src */
 	odpc_lookup_tbls_init();
@@ -546,17 +689,19 @@ uint8_t odpc_initialize(int argc, char **argv)
 	// TODO
 	odpc_lcore_conf_init();
 
-	odp_cpumask_default_worker(&cpumask, 1);
-	odph_linux_pthread_create(&thd, &cpumask, launch_worker, NULL,
-			ODP_THREAD_WORKER);
-
 	/* Master thread waits for other threads to exit */
-	odph_linux_pthread_join(&thd, 1);
+	odph_linux_pthread_join(gconf->thread_tbl, num_workers);
+	//	odph_linux_pthread_join(&thd, 1);
 
-	return nb_ports;
+	free(gconf->appl.if_names);
+	free(gconf->appl.if_str);
+	free(gconf);
+	printf("Exit\n\n");
+
+	return 0;
 }
 
-uint8_t odpc_des () 
+uint8_t odpc_des ()
 {
 #if 0
 	if (odpc_lookup_tbls_des()) {
@@ -565,12 +710,12 @@ uint8_t odpc_des ()
 
 
 	if (odp_term_local()) {
-		LOG_ERR("Error: ODP local term failed.\n");
+		printf("Error: ODP local term failed.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (odp_term_global()) {
-		LOG_ERR("Error: ODP global term failed.\n");
+		printf("Error: ODP global term failed.\n");
 		exit(EXIT_FAILURE);
 	}
 #endif

@@ -169,14 +169,6 @@ def write_file(filename, text):
         except OSError:
             pass
 
-def generate_parser_file(p4_path, hlir):
-    from hardware_indep.parser import parser
-
-    parser_header, parser_code = parser.build(p4_path, hlir)
-
-    write_file(join("build", "src_hardware_indep", "parser.h"), parser_header)
-    write_file(join("build", "src_hardware_indep", "parser.c"), parser_code)
-
 def main():
     if len(sys.argv) <= 1:
         print("Usage: %s p4_file [compiler_files_dir] [generated_dir]" % (os.path.basename(__file__)))

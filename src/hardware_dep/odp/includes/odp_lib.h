@@ -11,6 +11,7 @@
 #include "ctrl_plane_backend.h"
 #include "odp_tables.h"
 #include <net/ethernet.h>
+#include "odp_primitives.h"
 
 // ODP headers
 #include "odp_api.h"
@@ -69,22 +70,105 @@ struct mbuf_table {
 //TODO update this counter variable
 #define NB_COUNTERS 0
 
-//#define	BAD_PORT	((uint16_t)-1)
-
 #ifndef NB_TABLES
 #define NB_TABLES 0
 #endif
 
-// TODO: Is it used somewhere???? Why do we need this in addition to lcore_conf???
-#define ODP_MAX_LCORE 1
+#define ODP_MAX_LCORE 2
 #define NB_REPLICA 2
 #define SOCKET_DEF 0
 
-struct lcore_state {
+/** @def PKT_POOL_SIZE                                                           
+ * @brief Size of the shared memory block                                        
+ */                                                                              
+#define PKT_POOL_SIZE 8192                                                       
+/** @def PKT_POOL_BUF_SIZE                                                       
+ * @brief Buffer size of the packet pool buffer                                  
+ */                                                                              
+#define PKT_POOL_BUF_SIZE 1856                                                   
+/** @def MAX_PKT_BURST                                                           
+ * @brief Maximum number of packet in a burst                                    
+ */                                                                              
+#define MAX_PKT_BURST 32                                                         
+                                                                                 
+/** @def MAX_WORKERS                                                             
+ *  * @brief Maximum number of worker threads                                    
+ *   */                                                                          
+#define MAX_WORKERS            32                                                
+                                                                                 
+/** Maximum number of pktio queues per interface */                              
+#define MAX_QUEUES             32                                                
+                                                                                 
+/** Maximum number of pktio interfaces */                                        
+#define MAX_PKTIOS             8           
+
+/** @def APPL_MODE_PKT_BURST
+ *  * @brief The application will handle pakcets in bursts
+ *   */
+#define APPL_MODE_PKT_BURST    0
+
+/** @def APPL_MODE_PKT_QUEUE
+ *  * @brief The application will handle packets in queues
+ *   */
+#define APPL_MODE_PKT_QUEUE    1
+
+/** @def APPL_MODE_PKT_SCHED
+ *  * @brief The application will handle packets with sheduler
+ *   */
+#define APPL_MODE_PKT_SCHED    2
+
+/**                                                                              
+ * Packet input mode                                                             
+ **/                                                                             
+typedef enum pktin_mode_t {                                                      
+    DIRECT_RECV,                                                                 
+    PLAIN_QUEUE,                                                                 
+    SCHED_PARALLEL,                                                              
+    SCHED_ATOMIC,                                                                
+    SCHED_ORDERED,                                                               
+} pktin_mode_t;                                                                  
+                                                                                 
+/**                                                                              
+ *Packet output modes                                                            
+ **/                                                                             
+typedef enum pktout_mode_t {                                                     
+    PKTOUT_DIRECT,                                                               
+    PKTOUT_QUEUE                                                                 
+} pktout_mode_t; 
+
+/** Get rid of path in filename - only for unix-type paths using '/' */          
+#define NO_PATH(file_name) (strrchr((file_name), '/') ? \
+                        strrchr((file_name), '/') + 1 : (file_name))             
+                                                                                 
+/**                                                                              
+ * Parsed command line application arguments                                     
+ */                                                                              
+typedef struct appl_args {                                                      
+    int cpu_count;                                                               
+    int if_count;       /**< Number of interfaces to be used */                  
+    int addr_count;     /**< Number of dst addresses to be used */               
+    int num_workers;    /**< Number of worker threads */                         
+    char **if_names;    /**< Array of pointers to interface names */             
+    odph_ethaddr_t addrs[MAX_PKTIOS]; /**< Array of dst addresses */             
+    pktin_mode_t in_mode;   /**< Packet input mode */                            
+    pktout_mode_t out_mode; /**< Packet output mode */                           
+//TODO need to use the in_mode, out_mode and remove this variable
+	int mode;  
+	int time;       /**< Time in seconds to run. */                              
+    int accuracy;       /**< Number of seconds to get and print statistics */    
+    char *if_str;       /**< Storage for interface names */                      
+    int dst_change;     /**< Change destination eth addresses */                 
+    int src_change;     /**< Change source eth addresses */                      
+    int error_check;        /**< Check packet errors */                          
+} appl_args_t;                                                                   
+                                                                                 
+static int exit_threads;    /**< Break workers loop if set to 1 */ 
+
+typedef struct lcore_state {
 	//ptrs to the containing socket's instance
 	lookup_table_t * tables	  [NB_TABLES];
 	counter_t      * counters [NB_COUNTERS];
-};
+}lcore_state_t;
 
 struct socket_state {
     // pointers to the instances created on each socket
@@ -95,17 +179,84 @@ struct socket_state {
 
 struct socket_state state[NB_SOCKETS];
 
-struct macs_conf{
+/**                                                                              
+ * Statistics                                                                    
+ */                                                                              
+typedef union {                                                                  
+    struct {                                                                     
+        /** Number of forwarded packets */                                       
+        uint64_t packets;                                                        
+        /** Packets dropped due to receive error */                              
+        uint64_t rx_drops;                                                       
+        /** Packets dropped due to transmit error */                             
+        uint64_t tx_drops;                                                       
+    } s;                                                                         
+                                                                                 
+    uint8_t padding[ODP_CACHE_LINE_SIZE];                                        
+} stats_t ODP_ALIGNED_CACHE;
+
+typedef struct macs_conf{
+    char *pktio_dev;    /**< Interface name to use */
+    int mode;       /**< Thread mode */
+
+    int thr_idx;                                                                 
+    int num_pktio;                                                               
+                                                                                 
+    struct {                                                                     
+        odp_pktio_t rx_pktio;                                                    
+        odp_pktio_t tx_pktio;                                                    
+        odp_pktin_queue_t pktin;                                                 
+        odp_pktout_queue_t pktout;                                               
+        odp_queue_t rx_queue;                                                    
+        odp_queue_t tx_queue;                                                    
+        int rx_idx;                                                              
+        int tx_idx;                                                              
+        int rx_queue_idx;                                                        
+        int tx_queue_idx;                                                        
+    } pktio[MAX_PKTIOS];                                                         
+                                                                                 
+    stats_t *stats; /**< Pointer to per thread stats */                          
+
+} macs_conf_t;
+
+/**                                                                              
+ * Grouping of all global data                                                   
+ */
+typedef struct mac_global{
+//To remove for more generic defn
 	odp_pktio_t if0, if1;
 	odp_pktin_queue_t if0in, if1in;
 	odp_pktout_queue_t if0out, if1out;
 	odph_ethaddr_t src, dst;
-	//ptr to statefull memories
-	struct lcore_state state;
-} macs_conf;
 
-struct macs_conf mconf_list[ODP_MAX_LCORE];
-//extern struct macs_conf gconf; //global config structure
+    /** Per thread packet stats */                                               
+    stats_t stats[MAX_WORKERS];
+    /** Application (parsed) arguments */
+    appl_args_t appl;
+ 
+    odph_linux_pthread_t thread_tbl[MAX_WORKERS];
+    /** Thread specific arguments */
+	macs_conf_t mconf[ODP_MAX_LCORE];
+	/** ptr to statefull memories */
+	lcore_state_t state;
+	/** Table of pktio handles */
+    struct {
+        odp_pktio_t pktio;
+        odp_pktin_queue_t pktin[MAX_QUEUES];
+        odp_pktout_queue_t pktout[MAX_QUEUES];
+        odp_queue_t rx_q[MAX_QUEUES];
+        odp_queue_t tx_q[MAX_QUEUES];
+        int num_rx_thr;
+        int num_tx_thr;
+        int num_rx_queue;
+        int num_tx_queue;
+        int next_rx_queue;
+        int next_tx_queue;
+    } pktios[MAX_PKTIOS];
+}mac_global_t;
+
+/** Global pointer to mac_global */
+mac_global_t *gconf;
 
 #define TABCHANGE_DELAY 50 // microseconds
 

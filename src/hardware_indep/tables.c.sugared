@@ -1,4 +1,5 @@
 from utils import getTypeAndLength
+import p4_hlir.hlir.p4_stateful as p4_stateful
 
 #[ #include "dataplane.h"
 #[ #include "actions.h"
@@ -16,12 +17,20 @@ for table in hlir.p4_tables.values():
     #[  .max_size = 255 //${table.max_size}
     #[ },
 #[ };
-if (len(hlir.p4_counters)):
-	#[ counter_t counter_config[NB_COUNTERS] = {
-	for counter in hlir.p4_counters.values():
-		#[ {
-		#[  .name= "${counter.name}",
-		#[  .size = ${counter.instance_count},
-		#[  .min_width = ${counter.min_width}
-		#[ },
-	#[ };
+
+#[ counter_t counter_config[NB_COUNTERS] = {
+for counter in hlir.p4_counters.values():
+    #[ {
+    #[  .name= "${counter.name}",
+    if counter.instance_count is not None:
+        #[ .size = ${counter.instance_count},
+    elif counter.binding is not None:
+        btype, table = counter.binding
+        if btype is p4_stateful.P4_DIRECT:
+            #[ .size = ${table.max_size},
+    else:
+        #[ .size = 1,
+    #[  .min_width = ${32 if counter.min_width is None else counter.min_width},
+    #[  .saturating = ${1 if counter.saturating else 0}
+    #[ },
+#[ };
