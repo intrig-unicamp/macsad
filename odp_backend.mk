@@ -48,9 +48,9 @@ SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/odp_primitives.c
 SRCS-Y += vector.c
 
 
-LDFLAGS += -L $(ODP_SDK)/lib/
-LDFLAGS += -L $(ODP_SDK)/lib/.libs
-LIBS = -lodp -lodphelper -lpthread
+LDFLAGS += -L$(ODP_SDK)/lib/
+LDFLAGS += -L$(ODP_SDK)/lib/.libs
+LIBS = -lodp-linux -lodphelper-linux -lpthread
 
 #$(info SRCS-y is $(SRCS-y))
 
