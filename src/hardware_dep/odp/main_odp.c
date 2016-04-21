@@ -224,13 +224,16 @@ static inline int send_packet(packet_descriptor_t* pd)
 
 static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 {
-    packet_desc->headers[header_instance_standard_metadata] =
-      (header_descriptor_t) {
-        .type = header_instance_standard_metadata,
-        .length = header_instance_byte_width[header_instance_standard_metadata],
-        .pointer = calloc(header_instance_byte_width[header_instance_standard_metadata], sizeof(uint8_t))
-      };
-    modify_field_to_const(packet_desc, field_desc(field_instance_standard_metadata_ingress_port), (uint8_t*)&inport, 2);
+	packet_desc->headers[header_instance_standard_metadata] =
+		(header_descriptor_t) {
+			.type = header_instance_standard_metadata,
+			.length = header_instance_byte_width[header_instance_standard_metadata],
+			.pointer = calloc(header_instance_byte_width[header_instance_standard_metadata], sizeof(uint8_t))
+		};
+//	modify_field_to_const(packet_desc, field_desc(field_instance_standard_metadata_ingress_port), (uint8_t*)&inport, 2);
+
+	int res32; // needs for the macro
+	MODIFY_INT32_INT32(packet_desc, field_instance_standard_metadata_ingress_port, inport); // fix? LAKI
 }
 
 void packet_received(odp_packet_t *p, unsigned portid)
