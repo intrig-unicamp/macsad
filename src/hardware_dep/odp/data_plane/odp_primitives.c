@@ -2,8 +2,7 @@
 #include "dataplane.h"
 
 #if 0
-void
-add_header(packet_descriptor_t* p, header_reference_t h)
+void add_header(packet_descriptor_t* p, header_reference_t h)
 {
     if(p->headers[h.header_instance].pointer == NULL) {
         uint16_t len = h.bytewidth;
@@ -19,8 +18,7 @@ add_header(packet_descriptor_t* p, header_reference_t h)
     }
 }
 
-void
-remove_header(packet_descriptor_t* p, header_reference_t h)
+void remove_header(packet_descriptor_t* p, header_reference_t h)
 {
     header_descriptor_t hd = p->headers[h.header_instance];
     if(hd.pointer != NULL) {
