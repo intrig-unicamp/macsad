@@ -8,7 +8,9 @@ Downloading the MACSAD project:
 Updating the submodules:
 
 `cd mac`
+
 `git submodule init`
+
 `git submodule update`
 
 #P4-Hlir
@@ -20,7 +22,9 @@ Dependencies:
 The following are required to run `p4-validate` and `p4-graphs`:
 
 - the Python `yaml` package
+
 - the Python `ply` package
+
 - the `dot` tool
 
 `ply` will be installed automatically by `setup.py` when installing p4-hlir.
@@ -28,6 +32,7 @@ The following are required to run `p4-validate` and `p4-graphs`:
 On Ubuntu, the following packages can be installed with apt-get to satisfy the remaining dependencies:
 
 - `python-yaml`
+
 - `graphviz`
 
 To install:
@@ -51,7 +56,9 @@ Is necessary download and compyle the ODP project, follow the stepts below:
 `cd odp`
 
 - `./bootstrap`
+
 - `./configure`
+
 - `make`
 
 After install ODP, is necessary to set the enviroment variable ODP_SDK with the instalation directory `~/odp`
@@ -66,10 +73,14 @@ Inside our `mac` directory. First we nedd to add the P4 c files with the command
 
 `python src/compiler.py examples/p4_src/l2_switch_test.p4`
 
+*This line nedd to be run if the `compyle.py` is modified or if any file inside `src/hardware_indep` has been changed.
+
 Then we can compile the project with:
 
 `make`
 
-#Running and example
+#Running an example
+
+
 
 
