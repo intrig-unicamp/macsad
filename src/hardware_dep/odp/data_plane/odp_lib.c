@@ -557,7 +557,9 @@ uint8_t odpc_initialize(int argc, char **argv)
 	odph_linux_pthread_t thd;
 	odp_pool_t pool;
 	odp_pool_param_t params;
+	odp_instance_t instance;
 	odp_cpumask_t cpumask;
+	odph_linux_thr_params_t thr_params;
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
 	int num_workers, i, cpu;
 
@@ -568,13 +570,13 @@ uint8_t odpc_initialize(int argc, char **argv)
 	int nb_ports = 2;
 
 	/* init ODP  before calling anything else */
-	if (odp_init_global(NULL, NULL)) {
+	if (odp_init_global(&instance, NULL, NULL)) {
 		printf("Error: ODP global init failed.\n");
 		exit(1);
 	}
 
 	/* init this thread */
-	if (odp_init_local(ODP_THREAD_CONTROL)) {
+	if (odp_init_local(instance, ODP_THREAD_CONTROL)) {
 		printf("Error: ODP local init failed.\n");
 		exit(1);
 	}
@@ -667,10 +669,20 @@ uint8_t odpc_initialize(int argc, char **argv)
 		odp_cpumask_zero(&thd_mask);
 		odp_cpumask_set(&thd_mask, cpu);
 		printf("count in threadmask %d\n ", odp_cpumask_count(&thd_mask));
-		odph_linux_pthread_create(&gconf->thread_tbl[i], &thd_mask,
+
+		memset(&thr_params, 0, sizeof(thr_params));
+		thr_params.start    = launch_worker;
+		thr_params.arg      = &gconf->mconf[i];
+		thr_params.thr_type = ODP_THREAD_WORKER;
+		thr_params.instance = instance;
+
+		odph_linux_pthread_create(&gconf->thread_tbl[i],
+				                  &thd_mask, &thr_params);
+/*		odph_linux_pthread_create(&gconf->thread_tbl[i], &thd_mask,
 				thr_run_func,
 				&gconf->mconf[i],
 				ODP_THREAD_WORKER);
+*/
 		/* when we have multiple CPU, we will use this to assign different
 		 * threads to different CPU */
 		// cpu = odp_cpumask_next(&cpumask, cpu);
