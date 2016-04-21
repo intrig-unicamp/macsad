@@ -321,11 +321,11 @@ int odpc_lookup_tbls_des()
     int socketid = SOCKET_DEF;                                                   
 	int i, j;  
 	unsigned lcore_id;	
-	printf("Destroying Lookup tables...\n");                                          
+	printf("Destroying Lookup tables...\n");                                     
 	for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) { 
-		for(i = 0; i < NB_TABLES; i++) {                                             
-			for(j = 0; j < NB_REPLICA; j++) {                                        
-				if (state[socketid].tables[i][j] != NULL){                               
+		for(i = 0; i < NB_TABLES; i++) {                                         
+			for(j = 0; j < NB_REPLICA; j++) {                                    
+				if (state[socketid].tables[i][j] != NULL){                      
 					odpc_tbl_des (state[socketid].tables[0][0]);
 				}
 			}

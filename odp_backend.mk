@@ -9,9 +9,23 @@ VPATH += $(ODP_SDK)/include
 VPATH += $(ODP_SDK)/platform/linux-generic/include
 VPATH += $(ODP_SDK)/platform/linux-generic/arch/x86
 VPATH += $(ODP_SDK)/share
-VPATH += $(ODP_SDK)/helper/include
-VPATH += $(ODP_SDK)/helper
-VPATH += $(ODP_SDK)/helper/include/odp
+VPATH += $(ODP_SDK)/helper/include/odp/helper
+
+CFLAGS += -I "$(CDIR)/src/hardware_dep/odp/includes"
+CFLAGS += -I "$(CDIR)/src/hardware_dep/odp/ctrl_plane"
+CFLAGS += -I "$(CDIR)/src/hardware_dep/odp/data_plane"
+
+#ODP APIs
+CFLAGS += -I "$(ODP_SDK)/include"
+CFLAGS += -I "$(ODP_SDK)/platform/linux-generic/include"
+CFLAGS += -I "$(ODP_SDK)/platform/linux-generic/arch/x86"
+CFLAGS += -I "$(ODP_SDK)/share"
+
+#ODP Helper APIs
+CFLAGS += -I "$(ODP_SDK)/helper/include"
+CFLAGS += -I "$(ODP_SDK)/helper"
+CFLAGS += -I "$(ODP_SDK)/helper/include/odp"
+CFLAGS += -I "$(ODP_SDK)/helper/include/odp/helper"
 
 # odp main
 SRCS-y += $(CDIR)/src/hardware_dep/odp/main.c
@@ -29,20 +43,10 @@ SRCS-y += $(CDIR)/src/hardware_dep/shared/ctrl_plane/threadpool.c
 SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/odp_lib.c
 SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/odp_tables.c
 SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/odp_primitives.c
+#SRCS-y += odp_tables.c
+#SRCS-y += odp_primitives.c
 SRCS-Y += vector.c
-#SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/ternary_naive.c
 
-CFLAGS += -I "$(CDIR)/src/hardware_dep/odp/includes"
-CFLAGS += -I "$(CDIR)/src/hardware_dep/odp/ctrl_plane"
-CFLAGS += -I "$(CDIR)/src/hardware_dep/odp/data_plane"
-
-CFLAGS += -I "$(ODP_SDK)/include"
-CFLAGS += -I "$(ODP_SDK)/platform/linux-generic/include"
-CFLAGS += -I "$(ODP_SDK)/platform/linux-generic/arch/x86"
-CFLAGS += -I "$(ODP_SDK)/share"
-CFLAGS += -I "$(ODP_SDK)/helper/include"
-CFLAGS += -I "$(ODP_SDK)/helper"
-CFLAGS += -I "$(ODP_SDK)/helper/include/odp"
 
 LDFLAGS += -L $(ODP_SDK)/lib/
 LDFLAGS += -L $(ODP_SDK)/lib/.libs
