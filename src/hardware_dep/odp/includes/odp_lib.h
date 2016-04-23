@@ -146,10 +146,8 @@ typedef enum pktout_mode_t {
 typedef struct appl_args {                                                      
     int cpu_count;                                                               
     int if_count;       /**< Number of interfaces to be used */                  
-    int addr_count;     /**< Number of dst addresses to be used */               
     int num_workers;    /**< Number of worker threads */                         
     char **if_names;    /**< Array of pointers to interface names */             
-    odph_ethaddr_t addrs[MAX_PKTIOS]; /**< Array of dst addresses */             
     pktin_mode_t in_mode;   /**< Packet input mode */                            
     pktout_mode_t out_mode; /**< Packet output mode */                           
 //TODO need to use the in_mode, out_mode and remove this variable
@@ -157,8 +155,6 @@ typedef struct appl_args {
 	int time;       /**< Time in seconds to run. */                              
     int accuracy;       /**< Number of seconds to get and print statistics */    
     char *if_str;       /**< Storage for interface names */                      
-    int dst_change;     /**< Change destination eth addresses */                 
-    int src_change;     /**< Change source eth addresses */                      
     int error_check;        /**< Check packet errors */                          
 } appl_args_t;                                                                   
                                                                                  
@@ -198,7 +194,6 @@ typedef union {
 typedef struct macs_conf{
     char *pktio_dev;    /**< Interface name to use */
     int mode;       /**< Thread mode */
-
     int thr_idx;                                                                 
     int num_pktio;                                                               
                                                                                  
@@ -216,19 +211,12 @@ typedef struct macs_conf{
     } pktio[MAX_PKTIOS];                                                         
                                                                                  
     stats_t *stats; /**< Pointer to per thread stats */                          
-
 } macs_conf_t;
 
 /**                                                                              
  * Grouping of all global data                                                   
  */
 typedef struct mac_global{
-//To remove for more generic defn
-	odp_pktio_t if0, if1;
-	odp_pktin_queue_t if0in, if1in;
-	odp_pktout_queue_t if0out, if1out;
-	odph_ethaddr_t src, dst;
-
     /** Per thread packet stats */                                               
     stats_t stats[MAX_WORKERS];
     /** Application (parsed) arguments */

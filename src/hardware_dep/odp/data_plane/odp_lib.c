@@ -172,6 +172,17 @@ void table_setdefault_promote(int tableid, uint8_t* value)
 	FORALLNUMANODES(CHANGE_TABLE(table_setdefault, value))
 }
 
+int odp_dev_name_to_id (char *if_name) {
+
+	for (i=0; i < gconf->if_count; i++) { 
+			if(strcmp (gconf->if_names[i], if_name) == 0) {
+				return i;
+			}
+	}
+	printf("interface id not found for %s\n",if_name);
+	return -1;
+}
+
 #if 0
 static void
 create_counters_on_socket(int socketid)
@@ -335,9 +346,12 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int mode)
 	}
 #endif
 
+
 	ret = odp_pktio_start(pktio);
 	if (ret != 0)
 		printf("Error: unable to start %s\n", name);
+
+//	odp_pktio_promisc_mode_set (pktio, 1);
 
 	printf("  created pktio:%02" PRIu64
 			", dev:%s, queue mode (ATOMIC queues)\n"
@@ -348,7 +362,7 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int mode)
 	return pktio;
 }
 
-static void *launch_worker(void *arg ODP_UNUSED)
+static void *launch_worker(void *arg)
 {
 	odp_main_worker();
 	return NULL;
@@ -599,16 +613,17 @@ uint8_t odpc_initialize(int argc, char **argv)
 	/* Print both system and application information */
 	print_info(NO_PATH(argv[0]), &gconf->appl);
 
-	/* Default to system CPU count unless user specified */
+	/* Default to ODP_MAX_LCORE  unless user specified */
 	num_workers = ODP_MAX_LCORE;
-	printf("odp_max num worker threads: %i\n", num_workers);
 	if (gconf->appl.cpu_count)
 		num_workers = gconf->appl.cpu_count;
-	printf(" cpucnt args num worker threads: %i\n", num_workers);
+	printf("odp_max num worker threads: %i\n", num_workers);
 
 	/* Get default worker cpumask */
 	odp_cpumask_default_worker(&cpumask, num_workers);
 	(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
+
+	gbl_args->appl.num_workers = num_workers;
 
 	for (i = 0; i < num_workers; i++)
 		gconf->mconf[i].thr_idx = i;
@@ -633,18 +648,24 @@ uint8_t odpc_initialize(int argc, char **argv)
 	//    odp_pool_print(pool);
 
 	//  macs->if0 = create_pktie("pcap:in=mac.pcap", pool, &(macs->if0in), &macs->if0out);
-	//	global.if1 = create_pktio(argv[2], pool, &global.if1in, &global.if1out);
 	//	macs->if0 = create_pktio("veth1.0", pool, &(macs->if0in), &macs->if0out);
 	//	macs->if1 = create_pktio("veth2.1", pool, &(macs->if1in), &macs->if1out);
 
 	/* Create a pktio instance for each interface */
 	for (i = 0; i < gconf->appl.if_count; ++i)
-		create_pktio(gconf->appl.if_names[i], pool, gconf->appl.mode);
-
+	{
+		gconf->pktios[i].pktio = create_pktio(gconf->appl.if_names[i], pool, gconf->appl.mode);
+		printf("interface id %d, pktio index %d, ifname %s \n", i, pktio_to_id(pktio), gconf->appl.if_names[i]);
+	}
 	/* Create and init worker threads */
 	memset(gconf->thread_tbl, 0, sizeof(gconf->thread_tbl));
 
+	memset(&thr_params, 0, sizeof(thr_params));
+	thr_params.thr_type = ODP_THREAD_WORKER;
+	thr_params.instance = instance;
+
 	cpu = odp_cpumask_first(&cpumask);
+	/* number of interface and workers should be same */
 	for (i = 0; i < num_workers; ++i) {
 		odp_cpumask_t thd_mask;
 		void *(*thr_run_func) (void *);
@@ -652,12 +673,15 @@ uint8_t odpc_initialize(int argc, char **argv)
 
 		if_idx = i % gconf->appl.if_count;
 
-		gconf->mconf[i].pktio_dev = gconf->appl.if_names[if_idx];
+		gconf->mconf[i].pktio_dev = gconf->appl.if_names[i];
 		gconf->mconf[i].mode = gconf->appl.mode;
+
 		printf("if %s\n ", gconf->appl.if_names[i]);
 
-		if (gconf->appl.mode == APPL_MODE_PKT_BURST)
+		if (gconf->appl.mode == APPL_MODE_PKT_BURST) {
 			thr_run_func = launch_worker;
+			printf("thr func set to launch_worker\n ");
+		}
 		//            thr_run_func = pktio_ifburst_thread;
 		//      else /* APPL_MODE_PKT_QUEUE */
 		//        thr_run_func = pktio_queue_thread;
@@ -666,18 +690,13 @@ uint8_t odpc_initialize(int argc, char **argv)
 		 * because each thread might get different arguments.
 		 * Calls odp_thread_create(cpu) for each thread
 		 */
-		odp_cpumask_zero(&thd_mask);
-		odp_cpumask_set(&thd_mask, cpu);
-		printf("count in threadmask %d\n ", odp_cpumask_count(&thd_mask));
 
-		memset(&thr_params, 0, sizeof(thr_params));
-		thr_params.start    = launch_worker;
+		printf("count in threadmask %d\n ", odp_cpumask_count(&cpumask));
 		thr_params.arg      = &gconf->mconf[i];
-		thr_params.thr_type = ODP_THREAD_WORKER;
-		thr_params.instance = instance;
+	    thr_params.start    = thr_run_func;
 
 		odph_linux_pthread_create(&gconf->thread_tbl[i],
-				                  &thd_mask, &thr_params);
+				                  &cpumask, &thr_params);
 /*		odph_linux_pthread_create(&gconf->thread_tbl[i], &thd_mask,
 				thr_run_func,
 				&gconf->mconf[i],
