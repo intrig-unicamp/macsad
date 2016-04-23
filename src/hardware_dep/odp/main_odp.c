@@ -30,7 +30,7 @@ uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 #define HDR_MBUF_DATA_SIZE      (2 * RTE_PKTMBUF_HEADROOM)
 #define NB_HDR_MBUF				(NB_PKT_MBUF * MAX_PORTS)
-	
+
 #define NB_CLONE_MBUF		    (NB_PKT_MBUF * MCAST_CLONE_PORTS * MCAST_CLONE_SEGS * 2)
 
 #define BURST_TX_DRAIN_US		100 /* TX drain every ~100us */
@@ -142,11 +142,11 @@ static inline uint32_t bitcnt(uint32_t v)
 }
 
 /* send one pkt each time */
-static void odp_send_packet(odp_pktout_queue_t pktout, odp_packet_t *p, uint8_t port)
+static void odp_send_packet(odp_packet_t *p, uint8_t port)
 {
 	int sent;
 
-	sent = odp_pktout_send(gconf->pktios[port].pktout, p, 1);
+	sent = odp_pktout_send(gconf->pktios[port].pktout[0], p, 1);
 	if (sent < 0)
 	{
 		printf("pkt sent failed \n");
@@ -157,8 +157,7 @@ static void odp_send_packet(odp_pktout_queue_t pktout, odp_packet_t *p, uint8_t 
 #define EXTRACT_EGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/6) & /*mask*/0x7fc) >> /*bitoffset*/2
 #define EXTRACT_INGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/0) & /*mask*/0x1ff) >> /*bitoffset*/0
 
-static void maco_bcast_packet(packet_descriptor_t* pd,
-				odp_pktout_queue_t pktout, uint8_t ingress_port)
+static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
 {
 	appl_args_t *appl = &gconf->appl;
 	uint32_t total_ports= appl->if_count;
@@ -170,7 +169,7 @@ static void maco_bcast_packet(packet_descriptor_t* pd,
 	for (port = 0;port < total_ports;port++){
 		if (port != ingress_port){
 			printf("Broadcasting on o/p port id %d\n", port);
-			odp_send_packet(gconf->pktios[port].pktout, (odp_packet_t *)pd->packet, 1);
+			odp_send_packet((odp_packet_t *)pd->packet, port);
 		}
 	}
 
@@ -193,15 +192,15 @@ static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
 	printf("ingress port is %d and egress port is %d \n", inport, port);
 
 	if (port==100) {
-		maco_bcast_packet(pd, mconf->pktio[0].pktout, inport);
+		maco_bcast_packet(pd, inport);
 	} else {
 		/* o/p queue, pkt, no. of pkt to send */
-		odp_send_packet(mconf->pktio[0].pktout, (odp_packet_t *)pd->packet, 1);
+		odp_send_packet((odp_packet_t *)pd->packet, port);
 	}
-	
+
 	/* TODO write code to properly free the packet */
-	odp_packet_free ((struct odp_packet_t *)pd->packet);
-	
+//	odp_packet_free ((struct odp_packet_t *)pd->packet);
+
 	return 0;
 }
 
@@ -255,7 +254,7 @@ void odp_main_worker (void *arg)
 	printf("	the thread id is %d\n",thr);
 	thr_args = arg;
 
-//	pktio = odp_pktio_lookup(thr_args->pktio_dev);
+	pktio = odp_pktio_lookup(thr_args->pktio_dev);
 	if_idx = odp_dev_name_to_id (thr_args->pktio_dev);
 
 	if (gconf->pktios[if_idx].pktio == ODP_PKTIO_INVALID) {
@@ -263,14 +262,19 @@ void odp_main_worker (void *arg)
 				thr, thr_args->pktio_dev);
 		return;
 	}
+	if (pktio == ODP_PKTIO_INVALID) {
+		printf("  [%02i] Error: lookup of pktio for if %s failed\n",
+				thr, thr_args->pktio_dev);
+		return;
+	}
 	printf("  [%02i] looked up pktio:%02" PRIu64 ", burst mode\n",
 			thr, odp_pktio_to_u64(pktio));
 
-	if (odp_pktin_queue(pktio, &gconf->pktios[if_idx].pktin, 1) != 1) {
+	if (odp_pktin_queue(pktio, &gconf->pktios[if_idx].pktin[0], 1) != 1) {
 		printf("  [%02i] Error: no pktin queue\n", thr);
 		return;
 	}
-	if (odp_pktout_queue(pktio, &gconf->pktios[if_idx].pktout, 1) != 1) {
+	if (odp_pktout_queue(pktio, &gconf->pktios[if_idx].pktout[0], 1) != 1) {
 		printf("  [%02i] Error: no pktout queue\n", thr);
 		return;
 	}
@@ -281,7 +285,7 @@ void odp_main_worker (void *arg)
 
 	/* Loop packets */
 	for (;;) {
-		pkts = odp_pktin_recv(pktin, pkt_tbl, MAX_PKT_BURST);
+		pkts = odp_pktin_recv(gconf->pktios[if_idx].pktin[0], pkt_tbl, MAX_PKT_BURST);
 		if (pkts > 0) {
 			for (i = 0; i < pkts; i++) {
 				odp_packet_t pkt = pkt_tbl[i];
