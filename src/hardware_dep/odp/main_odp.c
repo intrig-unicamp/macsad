@@ -7,16 +7,12 @@
 
 //extern void p4_handle_packet(packet* p, unsigned portid);
 
-//=   shared   ================================================================
-
 uint32_t enabled_port_mask = 0;
 struct ether_addr ports_eth_addr[MAX_ETHPORTS];
-//typedef struct odp_packet_t packet;
-//=   used only here   ========================================================
 
 /* A tsc-based timer responsible for triggering statistics printout */
 #define TIMER_MILLISECOND 2000000ULL /* around 1ms at 2 Ghz */
-#define MAX_TIMER_PERIOD 86400 /* 1 day max */
+#define MAX_TIMER_PERIOD  86400 /* 1 day max */
 int64_t timer_period = 10 * TIMER_MILLISECOND * 1000; /* default period is 10 seconds */
 
 #define MAX_PORTS 16
@@ -30,17 +26,17 @@ uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 #define PKT_MBUF_DATA_SIZE      RTE_MBUF_DEFAULT_BUF_SIZE
-#define NB_PKT_MBUF     8192
+#define NB_PKT_MBUF				8192
 
 #define HDR_MBUF_DATA_SIZE      (2 * RTE_PKTMBUF_HEADROOM)
-#define NB_HDR_MBUF     (NB_PKT_MBUF * MAX_PORTS)
+#define NB_HDR_MBUF				(NB_PKT_MBUF * MAX_PORTS)
 
-#define NB_CLONE_MBUF   (NB_PKT_MBUF * MCAST_CLONE_PORTS * MCAST_CLONE_SEGS * 2)
+#define NB_CLONE_MBUF		    (NB_PKT_MBUF * MCAST_CLONE_PORTS * MCAST_CLONE_SEGS * 2)
 
-#define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
+#define BURST_TX_DRAIN_US		100 /* TX drain every ~100us */
 
 // note: this much space MUST be able to hold all deparsed content
-#define DEPARSE_BUFFER_SIZE 1024
+#define DEPARSE_BUFFER_SIZE		1024
 
 //=============================================================================
 
@@ -135,26 +131,22 @@ deparse_headers(packet_descriptor_t* pd, int socketid)
 }
 
 /* Get number of bits set. */
-static inline uint32_t
-bitcnt(uint32_t v)
+static inline uint32_t bitcnt(uint32_t v)
 {
-        uint32_t n;
+	uint32_t n;
 
-        for (n = 0; v != 0; v &= v - 1, n++)
-                ;
+	for (n = 0; v != 0; v &= v - 1, n++)
+		;
 
-        return (n);
+	return (n);
 }
 
-
 /* send one pkt each time */
-static void odp_send_packet(odp_pktout_queue_t pktout, odp_packet_t *p, uint8_t port)
+static void odp_send_packet(odp_packet_t *p, uint8_t port)
 {
 	int sent;
-//	struct odp_packet_t pkt = *p;
-//	struct gconf_conf *macs = &mconf_list[0];;
 
-	sent = odp_pktout_send(pktout, p, 1);
+	sent = odp_pktout_send(gconf->pktios[port].pktout[0], p, 1);
 	if (sent < 0)
 	{
 		printf("pkt sent failed \n");
@@ -165,9 +157,7 @@ static void odp_send_packet(odp_pktout_queue_t pktout, odp_packet_t *p, uint8_t 
 #define EXTRACT_EGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/6) & /*mask*/0x7fc) >> /*bitoffset*/2
 #define EXTRACT_INGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/0) & /*mask*/0x1ff) >> /*bitoffset*/0
 
-
-static void maco_bcast_packet(packet_descriptor_t* pd,
-				odp_pktout_queue_t pktout, uint8_t ingress_port)
+static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
 {
 	appl_args_t *appl = &gconf->appl;
 	uint32_t total_ports= appl->if_count;
@@ -179,26 +169,21 @@ static void maco_bcast_packet(packet_descriptor_t* pd,
 	for (port = 0;port < total_ports;port++){
 		if (port != ingress_port){
 			printf("Broadcasting on o/p port id %d\n", port);
-			odp_send_packet(pktout, (odp_packet_t *)pd->packet, 1);
+			odp_send_packet((odp_packet_t *)pd->packet, port);
 		}
 	}
-	/* TODO write code to properly free the packet */
-	//	odp_packet_free ((struct odp_packet_t *)pd->packet);
 
 	return;
 }
 
-
 /* Enqueue a single packet, and send burst if queue is filled */
-static inline int send_packet(packet_descriptor_t* pd)
+static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
 {
 	macs_conf_t *mconf;
 	int port = EXTRACT_EGRESSPORT(pd);
 	int inport = EXTRACT_INGRESSPORT(pd);
 
-	int thr;
-	thr = odp_thread_id();
-	mconf = &gconf->mconf[thr];
+	mconf = &gconf->mconf[thr_idx];
 
 	printf("  :::: EGRESSING\n");
 	dbg_print_headers(pd);
@@ -207,18 +192,15 @@ static inline int send_packet(packet_descriptor_t* pd)
 	printf("ingress port is %d and egress port is %d \n", inport, port);
 
 	if (port==100) {
-		maco_bcast_packet(pd, mconf->pktio[0].pktout, inport);
+		maco_bcast_packet(pd, inport);
 	} else {
-		/*
-		   if (odp_pktout_send(pktout, &pkt, 1) < 1) {
-		   EXAMPLE_ERR("  [%i] Packet send failed.\n", thr);
-		   odp_packet_free(pkt);
-		   }
-		   */
 		/* o/p queue, pkt, no. of pkt to send */
-		odp_send_packet(mconf->pktio[0].pktout, (odp_packet_t *)pd->packet, 1);
-
+		odp_send_packet((odp_packet_t *)pd->packet, port);
 	}
+
+	/* TODO write code to properly free the packet */
+//	odp_packet_free ((struct odp_packet_t *)pd->packet);
+
 	return 0;
 }
 
@@ -230,15 +212,13 @@ static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 			.length = header_instance_byte_width[header_instance_standard_metadata],
 			.pointer = calloc(header_instance_byte_width[header_instance_standard_metadata], sizeof(uint8_t))
 		};
-//	modify_field_to_const(packet_desc, field_desc(field_instance_standard_metadata_ingress_port), (uint8_t*)&inport, 2);
 
 	int res32; // needs for the macro
 	MODIFY_INT32_INT32(packet_desc, field_instance_standard_metadata_ingress_port, inport); // fix? LAKI
 }
 
-void packet_received(odp_packet_t *p, unsigned portid)
+void packet_received(odp_packet_t *p, unsigned portid, int thr_idx)
 {
-//	struct macs_conf *macs = &mconf_list[0];;
 	printf(":::: EXECUTING packet recieved\n");
 	packet_descriptor_t packet_desc;
 	packet_desc.pointer = (uint8_t *)odp_packet_data(*p);
@@ -248,7 +228,7 @@ void packet_received(odp_packet_t *p, unsigned portid)
 	struct lcore_state *state_tmp = &gconf->state;
 	handle_packet(&packet_desc, state_tmp->tables);
 //	handle_packet(&packet_desc, &state->tables);
-	send_packet(&packet_desc);
+	send_packet(&packet_desc, thr_idx);
 }
 
 void odp_main_worker (void *arg)
@@ -267,37 +247,49 @@ void odp_main_worker (void *arg)
 	unsigned long pkt_cnt = 0;
 	unsigned long err_cnt = 0;
 	unsigned long tmp = 0;
+	int if_idx;
 
+	printf(":: INSIDE odp_main_worker\n");
 	thr = odp_thread_id();
+	printf("	the thread id is %d\n",thr);
 	thr_args = arg;
 
 	pktio = odp_pktio_lookup(thr_args->pktio_dev);
-	if (pktio == ODP_PKTIO_INVALID) {
+	if_idx = odp_dev_name_to_id (thr_args->pktio_dev);
+
+	if (gconf->pktios[if_idx].pktio == ODP_PKTIO_INVALID) {
 		printf("  [%02i] Error: lookup of pktio %s failed\n",
+				thr, thr_args->pktio_dev);
+		return;
+	}
+	if (pktio == ODP_PKTIO_INVALID) {
+		printf("  [%02i] Error: lookup of pktio for if %s failed\n",
 				thr, thr_args->pktio_dev);
 		return;
 	}
 	printf("  [%02i] looked up pktio:%02" PRIu64 ", burst mode\n",
 			thr, odp_pktio_to_u64(pktio));
 
-	if (odp_pktin_queue(pktio, &pktin, 1) != 1) {
+	if (odp_pktin_queue(pktio, &gconf->pktios[if_idx].pktin[0], 1) != 1) {
 		printf("  [%02i] Error: no pktin queue\n", thr);
 		return;
 	}
-	if (odp_pktout_queue(pktio, &pktout, 1) != 1) {
+	if (odp_pktout_queue(pktio, &gconf->pktios[if_idx].pktout[0], 1) != 1) {
 		printf("  [%02i] Error: no pktout queue\n", thr);
 		return;
 	}
 
-	thr_args->pktio[0].pktout = pktout;
+	/* Currently Only one interface supported per thread.
+	 * Hence only one pktio[0] */
+	thr_args->pktio[if_idx].pktout = pktout;
 
 	/* Loop packets */
 	for (;;) {
-		pkts = odp_pktin_recv(pktin, pkt_tbl, MAX_PKT_BURST);
+		pkts = odp_pktin_recv(gconf->pktios[if_idx].pktin[0], pkt_tbl, MAX_PKT_BURST);
 		if (pkts > 0) {
 			for (i = 0; i < pkts; i++) {
 				odp_packet_t pkt = pkt_tbl[i];
-				packet_received(&pkt, portid=0);
+				packet_received(&pkt, if_idx, thr_args->thr_idx);
 			}
 
 			/* Print packet counts every once in a while */
@@ -312,21 +304,5 @@ void odp_main_worker (void *arg)
 		}
 	}
 
-#if 0
-	for (;;) {
-		/* Use timeout version of the pktin recv call to reduce CPU
-		   load when there are no packets available.
-		   pkts = odp_pktin_recv_tmo(global.if0in, pkt_tbl, MAX_PKT_BURST,
-		   ODP_PKTIN_WAIT);
-		   */
-		pkts = odp_pktin_recv(gconf->if0in, pkt_tbl, MAX_PKT_BURST);
-		if (odp_unlikely(pkts <= 0))
-			continue;
-		for (i = 0; i < pkts; i++) {
-			odp_packet_t pkt = pkt_tbl[i];
-			packet_received(&pkt, portid=0);
-		}
-	}
-#endif
 	return;
 }

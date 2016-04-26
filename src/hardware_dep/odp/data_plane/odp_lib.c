@@ -113,6 +113,7 @@ int odpc_lcore_conf_init ()
 		for(i = 0; i < NB_COUNTERS; i++)
 			gconf->state.counters[i] = state[socketid].counters[i];
 	}
+	printf("Configuring lcore structs done...\n");
 	return 0;
 }
 
@@ -170,6 +171,19 @@ void ternary_add_promote(int tableid, uint8_t* key, uint8_t* mask, uint8_t* valu
 void table_setdefault_promote(int tableid, uint8_t* value)
 {
 	FORALLNUMANODES(CHANGE_TABLE(table_setdefault, value))
+}
+
+int odp_dev_name_to_id (char *if_name) {
+	int i;
+
+	for (i=0; i < gconf->appl.if_count; i++) {
+			if(strcmp (gconf->appl.if_names[i], if_name) == 0) {
+				printf("interface id %d found for %s\n",i, if_name);
+				return i;
+			}
+	}
+	printf("interface id not found for %s\n",if_name);
+	return -1;
 }
 
 #if 0
@@ -299,7 +313,6 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int mode)
 		exit(1);
 	}
 
-//	odp_pktin_queue_param_init(&in_queue_param);
 //	odp_pktout_queue_param_init(&out_queue_param);
 
     odp_pktin_queue_param_init(&pktin_param);
@@ -335,9 +348,12 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int mode)
 	}
 #endif
 
+
 	ret = odp_pktio_start(pktio);
 	if (ret != 0)
 		printf("Error: unable to start %s\n", name);
+
+//	odp_pktio_promisc_mode_set (pktio, 1);
 
 	printf("  created pktio:%02" PRIu64
 			", dev:%s, queue mode (ATOMIC queues)\n"
@@ -348,13 +364,11 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int mode)
 	return pktio;
 }
 
-static void *launch_worker(void *arg ODP_UNUSED)
+static void *launch_worker(void *arg)
 {
 	odp_main_worker();
 	return NULL;
 }
-
-
 
 /**
  * Prinf usage information
@@ -599,16 +613,17 @@ uint8_t odpc_initialize(int argc, char **argv)
 	/* Print both system and application information */
 	print_info(NO_PATH(argv[0]), &gconf->appl);
 
-	/* Default to system CPU count unless user specified */
+	/* Default to ODP_MAX_LCORE  unless user specified */
 	num_workers = ODP_MAX_LCORE;
-	printf("odp_max num worker threads: %i\n", num_workers);
 	if (gconf->appl.cpu_count)
 		num_workers = gconf->appl.cpu_count;
-	printf(" cpucnt args num worker threads: %i\n", num_workers);
+	printf("odp_max num worker threads: %i\n", num_workers);
 
 	/* Get default worker cpumask */
 	odp_cpumask_default_worker(&cpumask, num_workers);
 	(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
+
+	gconf->appl.num_workers = num_workers;
 
 	for (i = 0; i < num_workers; i++)
 		gconf->mconf[i].thr_idx = i;
@@ -633,64 +648,53 @@ uint8_t odpc_initialize(int argc, char **argv)
 	//    odp_pool_print(pool);
 
 	//  macs->if0 = create_pktie("pcap:in=mac.pcap", pool, &(macs->if0in), &macs->if0out);
-	//	global.if1 = create_pktio(argv[2], pool, &global.if1in, &global.if1out);
 	//	macs->if0 = create_pktio("veth1.0", pool, &(macs->if0in), &macs->if0out);
 	//	macs->if1 = create_pktio("veth2.1", pool, &(macs->if1in), &macs->if1out);
 
 	/* Create a pktio instance for each interface */
 	for (i = 0; i < gconf->appl.if_count; ++i)
-		create_pktio(gconf->appl.if_names[i], pool, gconf->appl.mode);
-
+	{
+		gconf->pktios[i].pktio = create_pktio(gconf->appl.if_names[i], pool, gconf->appl.mode);
+		printf("interface id %d, ifname %s, pktio:%02" PRIu64 " \n", i, gconf->appl.if_names[i],odp_pktio_to_u64(gconf->pktios[i].pktio));
+	}
 	/* Create and init worker threads */
 	memset(gconf->thread_tbl, 0, sizeof(gconf->thread_tbl));
 
+	memset(&thr_params, 0, sizeof(thr_params));
+	thr_params.thr_type = ODP_THREAD_WORKER;
+	thr_params.instance = instance;
+
 	cpu = odp_cpumask_first(&cpumask);
+	printf("count threadmask %d\n ", odp_cpumask_count(&cpumask));
+	/* number of interface and workers should be same */
 	for (i = 0; i < num_workers; ++i) {
-		odp_cpumask_t thd_mask;
-		void *(*thr_run_func) (void *);
 		int if_idx;
+
+		void *(*thr_run_func) (void *);
 
 		if_idx = i % gconf->appl.if_count;
 
-		gconf->mconf[i].pktio_dev = gconf->appl.if_names[if_idx];
+		gconf->mconf[i].pktio_dev = gconf->appl.if_names[i];
 		gconf->mconf[i].mode = gconf->appl.mode;
-		printf("if %s\n ", gconf->appl.if_names[i]);
 
-		if (gconf->appl.mode == APPL_MODE_PKT_BURST)
+		printf("if %s and pktio_dev %s \n ", gconf->appl.if_names[i], gconf->mconf[i].pktio_dev);
+
+		if (gconf->appl.mode == APPL_MODE_PKT_BURST) {
 			thr_run_func = launch_worker;
-		//            thr_run_func = pktio_ifburst_thread;
-		//      else /* APPL_MODE_PKT_QUEUE */
-		//        thr_run_func = pktio_queue_thread;
+			printf("thread func set to launch_worker\n ");
+		}
 		/*
 		 * Create threads one-by-one instead of all-at-once,
 		 * because each thread might get different arguments.
 		 * Calls odp_thread_create(cpu) for each thread
 		 */
-		odp_cpumask_zero(&thd_mask);
-		odp_cpumask_set(&thd_mask, cpu);
-		printf("count in threadmask %d\n ", odp_cpumask_count(&thd_mask));
 
-		memset(&thr_params, 0, sizeof(thr_params));
-		thr_params.start    = launch_worker;
 		thr_params.arg      = &gconf->mconf[i];
-		thr_params.thr_type = ODP_THREAD_WORKER;
-		thr_params.instance = instance;
+	    thr_params.start    = thr_run_func;
 
 		odph_linux_pthread_create(&gconf->thread_tbl[i],
-				                  &thd_mask, &thr_params);
-/*		odph_linux_pthread_create(&gconf->thread_tbl[i], &thd_mask,
-				thr_run_func,
-				&gconf->mconf[i],
-				ODP_THREAD_WORKER);
-*/
-		/* when we have multiple CPU, we will use this to assign different
-		 * threads to different CPU */
-		// cpu = odp_cpumask_next(&cpumask, cpu);
+				                  &cpumask, &thr_params);
 	}
-
-	/* ToDo */
-	/* check if similar thing on ODP */
-	//	check_all_ports_link_status(nb_ports, enabled_port_mask);
 
 	/* Initialize all the tables defined in p4 src */
 	odpc_lookup_tbls_init();
@@ -703,11 +707,10 @@ uint8_t odpc_initialize(int argc, char **argv)
 
 	/* Master thread waits for other threads to exit */
 	odph_linux_pthread_join(gconf->thread_tbl, num_workers);
-	//	odph_linux_pthread_join(&thd, 1);
 
-	free(gconf->appl.if_names);
-	free(gconf->appl.if_str);
-	free(gconf);
+//	free(gconf->appl.if_names);
+//	free(gconf->appl.if_str);
+//	free(gconf);
 	printf("Exit\n\n");
 
 	return 0;
