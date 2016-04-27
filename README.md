@@ -1,12 +1,12 @@
 MACSAD
 ==========
-To setup and run MACSAD on a Ubuntu 14.0, follow steps as below.
+Follow the steps below to setup and run MACSAD on a Ubuntu 14.0.
 
 # Part 1
 ---
 ##ODP:
 
-MACSAD uses ODP as the hardware acceleration plane. Clone the ODP project outside of the MACSAD repo(any directory of your choice) and compile.
+MACSAD uses ODP for forwarding plane developement. Clone the ODP git project in any directory of your choice and compile.
 
 - `git clone https://git.linaro.org/lng/odp.git`
 - `cd odp`
