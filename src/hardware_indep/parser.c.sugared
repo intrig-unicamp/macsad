@@ -1,6 +1,17 @@
 import p4_hlir.hlir.p4 as p4
 from utils import getTypeAndLength
+from utils import format_p4_node
 from header_info import hdr_prefix, fld_prefix
+
+def format_state(state):
+    generated_code = ""
+    if isinstance(state, p4.p4_parse_state):
+        #[ return parse_state_${state.name}(pd, buf, tables);
+    elif isinstance(state, p4.p4_parser_exception):
+        print "Parser exceptions are not supported yet."
+    else:
+        return format_p4_node(state)
+    return generated_code
 
 def int_to_byte_array(val): # CAUTION: big endian!
     """
@@ -62,7 +73,7 @@ for pe_name, pe in hlir_pes.items():
 
 
 
-#[ #include "odp_lib.h"
+#[ #include "dpdk_lib.h"
 #[ #include "actions.h" // TODO remove me
 #[ void print_mac(uint8_t* v) { printf("%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX\n", v[0], v[1], v[2], v[3], v[4], v[5]); }
 #[ void print_ip(uint8_t* v) { printf("%d.%d.%d.%d\n",v[0],v[1],v[2],v[3]); }
@@ -155,30 +166,7 @@ for state_name, parse_state in hlir.p4_parse_states.items():
     branch_on = parse_state.branch_on
     if not branch_on:
         branch_case, next_state = parse_state.branch_to.items()[0]
-        if isinstance(next_state, p4.p4_parse_state):
-            #[     return parse_state_${next_state.name}(pd, buf, tables);
-        else:
-            #[     #if debug == 1
-            #[     printf("  :::: PACKET PARSED\n");
-            #[     printf("    :: ethernet srcaddr: ");
-            #[     print_mac(FIELD_BYTE_ADDR(pd, field_desc(field_instance_ethernet_srcAddr)));
-            #[     printf("    :: ethernet dstaddr: ");
-            #[     print_mac(FIELD_BYTE_ADDR(pd, field_desc(field_instance_ethernet_dstAddr)));
-            #[     //printf("    :: IP src: "); 
-            #[     //print_ip(FIELD_BYTE_ADDR(pd, field_desc(field_instance_ipv4_srcAddr))); 
-            #[     //printf("    :: IP dst: "); 
-            #[     //print_ip(FIELD_BYTE_ADDR(pd, field_desc(field_instance_ipv4_dstAddr)));
-            #[     for (int i = 0; i < HEADER_INSTANCE_COUNT; ++i) {
-            #[         printf("    :: header %d (type=%d, len=%d) = ", i, pd->headers[i].type, pd->headers[i].length);
-            #[         for (int j = 0; j < pd->headers[i].length; ++j) {
-            #[         printf("%02x ", ((uint8_t*)(pd->headers[i].pointer))[j]);
-            #[         }
-            #[         printf("\n");
-            #[     }
-            #[
-            #[     printf("  :::: TURNING TO TABLE ${next_state.name}\n");
-            #[     #endif
-            #[     return apply_table_${next_state.name}(pd, tables);
+        #[ ${format_state(next_state)}
     else:
         key_byte_width = get_key_byte_width(branch_on)
         #[     uint8_t key[${key_byte_width}];
@@ -190,10 +178,7 @@ for state_name, parse_state in hlir.p4_parse_states.items():
             value_name  = "case_value_%d" % case_num
             if branch_case == p4.P4_DEFAULT: # TODO why should two if?
                 has_default_case = True
-                if isinstance(next_state, p4.p4_parse_state):
-                    #[     return parse_state_${next_state.name}(pd, buf, tables);
-                else:
-                    #[     return apply_table_${next_state.name}(pd, tables);
+                #[ ${format_state(next_state)}
                 continue
             elif type(branch_case) is int:
                 branch_case # TODO ?
@@ -214,48 +199,13 @@ for state_name, parse_state in hlir.p4_parse_states.items():
                     #[         ${c},
                 #[     };
                 #[     if ( memcmp(key, ${value_name}, ${value_len}) == 0)
-                if isinstance(next_state, p4.p4_parse_state):
-                    #[     return parse_state_${next_state.name}(pd, buf, tables);
-                else:
-                    #[     return apply_table_${next_state.name}(pd, tables);
+                #[         ${format_state(next_state)}
         if not has_default_case:
             #[     return NULL;
     #[ }
     #[ 
 
-
-
-# TODO This initialisation shouldn't be done for each and every packet. Perhaps we need a generated packet initialisation function that is invoked on main initialisation, and the main_loop would only set the ingress_port metadata field for each packet.
-
-#[ void init_metadata_headers(packet_descriptor_t* packet_desc) {
-for hn,hi in hlir.p4_header_instances.items():
-    if hi.metadata and not hn is 'standard_metadata':
-        n = hdr_prefix(hn)
-        #[ packet_desc->headers[${n}] = (header_descriptor_t) { .type = ${n}, .length = header_instance_byte_width[${n}],
-        #[                               .pointer = calloc(header_instance_byte_width[${n}], sizeof(uint8_t)) };
-#[ }
-#[
-
-for table in hlir.p4_tables.values():
-    table_type, key_length = getTypeAndLength(table)
-    if key_length == 0 and len(table.actions) == 1:
-        action = table.actions[0]
-        #[ extern void ${table.name}_setdefault(struct ${table.name}_action);
-
-#[ void init_keyless_tables() {
-for table in hlir.p4_tables.values():
-    table_type, key_length = getTypeAndLength(table)
-    if key_length == 0 and len(table.actions) == 1:
-        action = table.actions[0]
-        #[ struct ${table.name}_action ${table.name}_a;
-        #[ ${table.name}_a.action_id = action_${action.name};
-        #[ ${table.name}_setdefault(${table.name}_a);
-#[ }
-#[
-
 #[ void parse_packet(packet_descriptor_t* pd, lookup_table_t** tables) {
-#[     init_metadata_headers(pd);
-#[     init_keyless_tables();
 #[     parse_state_start(pd, pd->pointer, tables);
 #[ }
 

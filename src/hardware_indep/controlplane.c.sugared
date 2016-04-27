@@ -9,7 +9,7 @@ def match_type_order(t):
     if t is p4.p4_match_type.P4_MATCH_LPM:     return 1
     if t is p4.p4_match_type.P4_MATCH_TERNARY: return 2
 
-#[ #include "odp_lib.h"
+#[ #include "dpdk_lib.h"
 #[ #include "actions.h"
 #[ 
 #[ extern void table_setdefault_promote  (int tableid, uint8_t* value);
@@ -19,11 +19,12 @@ def match_type_order(t):
 #[
 for table in hlir.p4_tables.values():
     #[ extern void table_${table.name}_key(packet_descriptor_t* pd, uint8_t* key); // defined in dataplane.c
-#[ 
+#[
+
+#[ uint8_t reverse_buffer[${max([t[1] for t in map(getTypeAndLength, hlir.p4_tables.values())])}];
 
 for table in hlir.p4_tables.values():
     table_type, key_length = getTypeAndLength(table)
-    #[ 
     #[ void
     #[ ${table.name}_add(
     for match_field, match_type, match_mask in table.match_fields:
@@ -52,11 +53,8 @@ for table in hlir.p4_tables.values():
             if match_type is p4.p4_match_type.P4_MATCH_LPM:
                 #[ prefix_length += ${fld_id(match_field)}_prefix_length;
         #[ int c, d;
-        #[ uint8_t *reverse;
-        #[ reverse = (uint8_t*)malloc(sizeof(uint8_t)*${k});
-        #[ for(c = ${k-1}, d = 0; c >= 0; c--, d++) *(reverse+d) = *(key+c);
-        #[ for(c = 0; c < ${k}; c++) *(key+c) = *(reverse+c);
-        #[ free(reverse);
+        #[ for(c = ${k-1}, d = 0; c >= 0; c--, d++) *(reverse_buffer+d) = *(key+c);
+        #[ for(c = 0; c < ${k}; c++) *(key+c) = *(reverse_buffer+c);
         #[ lpm_add_promote(TABLE_${table.name}, (uint8_t*)key, prefix_length, (uint8_t*)&action);
     if table_type == "LOOKUP_EXACT":
         for match_field, match_type, match_mask in table.match_fields:
@@ -64,16 +62,16 @@ for table in hlir.p4_tables.values():
         #[ exact_add_promote(TABLE_${table.name}, (uint8_t*)key, (uint8_t*)&action);
     #[ }
     #[
-    #[ void ${table.name}_setdefault(struct ${table.name}_action action)
+    #[ void
+    #[ ${table.name}_setdefault(struct ${table.name}_action action)
     #[ {
     #[     table_setdefault_promote(TABLE_${table.name}, (uint8_t*)&action);
     #[ }
 
 
 for table in hlir.p4_tables.values():
-    #[ 
-    #[ void ${table.name}_add_table_entry(struct p4_ctrl_msg* ctrl_m)
-    #[ {
+    #[ void
+    #[ ${table.name}_add_table_entry(struct p4_ctrl_msg* ctrl_m) {
     for i, m in enumerate(table.match_fields):
         match_field, match_type, match_mask = m
         if match_type is p4.p4_match_type.P4_MATCH_EXACT:
@@ -88,8 +86,8 @@ for table in hlir.p4_tables.values():
         for j, (name, length) in enumerate(zip(action.signature, action.signature_widths)):
             #[ uint8_t* ${name} = (uint8_t*)((struct p4_action_parameter*)ctrl_m->action_params[${j}])->bitmap;
             #[ memcpy(action.${action.name}_params.${name}, ${name}, ${(length+7)/8});
-        #[     printf("Reply from the control plane arrived.\n");
-        #[     printf("Addig new entry to ${table.name} with action ${action.name}\n");
+        #[     debug("Reply from the control plane arrived.\n");
+        #[     debug("Addig new entry to ${table.name} with action ${action.name}\n");
         #[     ${table.name}_add(
         for m in table.match_fields:
             match_field, match_type, match_mask = m
@@ -100,33 +98,56 @@ for table in hlir.p4_tables.values():
         #[ }
     #[ }
 
-#[ 
-#[ void recv_from_controller(struct p4_ctrl_msg* ctrl_m)
-#[ {
+for table in hlir.p4_tables.values():
+    #[ void
+    #[ ${table.name}_set_default_table_action(struct p4_ctrl_msg* ctrl_m) {
+    #[ debug("Action name: %s\n", ctrl_m->action_name);
+    for action in table.actions:
+        #[ if(strcmp("${action.name}", ctrl_m->action_name)==0) {
+        #[     struct ${table.name}_action action;
+        #[     action.action_id = action_${action.name};
+        for j, (name, length) in enumerate(zip(action.signature, action.signature_widths)):
+            #[ uint8_t* ${name} = (uint8_t*)((struct p4_action_parameter*)ctrl_m->action_params[${j}])->bitmap;
+            #[ memcpy(action.${action.name}_params.${name}, ${name}, ${(length+7)/8});
+        #[     debug("Message from the control plane arrived.\n");
+        #[     debug("Set default action for ${table.name} with action ${action.name}\n");
+        #[     ${table.name}_setdefault( action );
+        #[ }
+    #[ }
+
+
+#[ void recv_from_controller(struct p4_ctrl_msg* ctrl_m) {
+#[     debug("MSG from controller %d %s\n", ctrl_m->type, ctrl_m->table_name);
 #[     if (ctrl_m->type == P4T_ADD_TABLE_ENTRY) {
 for table in hlir.p4_tables.values():
     #[ if (strcmp("${table.name}", ctrl_m->table_name) == 0)
     #[     ${table.name}_add_table_entry(ctrl_m);
 #[     }
+#[     else if (ctrl_m->type == P4T_SET_DEFAULT_ACTION) {
+for table in hlir.p4_tables.values():
+    #[ if (strcmp("${table.name}", ctrl_m->table_name) == 0)
+    #[     ${table.name}_set_default_table_action(ctrl_m);
+#[     }
 #[ }
 
 
 
-#[ 
 #[ backend bg;
 #[ void init_control_plane()
 #[ {
-#[     printf("Inside init_control_plane \n");
+#[     debug("Creating control plane connection...\n");
 #[     bg = create_backend(3, 1000, "localhost", 11111, recv_from_controller);
 #[     launch_backend(bg);
+#[ /*
 if "smac" in hlir.p4_tables:
     #[ struct smac_action action;
     #[ action.action_id = action_mac_learn;
     #[ smac_setdefault(action);
-    #[ printf("smac setdefault\n");
+    #[ debug("smac setdefault\n");
 if "dmac" in hlir.p4_tables:
     #[ struct dmac_action action2;
     #[ action2.action_id = action_bcast;
     #[ dmac_setdefault(action2);
-    #[ printf("dmac setdefault\n");
+    #[ debug("dmac setdefault\n");
+#[ */
 #[ }
