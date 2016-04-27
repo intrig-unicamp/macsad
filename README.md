@@ -1,136 +1,136 @@
 MACSAD
 ==========
+Follow the steps below to setup and run MACSAD on a Ubuntu 14.0.
 
-Downloading the MACSAD project:
+# Part 1
+---
+##ODP:
 
-`git clone git@github.com:intrig-unicamp/mac.git`
+MACSAD uses ODP for forwarding plane developement. Clone the ODP git project in any directory of your choice and compile.
 
-Updating the submodules:
-
-- `cd mac`
-- `git submodule init`
-- `git submodule update`
-
-#P4-Hlir
-
-After download the submodules, is necessary install the P4-Hlir, follow the steps below:
-
-Dependencies:
-
-The following are required to run `p4-validate` and `p4-graphs`:
-
-- the Python `yaml` package
-- the Python `ply` package
-- the `dot` tool
-
-`ply` will be installed automatically by `setup.py` when installing p4-hlir.
-
-On Ubuntu, the following packages can be installed with apt-get to satisfy the remaining dependencies:
-
-- `python-yaml`
-- `graphviz`
-
-To install:
-
-`sudo python setup.py install`
-
-To run validate tool:
-
-p4-validate \<path_to_p4_program\>
-
-To open a Python shell with an HLIR instance accessible:
-
-p4-shell \<path_to_p4_program\>
-
-#ODP:
-
-Is necessary download and compile the ODP project, follow the steps below:
-
-`git clone https://git.linaro.org/lng/odp.git`
-
-`cd odp`
-
+- `git clone https://git.linaro.org/lng/odp.git`
+- `cd odp`
+- `git checkout tags/v1.9.0.0`
 - `./bootstrap`
 - `./configure`
 - `make`
 
-After install ODP, is necessary to set the environment variable `ODP_SDK` with the installation directory `~/odp`
+After compiling ODP, it is necessary to set the environment variable `ODP_SDK` as below:
 
-export ODP_SDK=\<path_of_ODP\>
+- `export ODP_SDK=\<path_of_ODP
 
-Also can be added as a environment variable at the `~/.bashrc`file
+NOTE: It can also be added to the `~/.bashrc` file.
 
-#Compiling MACSAD
+# Part 2
+---
 
-Inside our `mac` directory. First we need to add the P4 c files with the command:
+Clone the MACSAD project.
 
-`python src/compiler.py examples/p4_src/l2_switch_test.p4`
+- `git clone git@github.com:intrig-unicamp/mac.git`
+- `cd mac`
 
-*This line need to be run if the `compiler.py` is modified or if any file inside `src/hardware_indep` has been changed.
+MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
-Then we can compile the project with:
+- `git submodule init`
+- `git submodule update`
 
-`make`
+##P4-Hlir:
 
-#Running an example
+Install p4-Hlir as below:
 
-TERMINAL 1
+_Dependencies:_
 
-Start the Controller:
+- `sudo apt-get install python-yaml`
+- `sudo apt-get install graphviz`
+- `sudo python setup.py install`
 
-- `cd src/hardware_dep/shared/ctrl_plane`
-- `make clean`
-- `make mac_controller`
-- `./mac_controller`
+NOTE: For any issues refer the README file under p4-hlir directory.
 
-TERMINAL 2
+##Initial configurations necessary for MACSAD
 
-Create veth interfaces:
+1) The p4 program needs to be translated for the MACSAD switch project. You can do this as below:
+
+- `cd mac`
+- `python src/compiler.py examples/p4_src/l2_switch_test.p4`
+
+NOTE: This needs to be done everytime the P4 source file is modified or if any of the sugered file inside `src/hardware_indep` is changed.
+
+2) Create veth interfaces:
 
 - `cd /script`
 - `./host_create_veth_interfaces.sh`
 
-Set the environment variable `LD_LIBRARY_PATH` with the directory `~/odp/lib/.libs`
+3) Set the environment variable `LD_LIBRARY_PATH`:
 
-export LD_LIBRARY_PATH=\<path_of_odp_lib_.libs\>
+- `export LD_LIBRARY_PATH=$ODP_SDK/lib/.libs:$LD_LIBRARY_PATH`
 
-Start the switch
+NOTE: It can also be added to the `~/.bashrc` file.
 
-Run the switch with veth interfaces 1.0 and 2.1
+##Compile MACSAD
+After this MACSAD can be compiled as below:
+
+- `make`
+
+# Part 3
+---
+
+## Running a simple test
+
+We will use veth1.x and veth2.x pairs in this example. Veth1.1 and veth2.0 will be part of the switch. We will send packet to veth1.0 and monitor at veth2.1. Similary we will send packet to veth2.1 and recieve the packets at veth1.0.
+
+Is necessary to use the MAC addresses of veth1.1 and veth2.0 interfaces while forming the packets. 
+Let us assume that the MAC addresses are: 
+
+veth2.0 - a2:5e:37:ac:a1:7f
+
+veth1.1 - fa:4f:e8:df:b1:5f
+
+We need four terminals to perform this test.
+
+###TERMINAL 1:
+
+Start the minimalistic Controller:
+
+- `cd <mac>/src/hardware_dep/shared/ctrl_plane`
+- `make clean`
+- `make mac_controller`
+- `./mac_controller`
+
+###TERMINAL 2:
+
+Start the MACSAD switch with veth interfaces 1.0 and 2.1
 
 - `./mac_ad -i veth1.0,veth2.1`
 
-*Run as root
+NOTE: Run with root privilege.
 
-TERMINAL 3
+###TERMINAL 3:
+We use scapy to send packet to the switch interface. You can install the scapy package as below:
 
-Using scapy, we can create packages and send it from one interface to other
+- `sudo apt-get install scapy`
 
-`sudo apt-get install scapy`
+First send a packet via veth2.0:
 
-Scapy is necessary to run as root
+NOTE: Run scapy with root privilege.
 
-`sudo scapy`
+- `sudo scapy`
 
-The first package goes from veth2.0 to veth1.1
+Create a packet with veth2.0 as source and veth1.1 as destination as below:
 
-Is necessary to use the MAC address of your veth2.0 and veth1.1 in order to create the package. For this example the MAC address are going to be: veth2.0 a2:5e:37:ac:a1:7f and veth1.1 fa:4f:e8:df:b1:5f.
+- `pkt = Ether(dst='fa:4f:e8:df:b1:5f',src='a2:5e:37:ac:a1:7f')/IP(dst='192.168.0.1',src='192.168.0.2')`
 
-`pkt = Ether(dst='fa:4f:e8:df:b1:5f',src='a2:5e:37:ac:a1:7f')/IP(dst='192.168.0.1',src='192.168.0.2')`
+Send one copy of the packet:
 
-To send the package from veth2.0 as source, we are going to excecute the command below:
+- `sendp(pkt,iface="veth2.0",count=1);`
 
-`sendp(pkt,iface="veth2.0",count=1);`
+You should be able to catch the packet at veth1.1 using tcpdump/tshark in terminal 4. You can also verify the RX count using ifconfig.
 
-*The complete process of sending the package can be seen at TERMINAL 2
+NOTE: The packet processing logs can be seen at TERMINAL 2 as debug output of the switch.
 
-Now we are going to send a package from veth1.1 to veth2.0:
+Now send a packet from veth1.1 to veth2.0 and verify similarly at terminal 4.
 
-`pkt = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.1',src='192.168.0.2')`
+- `pkt = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.1',src='192.168.0.2')`
 
-`sendp(pkt,iface="veth1.1",count=1);`
+- `sendp(pkt,iface="veth1.1",count=1);`
 
-
-
-
-
+The first packet with an unknown destination mac address will be broadcasted by the swith while the source mac address wis learned. Now after the two pakcets sent, the switch has already learned the mac addresses of veth1.1 and veth2.0. Now if we send those packets again, switch will forward those pakcets via corresponding ports instead of broadcasting them.

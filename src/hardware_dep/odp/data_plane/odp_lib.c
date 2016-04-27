@@ -113,6 +113,7 @@ int odpc_lcore_conf_init ()
 		for(i = 0; i < NB_COUNTERS; i++)
 			gconf->state.counters[i] = state[socketid].counters[i];
 	}
+	printf("Configuring lcore structs done...\n");
 	return 0;
 }
 
@@ -173,9 +174,11 @@ void table_setdefault_promote(int tableid, uint8_t* value)
 }
 
 int odp_dev_name_to_id (char *if_name) {
+	int i;
 
-	for (i=0; i < gconf->if_count; i++) { 
-			if(strcmp (gconf->if_names[i], if_name) == 0) {
+	for (i=0; i < gconf->appl.if_count; i++) {
+			if(strcmp (gconf->appl.if_names[i], if_name) == 0) {
+				printf("interface id %d found for %s\n",i, if_name);
 				return i;
 			}
 	}
@@ -310,7 +313,6 @@ static odp_pktio_t create_pktio(const char *name, odp_pool_t pool, int mode)
 		exit(1);
 	}
 
-//	odp_pktin_queue_param_init(&in_queue_param);
 //	odp_pktout_queue_param_init(&out_queue_param);
 
     odp_pktin_queue_param_init(&pktin_param);
@@ -367,8 +369,6 @@ static void *launch_worker(void *arg)
 	odp_main_worker();
 	return NULL;
 }
-
-
 
 /**
  * Prinf usage information
@@ -623,7 +623,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 	odp_cpumask_default_worker(&cpumask, num_workers);
 	(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
 
-	gbl_args->appl.num_workers = num_workers;
+	gconf->appl.num_workers = num_workers;
 
 	for (i = 0; i < num_workers; i++)
 		gconf->mconf[i].thr_idx = i;
@@ -655,7 +655,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 	for (i = 0; i < gconf->appl.if_count; ++i)
 	{
 		gconf->pktios[i].pktio = create_pktio(gconf->appl.if_names[i], pool, gconf->appl.mode);
-		printf("interface id %d, pktio index %d, ifname %s \n", i, pktio_to_id(pktio), gconf->appl.if_names[i]);
+		printf("interface id %d, ifname %s, pktio:%02" PRIu64 " \n", i, gconf->appl.if_names[i],odp_pktio_to_u64(gconf->pktios[i].pktio));
 	}
 	/* Create and init worker threads */
 	memset(gconf->thread_tbl, 0, sizeof(gconf->thread_tbl));
@@ -665,51 +665,36 @@ uint8_t odpc_initialize(int argc, char **argv)
 	thr_params.instance = instance;
 
 	cpu = odp_cpumask_first(&cpumask);
+	printf("count threadmask %d\n ", odp_cpumask_count(&cpumask));
 	/* number of interface and workers should be same */
 	for (i = 0; i < num_workers; ++i) {
-		odp_cpumask_t thd_mask;
-		void *(*thr_run_func) (void *);
 		int if_idx;
+
+		void *(*thr_run_func) (void *);
 
 		if_idx = i % gconf->appl.if_count;
 
 		gconf->mconf[i].pktio_dev = gconf->appl.if_names[i];
 		gconf->mconf[i].mode = gconf->appl.mode;
 
-		printf("if %s\n ", gconf->appl.if_names[i]);
+		printf("if %s and pktio_dev %s \n ", gconf->appl.if_names[i], gconf->mconf[i].pktio_dev);
 
 		if (gconf->appl.mode == APPL_MODE_PKT_BURST) {
 			thr_run_func = launch_worker;
-			printf("thr func set to launch_worker\n ");
+			printf("thread func set to launch_worker\n ");
 		}
-		//            thr_run_func = pktio_ifburst_thread;
-		//      else /* APPL_MODE_PKT_QUEUE */
-		//        thr_run_func = pktio_queue_thread;
 		/*
 		 * Create threads one-by-one instead of all-at-once,
 		 * because each thread might get different arguments.
 		 * Calls odp_thread_create(cpu) for each thread
 		 */
 
-		printf("count in threadmask %d\n ", odp_cpumask_count(&cpumask));
 		thr_params.arg      = &gconf->mconf[i];
 	    thr_params.start    = thr_run_func;
 
 		odph_linux_pthread_create(&gconf->thread_tbl[i],
 				                  &cpumask, &thr_params);
-/*		odph_linux_pthread_create(&gconf->thread_tbl[i], &thd_mask,
-				thr_run_func,
-				&gconf->mconf[i],
-				ODP_THREAD_WORKER);
-*/
-		/* when we have multiple CPU, we will use this to assign different
-		 * threads to different CPU */
-		// cpu = odp_cpumask_next(&cpumask, cpu);
 	}
-
-	/* ToDo */
-	/* check if similar thing on ODP */
-	//	check_all_ports_link_status(nb_ports, enabled_port_mask);
 
 	/* Initialize all the tables defined in p4 src */
 	odpc_lookup_tbls_init();
@@ -722,11 +707,10 @@ uint8_t odpc_initialize(int argc, char **argv)
 
 	/* Master thread waits for other threads to exit */
 	odph_linux_pthread_join(gconf->thread_tbl, num_workers);
-	//	odph_linux_pthread_join(&thd, 1);
 
-	free(gconf->appl.if_names);
-	free(gconf->appl.if_str);
-	free(gconf);
+//	free(gconf->appl.if_names);
+//	free(gconf->appl.if_str);
+//	free(gconf);
 	printf("Exit\n\n");
 
 	return 0;
