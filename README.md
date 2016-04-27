@@ -26,8 +26,9 @@ NOTE: It can also be added to the `~/.bashrc` file.
 
 Clone the MACSAD project.
 
-- `git clone git@github.com:intrig-unicamp/mac.git`
+- `git clone https://github.com/intrig-unicamp/mac.git`
 - `cd mac`
+- `git checkout v0.1`
 
 MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
