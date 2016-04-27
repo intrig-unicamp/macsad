@@ -94,6 +94,7 @@ typedef struct packet_descriptor_s {
 extern lookup_table_t table_config[];
 extern counter_t counter_config[];
 
+void init_dataplane(packet_descriptor_t* packet, lookup_table_t** tables);
 void handle_packet(packet_descriptor_t* packet, lookup_table_t** tables);
 
 #endif //DATAPLANE_H

@@ -271,10 +271,6 @@ int odpc_stfull_memories_init()
             rte_exit(EXIT_FAILURE, "Socket %d of lcore %u is out of range %d\n",
                 socketid, lcore_id, NB_SOCKETS);
         }
-        if (state[socketid].tables[0][0] == NULL) {
-            create_tables_on_socket(socketid);
-            create_counters_on_socket(socketid);
-        }
     }
     return 0;
 }
@@ -575,7 +571,8 @@ uint8_t odpc_initialize(int argc, char **argv)
 	odp_cpumask_t cpumask;
 	odph_linux_thr_params_t thr_params;
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
-	int num_workers, i, cpu;
+	int num_workers, i;
+//	int cpu;
 
 	//parse args
 	odp_shm_t shm;
@@ -664,7 +661,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 	thr_params.thr_type = ODP_THREAD_WORKER;
 	thr_params.instance = instance;
 
-	cpu = odp_cpumask_first(&cpumask);
+//	cpu = odp_cpumask_first(&cpumask);
 	printf("count threadmask %d\n ", odp_cpumask_count(&cpumask));
 	/* number of interface and workers should be same */
 	for (i = 0; i < num_workers; ++i) {

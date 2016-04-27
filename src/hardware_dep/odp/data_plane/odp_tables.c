@@ -24,43 +24,43 @@ copy_to_socket(uint8_t* src, int length, int socketid) {
 }
 
 /* TODO to be removed later */
-/* inner element structure of hash table                                       
- * To resolve the hash confict:                                                  
- * we put the elements with different keys but a same HASH-value                 
- * into a list                                                                   
- */                                                                              
-typedef struct odph_hash_node {                                                  
-	/** list structure,for list opt */                                           
-	odph_list_object list_node;                                                  
+/* inner element structure of hash table
+ * To resolve the hash confict:
+ * we put the elements with different keys but a same HASH-value
+ * into a list
+ */
+typedef struct odph_hash_node {
+	/** list structure,for list opt */
+	odph_list_object list_node;
 	/* Flexible Array,memory will be alloced when table has been created
-	 * Its length is key_size + value_size,         
+	 * Its length is key_size + value_size,
 	 * suppose key_size = m; value_size = n;
-	 * its structure is like:                                                    
-	 * k_byte1 k_byte2...k_byten v_byte1...v_bytem                               
-	 */                                                                          
-	char content[0];                                                             
+	 * its structure is like:
+	 * k_byte1 k_byte2...k_byten v_byte1...v_bytem
+	 */
+	char content[0];
 } odph_hash_node;
 
-typedef struct {                                                                 
-	uint32_t magicword; /**< for check */                                        
-	uint32_t key_size; /**< input param when create,in Bytes */                  
-	uint32_t value_size; /**< input param when create,in Bytes */                
-	uint32_t init_cap; /**< input param when create,in Bytes */                  
-	/** multi-process support,every list has one rw lock */                      
-	odp_rwlock_t *lock_pool;                                                     
+typedef struct {
+	uint32_t magicword; /**< for check */
+	uint32_t key_size; /**< input param when create,in Bytes */
+	uint32_t value_size; /**< input param when create,in Bytes */
+	uint32_t init_cap; /**< input param when create,in Bytes */
+	/** multi-process support,every list has one rw lock */
+	odp_rwlock_t *lock_pool;
 	/** table bucket pool,every hash value has one list
-	 * head */                  
-	odph_list_head *list_head_pool;                                              
-	/** number of the list head in list_head_pool */                             
-	uint32_t head_num;                                                           
-	/** table element pool */                                                    
-	odph_hash_node *hash_node_pool;                                              
+	 * head */
+	odph_list_head *list_head_pool;
+	/** number of the list head in list_head_pool */
+	uint32_t head_num;
+	/** table element pool */
+	odph_hash_node *hash_node_pool;
 	/** number of element in the
-	 * hash_node_pool */                               
-	uint32_t hash_node_num;                                                      
-	char rsv[7]; /**< Reserved,for alignment */                                  
-	char name[ODPH_TABLE_NAME_LEN]; /**< table name */                           
-} odph_hash_table_imp;                                                           
+	 * hash_node_pool */
+	uint32_t hash_node_num;
+	char rsv[7]; /**< Reserved,for alignment */
+	char name[ODPH_TABLE_NAME_LEN]; /**< table name */
+} odph_hash_table_imp;
 
 // ============================================================================
 // SIMPLE HASH FUNCTION FOR EXACT TABLES
@@ -217,6 +217,8 @@ ternary_add(lookup_table_t* t, uint8_t* key, uint8_t* mask, uint8_t* value)
 // ----------------------------------------------------------------------------
 // LOOKUP
 
+//TODO use crc hash func of ODP for HASH table implementaion
+
 uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 {
 	int ret = 0;
@@ -266,33 +268,33 @@ void odpc_tbl_des (lookup_table_t* t){
 	Create table for each socket (CPU).
 	Create replica set of tables too.
 */
-static void create_tables_on_socket (int socketid)                               
-{                                                                                
-	//only if the table is defined in p4 prog                                    
-	if (table_config == NULL) return;                                            
-	int i;                                                                       
-	for (i=0;i < NB_TABLES; i++) {                                               
-		printf("creting table with tableID  %d \n", i);                          
-		lookup_table_t t = table_config[i];                                      
-		int j;                                                                   
-		for(j = 0; j < NB_REPLICA; j++) {                                        
+static void create_tables_on_socket (int socketid)
+{
+	//only if the table is defined in p4 prog
+	if (table_config == NULL) return;
+	int i;
+	for (i=0;i < NB_TABLES; i++) {
+		printf("creting table with tableID  %d \n", i);
+		lookup_table_t t = table_config[i];
+		int j;
+		for(j = 0; j < NB_REPLICA; j++) {
 			state[socketid].tables[i][j] = malloc(sizeof(lookup_table_t));
 			memcpy(state[socketid].tables[i][j], &t, sizeof(lookup_table_t));
 			table_create(state[socketid].tables[i][j], socketid, j);
-		}                                                                        
-		state[socketid].active_replica[i] = 0;		
-	}                                                                            
-}                                                                                
+		}
+		state[socketid].active_replica[i] = 0;
+	}
+}
 
 /*
  Initialize the lookup tables for dataplane.
 TODO make it void
-*/                                                                               
-int odpc_lookup_tbls_init()                                                      
-{                                                                                
-    int socketid = SOCKET_DEF;                                                   
+*/
+int odpc_lookup_tbls_init()
+{
+    int socketid = SOCKET_DEF;
     unsigned lcore_id;
-	printf("Initializing tables...\n");                                          
+	printf("Initializing tables...\n");
     for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) {
 /*
         if (rte_lcore_is_enabled(lcore_id) == 0) continue;
@@ -308,30 +310,30 @@ int odpc_lookup_tbls_init()
 //            create_counters_on_socket(socketid);
         }
     }
-    printf("Initializing tables Done.\n");                                       
-    return 0;                                                                    
+    printf("Initializing tables Done.\n");
+    return 0;
 }
 
 /*
  Initialize the lookup tables for dataplane.
 TODO make it void
-*/                                                                               
-int odpc_lookup_tbls_des() 
+*/
+int odpc_lookup_tbls_des()
 {
-    int socketid = SOCKET_DEF;                                                   
-	int i, j;  
-	unsigned lcore_id;	
-	printf("Destroying Lookup tables...\n");                                     
-	for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) { 
-		for(i = 0; i < NB_TABLES; i++) {                                         
-			for(j = 0; j < NB_REPLICA; j++) {                                    
-				if (state[socketid].tables[i][j] != NULL){                      
+    int socketid = SOCKET_DEF;
+	int i, j;
+	unsigned lcore_id;
+	printf("Destroying Lookup tables...\n");
+	for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) {
+		for(i = 0; i < NB_TABLES; i++) {
+			for(j = 0; j < NB_REPLICA; j++) {
+				if (state[socketid].tables[i][j] != NULL){
 					odpc_tbl_des (state[socketid].tables[0][0]);
 				}
 			}
 		}
 	}
 	/* Success */
-	printf("Destroying Lookup tables done.\n");                                          
+	printf("Destroying Lookup tables done.\n");
 	return 0;
 }

@@ -6,6 +6,12 @@
 #include "data_plane_data.h"
 #include "dataplane.h"
 
+#ifdef NDEBUG
+#define debug(M, ...)
+#else
+#define debug(M, ...) fprintf(stderr, "[DEBUG] " M "", ##__VA_ARGS__)
+#endif
+
 typedef struct packet_descriptor_s packet_descriptor_t;
 typedef struct header_descriptor_s header_descriptor_t;
 typedef struct header_reference_s  header_reference_t;

@@ -101,11 +101,11 @@ static inline void
 dbg_print_headers(packet_descriptor_t* pd)
 {
     for (int i = 0; i < HEADER_INSTANCE_COUNT; ++i) {
-        printf("    :: header %d (type=%d, len=%d) = ", i, pd->headers[i].type, pd->headers[i].length);
+        debug("    :: header %d (type=%d, len=%d) = ", i, pd->headers[i].type, pd->headers[i].length);
         for (int j = 0; j < pd->headers[i].length; ++j) {
-            printf("%02x ", ((uint8_t*)(pd->headers[i].pointer))[j]);
+            debug("%02x ", ((uint8_t*)(pd->headers[i].pointer))[j]);
         }
-        printf("\n");
+        debug("\n");
     }
 }
 
@@ -217,18 +217,18 @@ static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 	MODIFY_INT32_INT32(packet_desc, field_instance_standard_metadata_ingress_port, inport); // fix? LAKI
 }
 
-void packet_received(odp_packet_t *p, unsigned portid, int thr_idx)
+void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, int thr_idx)
 {
 	printf(":::: EXECUTING packet recieved\n");
-	packet_descriptor_t packet_desc;
-	packet_desc.pointer = (uint8_t *)odp_packet_data(*p);
-	packet_desc.packet = (packet *)p;
+	pd->pointer = (uint8_t *)odp_packet_data(*p);
+	pd->packet = (packet *)p;
 
-	init_metadata(&packet_desc, portid);
+//	set_metadata_inport(pd, portid);
+	init_metadata(pd, portid);
 	struct lcore_state *state_tmp = &gconf->state;
-	handle_packet(&packet_desc, state_tmp->tables);
-//	handle_packet(&packet_desc, &state->tables);
-	send_packet(&packet_desc, thr_idx);
+	handle_packet(pd, state_tmp->tables);
+//	handle_packet(pd, &state->tables);
+	send_packet(pd, thr_idx);
 }
 
 void odp_main_worker (void *arg)
@@ -248,6 +248,9 @@ void odp_main_worker (void *arg)
 	unsigned long err_cnt = 0;
 	unsigned long tmp = 0;
 	int if_idx;
+	packet_descriptor_t pd;
+
+//	init_dataplane(&pd, gconf->state.tables);
 
 	printf(":: INSIDE odp_main_worker\n");
 	thr = odp_thread_id();
@@ -289,7 +292,7 @@ void odp_main_worker (void *arg)
 		if (pkts > 0) {
 			for (i = 0; i < pkts; i++) {
 				odp_packet_t pkt = pkt_tbl[i];
-				packet_received(&pkt, if_idx, thr_args->thr_idx);
+				packet_received(&pd, &pkt, if_idx, thr_args->thr_idx);
 			}
 
 			/* Print packet counts every once in a while */

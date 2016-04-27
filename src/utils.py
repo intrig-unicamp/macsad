@@ -1,9 +1,9 @@
-
 import sys
 import os
 
 import pprint
 from p4_hlir.hlir.p4_tables import p4_match_type
+import p4_hlir.hlir.p4 as p4
 
 errors = []
 
@@ -26,7 +26,7 @@ def showWarnings():
    for w in warnings: print w
 
 
-disable_hlir_messages = True
+disable_hlir_messages = False
 
 simplePrimitives = set(["drop", "no_op"])
 
@@ -108,6 +108,38 @@ def pretty_print_all(hlir):
     pretty_print(hlir.p4_action_selectors, "p4_action_selectors")
     pretty_print(hlir.p4_conditional_nodes, "p4_conditional_nodes")
 
-
 def dbg(str):
     print(str)
+
+###############################################################################
+
+def format_p4_node(node):
+    if node is None:
+        return ""
+    elif isinstance(node, p4.p4_table):
+        return "return apply_table_%s(pd, tables);" % node.name
+    elif isinstance(node, p4.p4_conditional_node):
+        return "if (%s) { %s } else { %s }" % (format_expr(node.condition), format_p4_node(node.next_[True]), format_p4_node(node.next_[False]))
+
+def format_op(op):
+    if op is "not":
+        return "!"
+    elif op is "and":
+        return "&&"
+    elif op is "or":
+        return "||"
+    elif op is "valid":
+        "TODO"
+    else:
+        return str(op)
+
+def format_expr(e):
+    if e is None:
+        return ""
+    elif isinstance(e, bool):
+        return "1" if e else "0"
+    elif isinstance(e, int):
+        return str(e)
+    elif isinstance(e, p4.p4_expression):
+        return format_expr(e.left) + format_op(e.op) + format_expr(e.right)
+

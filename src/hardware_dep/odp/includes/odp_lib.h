@@ -33,7 +33,7 @@ extern uint32_t enabled_port_mask;
 extern int promiscuous_on;
 extern int numa_on;
 
-#define debug 1
+//#define debug 1
 
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1 // rte_log.h
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1 // rte_log.h

@@ -25,7 +25,7 @@ void fill_smac_table(uint8_t port, uint8_t mac[6])
 	strcpy(exact->header.name, "ethernet.srcAddr");
 	memcpy(exact->bitmap, mac, 6);
 	exact->length = 6*8+0;
-	
+
 	a = add_p4_action(h, 2048);
 	strcpy(a->description.name, "_nop");
 
@@ -57,8 +57,8 @@ void fill_dmac_table(uint8_t port, uint8_t mac[6])
 
         a = add_p4_action(h, 2048);
         strcpy(a->description.name, "forward");
-	
-	ap = add_p4_action_parameter(h, a, 2048);	
+
+	ap = add_p4_action_parameter(h, a, 2048);
 	strcpy(ap->name, "port");
 	memcpy(ap->bitmap, &port, 1);
 	ap->length = 1*8+0;
@@ -161,11 +161,64 @@ void dhf(void* b) {
     }
 }
 
-int main() 
+void set_default_action_smac()
+{
+    char buffer[2048]; /* TODO: ugly */
+    struct p4_header* h;
+    struct p4_set_default_action* sda;
+    struct p4_action* a;
+
+    printf("Generate set_default_action message for table smac\n");
+
+    h = create_p4_header(buffer, 0, sizeof(buffer));
+
+    sda = create_p4_set_default_action(buffer,0,sizeof(buffer));
+    strcpy(sda->table_name, "smac");
+
+    a = &(sda->action);
+    strcpy(a->description.name, "mac_learn");
+
+    netconv_p4_header(h);
+    netconv_p4_set_default_action(sda);
+    netconv_p4_action(a);
+
+    send_p4_msg(c, buffer, sizeof(buffer));
+}
+
+void set_default_action_dmac()
+{
+    char buffer[2048]; /* TODO: ugly */
+    struct p4_header* h;
+    struct p4_set_default_action* sda;
+    struct p4_action* a;
+
+    printf("Generate set_default_action message for table dmac\n");
+
+    h = create_p4_header(buffer, 0, sizeof(buffer));
+
+    sda = create_p4_set_default_action(buffer,0,sizeof(buffer));
+    strcpy(sda->table_name, "dmac");
+
+    a = &(sda->action);
+    strcpy(a->description.name, "bcast");
+
+    netconv_p4_header(h);
+    netconv_p4_set_default_action(sda);
+    netconv_p4_action(a);
+
+    send_p4_msg(c, buffer, sizeof(buffer));
+}
+
+void init() {
+    set_default_action_smac();
+    set_default_action_dmac();
+}
+
+int main()
 {
 	printf("Create and configure controller...\n");
-	c = create_controller(11111, 3, dhf);
-
+//	c = create_controller(11111, 3, dhf);
+    c = create_controller_with_init(11111, 3, dhf, init);
 	printf("Launching controller's main loop...\n");
 	execute_controller(c);
 
