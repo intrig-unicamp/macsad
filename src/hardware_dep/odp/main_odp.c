@@ -38,6 +38,9 @@ uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 // note: this much space MUST be able to hold all deparsed content
 #define DEPARSE_BUFFER_SIZE		1024
 
+/** Global barrier to synchronize main and workers */
+static odp_barrier_t barrier;
+
 //=============================================================================
 
 /* Send burst of packets on an output interface */
@@ -100,13 +103,22 @@ return 0;
 static inline void
 dbg_print_headers(packet_descriptor_t* pd)
 {
-    for (int i = 0; i < HEADER_INSTANCE_COUNT; ++i) {
-        debug("    :: header %d (type=%d, len=%d) = ", i, pd->headers[i].type, pd->headers[i].length);
-        for (int j = 0; j < pd->headers[i].length; ++j) {
-            debug("%02x ", ((uint8_t*)(pd->headers[i].pointer))[j]);
-        }
-        debug("\n");
-    }
+	char buf[100];
+	int len = 0;
+	for (int i = 0; i < HEADER_INSTANCE_COUNT; ++i) {
+		info("    :: header %d (type=%d, len=%d) = ", i, pd->headers[i].type, pd->headers[i].length);
+		for (int j = 0; j < pd->headers[i].length; ++j) {
+			if (len < 100) {
+				//	info("%02x ", ((uint8_t*)(pd->headers[i].pointer))[j]);
+				len += sprintf(buf+len, "%02x ", ((uint8_t*)(pd->headers[i].pointer))[j]);
+			}
+		}
+		info ("%s \n", buf);
+	}
+#if 0
+Try printing the hdeader  by specifying the length :   '.*' in the  printf statement
+printf("%.*s",len,buf);
+#endif
 }
 
 static inline unsigned
@@ -140,17 +152,37 @@ static inline uint32_t bitcnt(uint32_t v)
 
 	return (n);
 }
+#if 0
+static void swap_dmac_addr(odp_packet_t pkt, unsigned port) {
+
+	odph_ethhdr_t *eth;
+	odph_ethaddr_t tmp_addr;
+	odph_ipv4hdr_t *ip;
+	odp_u32be_t ip_tmp_addr; /* tmp ip addr */
+	unsigned i;
+
+	if (odp_packet_has_eth(pkt)) {
+		eth = (odph_ethhdr_t *)odp_packet_l2_ptr(pkt, NULL);
+
+		tmp_addr = eth->dst;
+		eth->dst = gconf->;
+		eth->src = tmp_addr;
+	}
+}
+#endif 
 
 /* send one pkt each time */
 static void odp_send_packet(odp_packet_t *p, uint8_t port)
 {
 	int sent;
+	odp_packet_t pkt = *p;
+//	swap_dmac_addr (p, port);
 
-	sent = odp_pktout_send(gconf->pktios[port].pktout[0], p, 1);
+	sent = odp_pktout_send(gconf->pktios[port].pktout[0], pkt, 1);
 	if (sent < 0)
 	{
-		printf("pkt sent failed \n");
-		sent = 0;
+//		odp_packet_free(pkt);
+		debug("pkt sent failed \n");
 	}
 }
 
@@ -162,46 +194,39 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
 	appl_args_t *appl = &gconf->appl;
 	uint32_t total_ports= appl->if_count;
 	int port;
+	odp_bool_t first = 1;
 
-	printf("Broadcast: ingress port %d, total no of ports %d\n",
-			ingress_port, total_ports);
+	odp_packet_t pkt_cp_tmp;
+
+	pkt_cp_tmp = odp_packet_copy((odp_packet_t *)pd->packet, gconf->pool);
+	if (pkt_cp_tmp == ODP_PACKET_INVALID) {
+		debug("Error: Tmp packet copy failed for sending %s \n", __FILE__);
+		return;
+	}
 
 	for (port = 0;port < total_ports;port++){
-		if (port != ingress_port){
-			printf("Broadcasting on o/p port id %d\n", port);
+
+		if (port == ingress_port)
+			continue;
+		if (first) { 
+			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
 			odp_send_packet((odp_packet_t *)pd->packet, port);
+			first = 0;
+		} else {
+			odp_packet_t pkt_cp;
+
+			pkt_cp = odp_packet_copy(pkt_cp_tmp, gconf->pool);
+			if (pkt_cp == ODP_PACKET_INVALID) {
+				debug("Error: packet copy failed fo sending %s \n", __FILE__);
+				continue;
+			}
+			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
+			odp_send_packet(pkt_cp, port);
 		}
 	}
-
+	
+	odp_packet_free (pkt_cp_tmp);
 	return;
-}
-
-/* Enqueue a single packet, and send burst if queue is filled */
-static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
-{
-	macs_conf_t *mconf;
-	int port = EXTRACT_EGRESSPORT(pd);
-	int inport = EXTRACT_INGRESSPORT(pd);
-
-	mconf = &gconf->mconf[thr_idx];
-
-	printf("  :::: EGRESSING\n");
-	dbg_print_headers(pd);
-	printf("    :: deparsing headers\n");
-	printf("    :: sendPacket called\n");
-	printf("ingress port is %d and egress port is %d \n", inport, port);
-
-	if (port==100) {
-		maco_bcast_packet(pd, inport);
-	} else {
-		/* o/p queue, pkt, no. of pkt to send */
-		odp_send_packet((odp_packet_t *)pd->packet, port);
-	}
-
-	/* TODO write code to properly free the packet */
-//	odp_packet_free ((struct odp_packet_t *)pd->packet);
-
-	return 0;
 }
 
 static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
@@ -214,21 +239,125 @@ static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 		};
 
 	int res32; // needs for the macro
-	MODIFY_INT32_INT32(packet_desc, field_instance_standard_metadata_ingress_port, inport); // fix? LAKI
+	MODIFY_INT32_INT32(packet_desc, field_instance_standard_metadata_ingress_port, inport);
+}
+
+static inline int send_packet(packet_descriptor_t* pd)
+{
+        int port = EXTRACT_EGRESSPORT(pd);
+        int inport = EXTRACT_INGRESSPORT(pd);
+
+        dbg_print_headers(pd);
+        info("ingress port is %d and egress port is %d \n", inport, port);
+
+        if (port==100) {
+                maco_bcast_packet(pd, inport);
+        } else {
+                /* o/p queue, pkt, no. of pkt to send */
+                odp_send_packet((odp_packet_t *)pd->packet, port);
+        }
+
+        return 0;
 }
 
 void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, int thr_idx)
 {
-	printf(":::: EXECUTING packet recieved\n");
+	struct lcore_state *state_tmp = &gconf->state;
 	pd->pointer = (uint8_t *)odp_packet_data(*p);
 	pd->packet = (packet *)p;
 
 //	set_metadata_inport(pd, portid);
 	init_metadata(pd, portid);
-	struct lcore_state *state_tmp = &gconf->state;
 	handle_packet(pd, state_tmp->tables);
-//	handle_packet(pd, &state->tables);
-	send_packet(pd, thr_idx);
+}
+
+void maco_pktio_queue_thread (void *arg)
+{
+        int pkts, i;
+        int portid;
+        int thr;
+        macs_conf_t *thr_args;
+        odp_pktio_t pktio;
+        odp_pktin_queue_t pktin;
+        odp_pktout_queue_t pktout;
+        int pkts_ok;
+	odp_packet_t pkt;
+        odp_packet_t pkt_tbl[MAX_PKT_BURST];
+        unsigned long pkt_cnt = 0;
+        unsigned long err_cnt = 0;
+        unsigned long tmp = 0;
+        int if_idx;
+	odp_queue_t inq;
+    odp_event_t ev;
+        packet_descriptor_t pd;
+
+//      init_dataplane(&pd, gconf->state.tables);
+
+        info(":: INSIDE odp_main_worker\n");
+        thr = odp_thread_id();
+        info("  the thread id is %d\n",thr);
+        thr_args = arg;
+
+        pktio = odp_pktio_lookup(thr_args->pktio_dev);
+        if_idx = odp_dev_name_to_id (thr_args->pktio_dev);
+
+        if (gconf->pktios[if_idx].pktio == ODP_PKTIO_INVALID) {
+                debug("  [%02i] Error: lookup of pktio %s failed\n",
+                                thr, thr_args->pktio_dev);
+                return;
+        }
+        if (pktio == ODP_PKTIO_INVALID) {
+                debug("  [%02i] Error: lookup of pktio for if %s failed\n",
+                                thr, thr_args->pktio_dev);
+                return;
+        }
+        info("  [%02i] looked up pktio:%02" PRIu64 ", burst mode\n",
+                        thr, odp_pktio_to_u64(pktio));
+
+//	if ((thr_args->mode == APPL_MODE_PKT_QUEUE) &&	
+        if (odp_pktin_event_queue(pktio, &inq, 1) != 1) {
+                debug("  [%02i] Error: no i/p event queue %s \n", thr, thr_args->pktio_dev);
+                return;
+        }
+
+        /* Currently Only one interface supported per thread.
+         * Hence only one pktio[0] */
+        thr_args->pktio[if_idx].pktout = pktout;
+
+        /* Loop packets */
+        while (1) {
+        odp_pktio_t pktio_tmp;
+
+        if (inq != ODP_QUEUE_INVALID)
+            ev = odp_queue_deq(inq);
+
+        if (ev == ODP_EVENT_INVALID)
+            continue;
+
+        pkt = odp_packet_from_event(ev);
+        if (!odp_packet_is_valid(pkt))
+            continue;
+
+        /* Drop packets with errors */
+//        if (odp_unlikely(drop_err_pkts(&pkt, 1) == 0)) {
+  //          debug("Drop frame - err_cnt:%lu\n", ++err_cnt);
+    //        continue;
+      //  }
+
+        //pktio_tmp = odp_packet_input(pkt);
+
+	/* Save interface ethernet address */
+	if (odp_pktio_mac_addr(gconf->pktios[if_idx].pktio,
+				gconf->port_eth_addr[if_idx].addr,
+				ODPH_ETHADDR_LEN) != ODPH_ETHADDR_LEN) {
+		debug("Error: interface ethernet address unknown\n");
+		exit(1);
+	}
+
+	packet_received(&pd, &pkt, if_idx, thr_args->thr_idx);
+	send_packet (&pd);
+}
+        return;
 }
 
 void odp_main_worker (void *arg)
@@ -252,39 +381,26 @@ void odp_main_worker (void *arg)
 
 //	init_dataplane(&pd, gconf->state.tables);
 
-	printf(":: INSIDE odp_main_worker\n");
+	info(":: INSIDE odp_main_worker\n");
 	thr = odp_thread_id();
-	printf("	the thread id is %d\n",thr);
+	info("	the thread id is %d\n",thr);
 	thr_args = arg;
 
 	pktio = odp_pktio_lookup(thr_args->pktio_dev);
 	if_idx = odp_dev_name_to_id (thr_args->pktio_dev);
 
 	if (gconf->pktios[if_idx].pktio == ODP_PKTIO_INVALID) {
-		printf("  [%02i] Error: lookup of pktio %s failed\n",
+		debug("  [%02i] Error: lookup of pktio %s failed\n",
 				thr, thr_args->pktio_dev);
 		return;
 	}
 	if (pktio == ODP_PKTIO_INVALID) {
-		printf("  [%02i] Error: lookup of pktio for if %s failed\n",
+		debug("  [%02i] Error: lookup of pktio for if %s failed\n",
 				thr, thr_args->pktio_dev);
 		return;
 	}
-	printf("  [%02i] looked up pktio:%02" PRIu64 ", burst mode\n",
+	info("  [%02i] looked up pktio:%02" PRIu64 ", burst mode\n",
 			thr, odp_pktio_to_u64(pktio));
-
-	if (odp_pktin_queue(pktio, &gconf->pktios[if_idx].pktin[0], 1) != 1) {
-		printf("  [%02i] Error: no pktin queue\n", thr);
-		return;
-	}
-	if (odp_pktout_queue(pktio, &gconf->pktios[if_idx].pktout[0], 1) != 1) {
-		printf("  [%02i] Error: no pktout queue\n", thr);
-		return;
-	}
-
-	/* Currently Only one interface supported per thread.
-	 * Hence only one pktio[0] */
-	thr_args->pktio[if_idx].pktout = pktout;
 
 	/* Loop packets */
 	for (;;) {
@@ -292,7 +408,16 @@ void odp_main_worker (void *arg)
 		if (pkts > 0) {
 			for (i = 0; i < pkts; i++) {
 				odp_packet_t pkt = pkt_tbl[i];
+				/* Save interface ethernet address */
+				if (odp_pktio_mac_addr(gconf->pktios[if_idx].pktio,
+							gconf->port_eth_addr[if_idx].addr,
+							ODPH_ETHADDR_LEN) != ODPH_ETHADDR_LEN) {
+					debug("Error: interface ethernet address unknown\n");
+					exit(1);
+				}
+
 				packet_received(&pd, &pkt, if_idx, thr_args->thr_idx);
+				send_packet (&pd);
 			}
 
 			/* Print packet counts every once in a while */
@@ -300,7 +425,7 @@ void odp_main_worker (void *arg)
 			if (odp_unlikely((tmp >= 100000) || /* OR first print:*/
 						((pkt_cnt == 0) && ((tmp-1) < MAX_PKT_BURST)))) {
 				pkt_cnt += tmp;
-				printf("  [%02i] pkt_cnt:%lu\n", thr, pkt_cnt);
+				info("  [%02i] pkt_cnt:%lu\n", thr, pkt_cnt);
 				fflush(NULL);
 				tmp = 0;
 			}

@@ -221,7 +221,11 @@ typedef struct mac_global{
     stats_t stats[MAX_WORKERS];
     /** Application (parsed) arguments */
     appl_args_t appl;
- 
+    /** Table of port ethernet addresses */
+    odph_ethaddr_t port_eth_addr[MAX_PKTIOS];
+/* pkt pool */
+	        odp_pool_t pool; 
+
     odph_linux_pthread_t thread_tbl[MAX_WORKERS];
     /** Thread specific arguments */
 	macs_conf_t mconf[ODP_MAX_LCORE];

@@ -7,10 +7,22 @@
 #include "dataplane.h"
 
 #ifdef NDEBUG
-#define debug(M, ...)
+#define debug(args, ...)
 #else
-#define debug(M, ...) fprintf(stderr, "[DEBUG] " M "", ##__VA_ARGS__)
+#define debug(args, ...) fprintf(stderr, "[DEBUG] %s:%d " args "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 #endif
+
+#ifdef NINFO
+#define info(args, ...)
+#else
+#define info(args, ...) fprintf(stderr, "[INFO] %s:%d " args "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#endif
+
+/*
+#define debug_print(fmt, ...) \
+        do { if (DEBUG) fprintf(stderr, "%s:%d:%s(): " fmt, __FILE__, \
+                                __LINE__, __func__, __VA_ARGS__); } while (0)
+*/
 
 typedef struct packet_descriptor_s packet_descriptor_t;
 typedef struct header_descriptor_s header_descriptor_t;

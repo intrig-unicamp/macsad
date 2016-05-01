@@ -16,5 +16,7 @@ CFLAGS += -std=gnu99
 
 #To define the backend used: odp/dpdk
 CFLAGS += -D ODP_BK
+#CFLAGS += -D NDEBUG
+CFLAGS += -D NINFO
 
 #CFLAGS += -always-make

@@ -5,9 +5,6 @@
 #include "stdio.h"
 #include "odph_list_internal.h"
 #include "odp_lib.h"
-#ifndef debug
-#define debug 1
-#endif
 
 // ============================================================================
 // LOOKUP TABLE IMPLEMENTATIONS
@@ -113,19 +110,19 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
 	odph_table_t tbl;
 	odph_table_ops_t *test_ops;
 	if(t->key_size == 0) return; // we don't create the table if there are no keys (it's a fake table for an element in the pipeline)
-	printf(":::: EXECUTING table create:\n");
+	info(":::: EXECUTING table create:\n");
 	switch(t->type) {
 		case LOOKUP_EXACT:
 			test_ops = &odph_hash_table_ops;
 			snprintf(name, sizeof(name), "%s_exact_%d_%d", t->name, socketid, replica_id);
 			if ((tbl = test_ops->f_lookup(name)) != NULL){
-				printf("  ::table %s already present \n", name);
+				info("  ::table %s already present \n", name);
 				test_ops->f_des(tbl);
 			}
 // name, capacity, key_size, value size
 			tbl = test_ops->f_create(name, 2, t->key_size, t->val_size);
 			if(tbl == NULL) {
-				printf("  ::Table %s creation fail\n", name);
+				debug("  ::Table %s creation fail\n", name);
 			    exit(0);
 			}
 
@@ -133,11 +130,11 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
             break;
     }
 //	odph_hash_table_imp *tbl_tmp = (odph_hash_table_imp *)tbl;
-//	printf("  ::Table odp %p %s, lval_size %d created \n", tbl_tmp, tbl_tmp->name, tbl_tmp->value_size);
+//	info("  ::Table odp %p %s, lval_size %d created \n", tbl_tmp, tbl_tmp->name, tbl_tmp->value_size);
 
-//printf("  ::Table lookup %p %s,type %d, lval_size %d, socket %d\n", t, t->name, t->type,t->val_size, socketid);
+//info("  ::Table lookup %p %s,type %d, lval_size %d, socket %d\n", t, t->name, t->type,t->val_size, socketid);
 //	extended_table_t * ext = t->table;
-//printf(" ::lookup %p, ext %p, tbl %p \n", t, t->table, ext->odp_table);
+//info(" ::lookup %p, ext %p, tbl %p \n", t, t->table, ext->odp_table);
 }
 
 // ----------------------------------------------------------------------------
@@ -145,7 +142,7 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
 
 void table_setdefault(lookup_table_t* t, uint8_t* value)
 {
-   printf(":::: EXECUTING table_setdefault - val size %d, socket id %d\n", t->val_size, t->socketid);
+   info(":::: EXECUTING table_setdefault - val size %d, socket id %d\n", t->val_size, t->socketid);
    t->default_val = copy_to_socket(value, t->val_size, t->socketid);
 }
 
@@ -170,11 +167,11 @@ void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
 	test_ops = &odph_hash_table_ops;
 	extended_table_t* ext = (extended_table_t*)t->table;
 	if(t->key_size == 0) return; // don't add lines to keyless tables
-	printf(":::: EXECUTING exact add on table %s \n", t->name);
-	printf("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
+	info(":::: EXECUTING exact add on table %s \n", t->name);
+	info("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
 	ret = test_ops->f_put(ext->odp_table, key, value);
 	if (ret != 0) {
-		printf("  ::EXACT table add key failed \n");
+		debug("  ::EXACT table add key failed \n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -187,14 +184,14 @@ void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
 	odph_hash_table_imp *tbl = (odph_hash_table_imp *)ext->odp_table;
 	ret = test_ops->f_get(ext->odp_table, key, buffer, t->val_size);
 	if (ret != 0) {
-		printf(" ::  EXACT lookup failed after add \n");
-		printf("   :  odp tbl name %s, value_size %d\n", tbl->name, tbl->value_size);
-		printf("   :  lookup %p tbl name %s, value_size %d \n", t, t->name, t->val_size);
+		debug(" ::  EXACT lookup failed after add \n");
+		debug("   :  odp tbl name %s, value_size %d\n", tbl->name, tbl->value_size);
+		debug("   :  lookup %p tbl name %s, value_size %d \n", t, t->name, t->val_size);
 	}
 	else {
-		printf("  :: EXACT lookup Passed after add \n");
-		printf("    :  odp tbl name %s, value_size %d\n", tbl->name, tbl->value_size);
-		printf("   :  lookup %p tbl name %s, value_size %d \n", t, t->name, t->val_size);
+		debug("  :: EXACT lookup Passed after add \n");
+		debug("    :  odp tbl name %s, value_size %d\n", tbl->name, tbl->value_size);
+		debug("   :  lookup %p tbl name %s, value_size %d \n", t, t->name, t->val_size);
 	}
 	free(buffer);
 #endif
@@ -230,16 +227,14 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 	odph_table_ops_t *test_ops;
 	test_ops = &odph_hash_table_ops;
 	extended_table_t* ext = (extended_table_t*)t->table;
-#if debug == 1
-	printf(":::: EXECUTING exact lookup on table %s \n", t->name);
-	printf("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
-#endif
+	info(":::: EXECUTING exact lookup on table %s \n", t->name);
+	info("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
 	ret = test_ops->f_get(ext->odp_table, key, buffer, t->val_size);
 	if (ret != 0) {
-		printf("  :: EXACT lookup fail \n");
+		debug("  :: EXACT lookup fail \n");
 		return t->default_val;
 	}
-	printf("  :: EXACT lookup success \n");
+	info("  :: EXACT lookup success \n");
 	return buffer;
 }
 
@@ -274,7 +269,7 @@ static void create_tables_on_socket (int socketid)
 	if (table_config == NULL) return;
 	int i;
 	for (i=0;i < NB_TABLES; i++) {
-		printf("creting table with tableID  %d \n", i);
+		debug("creting table with tableID  %d \n", i);
 		lookup_table_t t = table_config[i];
 		int j;
 		for(j = 0; j < NB_REPLICA; j++) {
@@ -294,7 +289,7 @@ int odpc_lookup_tbls_init()
 {
     int socketid = SOCKET_DEF;
     unsigned lcore_id;
-	printf("Initializing tables...\n");
+	info("Initializing tables...\n");
     for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) {
 /*
         if (rte_lcore_is_enabled(lcore_id) == 0) continue;
@@ -310,7 +305,7 @@ int odpc_lookup_tbls_init()
 //            create_counters_on_socket(socketid);
         }
     }
-    printf("Initializing tables Done.\n");
+    info("Initializing tables Done.\n");
     return 0;
 }
 
@@ -323,7 +318,7 @@ int odpc_lookup_tbls_des()
     int socketid = SOCKET_DEF;
 	int i, j;
 	unsigned lcore_id;
-	printf("Destroying Lookup tables...\n");
+	info("Destroying Lookup tables...\n");
 	for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) {
 		for(i = 0; i < NB_TABLES; i++) {
 			for(j = 0; j < NB_REPLICA; j++) {
@@ -334,6 +329,6 @@ int odpc_lookup_tbls_des()
 		}
 	}
 	/* Success */
-	printf("Destroying Lookup tables done.\n");
+	info("Destroying Lookup tables done.\n");
 	return 0;
 }
