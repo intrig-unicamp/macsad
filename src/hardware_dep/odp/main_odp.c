@@ -169,7 +169,7 @@ static void swap_dmac_addr(odp_packet_t pkt, unsigned port) {
 		eth->src = tmp_addr;
 	}
 }
-#endif 
+#endif
 
 /* send one pkt each time */
 static void odp_send_packet(odp_packet_t *p, uint8_t port)
@@ -178,7 +178,7 @@ static void odp_send_packet(odp_packet_t *p, uint8_t port)
 	odp_packet_t pkt = *p;
 //	swap_dmac_addr (p, port);
 
-	sent = odp_pktout_send(gconf->pktios[port].pktout[0], pkt, 1);
+	sent = odp_pktout_send(gconf->pktios[port].pktout[0], &pkt, 1);
 	if (sent < 0)
 	{
 //		odp_packet_free(pkt);
@@ -198,7 +198,7 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
 
 	odp_packet_t pkt_cp_tmp;
 
-	pkt_cp_tmp = odp_packet_copy((odp_packet_t *)pd->packet, gconf->pool);
+	pkt_cp_tmp = odp_packet_copy(*((odp_packet_t *)pd->packet), gconf->pool);
 	if (pkt_cp_tmp == ODP_PACKET_INVALID) {
 		debug("Error: Tmp packet copy failed for sending %s \n", __FILE__);
 		return;
@@ -208,7 +208,7 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
 
 		if (port == ingress_port)
 			continue;
-		if (first) { 
+		if (first) {
 			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
 			odp_send_packet((odp_packet_t *)pd->packet, port);
 			first = 0;
@@ -224,7 +224,7 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
 			odp_send_packet(pkt_cp, port);
 		}
 	}
-	
+
 	odp_packet_free (pkt_cp_tmp);
 	return;
 }
@@ -247,6 +247,8 @@ int bcast_buf(packet_descriptor_t* pd, macs_conf_t* mconf, int port_in)
 	odp_bool_t first = 1;
 	uint8_t port_out;
 	unsigned buf_len;
+	odp_packet_t pkt;
+	pkt = *((odp_packet_t *)pd->packet);
 
 	for (port_out = 0; port_out < gconf->appl.if_count; port_out++) {
 		if (port_out == port_in)
@@ -260,7 +262,7 @@ int bcast_buf(packet_descriptor_t* pd, macs_conf_t* mconf, int port_in)
 		} else {
 			odp_packet_t pkt_cp;
 
-			pkt_cp = odp_packet_copy(pkt, gbl_args->pool);
+			pkt_cp = odp_packet_copy(pkt, gconf->pool);
 			if (pkt_cp == ODP_PACKET_INVALID) {
 				printf("Error: packet copy failed\n");
 				continue;
@@ -276,13 +278,15 @@ static inline int updt_send_packet_buf(packet_descriptor_t* pd, macs_conf_t* mco
     unsigned buf_id;
 	int port = EXTRACT_EGRESSPORT(pd);
 	int inport = EXTRACT_INGRESSPORT(pd);
+    odp_packet_t pkt;
+	pkt = *((odp_packet_t *)pd->packet);
 
 	info("ingress port is %d and egress port is %d \n", inport, port);
-	
+
 
 	if (port==100) {
 	//	maco_bcast_packet(pd, inport);
-	bcast_buf (pd, mconf, if_idx, port);
+	bcast_buf (pd, mconf, if_idx);
 	} else {
 		/* o/p queue, pkt, no. of pkt to send */
 	//	odp_send_packet((odp_packet_t *)pd->packet, port);
@@ -365,7 +369,7 @@ void maco_pktio_queue_thread (void *arg)
         info("  [%02i] looked up pktio:%02" PRIu64 ", burst mode\n",
                         thr, odp_pktio_to_u64(pktio));
 
-//	if ((thr_args->mode == APPL_MODE_PKT_QUEUE) &&	
+//	if ((thr_args->mode == APPL_MODE_PKT_QUEUE) &&
         if (odp_pktin_event_queue(pktio, &inq, 1) != 1) {
                 debug("  [%02i] Error: no i/p event queue %s \n", thr, thr_args->pktio_dev);
                 return;
@@ -429,7 +433,7 @@ void odp_main_worker (void *arg)
 	unsigned long tmp = 0;
 	int if_idx;
 	packet_descriptor_t pd;
-
+	macs_conf_t *mconf;
 //	init_dataplane(&pd, gconf->state.tables);
 
 	info(":: INSIDE odp_main_worker\n");
@@ -458,7 +462,7 @@ void odp_main_worker (void *arg)
 		pkts = odp_pktin_recv(gconf->pktios[if_idx].pktin[0], pkt_tbl, MAX_PKT_BURST);
 		if (odp_unlikely(pkts <= 0))
 			continue;
-		thr_args->stats[if_idx]->s.rx_packets += pkts;
+//		thr_args->stats[if_idx]->s.rx_packets += pkts;
 
 		for (i = 0; i < pkts; i++) {
 			odp_packet_t pkt = pkt_tbl[i];
@@ -471,13 +475,14 @@ void odp_main_worker (void *arg)
 			}
 
 			packet_received(&pd, &pkt, if_idx, thr_args->thr_idx);
-			mconf = gconf->mconf[if_idx];
+			mconf = &(gconf->mconf[if_idx]);
 
-			send_packet (&pd);
-#if 0	
-			updt_send_packet_buf (&pd, gconf->mconf[if_idx]);
+//			send_packet (&pd);
+//#if 0
+			updt_send_packet_buf (&pd, &gconf->mconf[if_idx], if_idx);
 			/* Empty all thread local tx buffers */
-			for (port_out = 0; port_out < gbl_args->appl.if_count;
+				int port_out, sent, drops;
+			for (port_out = 0; port_out < gconf->appl.if_count;
 					port_out++) {
 				unsigned tx_pkts;
 				odp_packet_t *tx_pkt_tbl;
@@ -509,7 +514,7 @@ void odp_main_worker (void *arg)
 						odp_packet_free(tx_pkt_tbl[i]);
 				}
 			}
-#endif
+//#endif
 		}
 
 		/* Print packet counts every once in a while */

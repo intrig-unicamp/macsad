@@ -643,7 +643,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 		info("interface id %d, ifname %s, pktio:%02" PRIu64 " \n", i, gconf->appl.if_names[i],odp_pktio_to_u64(gconf->pktios[i].pktio));
 	}
 
-	stats = gconf->stats;
+	//stats = gconf->stats;
 
 	/* Create and init worker threads */
 	memset(gconf->thread_tbl, 0, sizeof(gconf->thread_tbl));
@@ -659,7 +659,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 //		int if_idx;
         odp_cpumask_t thd_mask;
 
-		gconf->mconf[i].stats = stats[i];
+		//gconf->mconf[i].stats = gconf->stats[i];
 
 		void *(*thr_run_func) (void *);
 
