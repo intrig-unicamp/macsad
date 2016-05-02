@@ -624,7 +624,8 @@ uint8_t odpc_initialize(int argc, char **argv)
 	odp_pool_param_init(&params);
 	params.pkt.seg_len = PKT_POOL_BUF_SIZE;
 	params.pkt.len     = PKT_POOL_BUF_SIZE;
-	params.pkt.num     = PKT_POOL_SIZE;
+//	params.pkt.num     = PKT_POOL_SIZE;
+	params.pkt.num     = PKT_POOL_SIZE/PKT_POOL_BUF_SIZE;
 	params.type        = ODP_POOL_PACKET;
 
 	pool = odp_pool_create("packet pool", &params);
@@ -690,7 +691,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 				&thd_mask, &thr_params);
 
             // Enable this to use one cpu per thread per interface
-		//    cpu = odp_cpumask_next(&cpumask, cpu);
+	    cpu = odp_cpumask_next(&cpumask, cpu);
 	}
 
 	/* Initialize all the tables defined in p4 src */

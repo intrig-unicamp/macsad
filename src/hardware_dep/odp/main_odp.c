@@ -40,8 +40,8 @@ uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /** Global barrier to synchronize main and workers */
 static odp_barrier_t barrier;
-
-//=============================================================================
+extern int odp_dev_name_to_id (char *if_name);
+//============================================================================
 
 /* Send burst of packets on an output interface */
 static inline int
@@ -105,7 +105,8 @@ dbg_print_headers(packet_descriptor_t* pd)
 {
 	char buf[100];
 	int len = 0;
-	for (int i = 0; i < HEADER_INSTANCE_COUNT; ++i) {
+//	for (int i = 0; i < HEADER_INSTANCE_COUNT; ++i) {
+	for (int i = 1; i < HEADER_INSTANCE_COUNT; ++i) {
 		info("    :: header %d (type=%d, len=%d) = ", i, pd->headers[i].type, pd->headers[i].length);
 		for (int j = 0; j < pd->headers[i].length; ++j) {
 			if (len < 100) {
@@ -181,8 +182,8 @@ static void odp_send_packet(odp_packet_t *p, uint8_t port)
 	sent = odp_pktout_send(gconf->pktios[port].pktout[0], &pkt, 1);
 	if (sent < 0)
 	{
-//		odp_packet_free(pkt);
 		debug("pkt sent failed \n");
+		odp_packet_free(pkt);
 	}
 }
 
@@ -195,14 +196,26 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
 	uint32_t total_ports= appl->if_count;
 	int port;
 	odp_bool_t first = 1;
+	odp_packet_t pkt = *((odp_packet_t *)pd->packet);
 
+#if 0
+	for (port = 0;port < total_ports;port++){
+		if (port == ingress_port)
+			continue;
+		if (first) { 
+			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
+			odp_send_packet((odp_packet_t *)pd->packet, port);
+			first = 0;
+		}
+	}
+#endif
 	odp_packet_t pkt_cp_tmp;
-
 	pkt_cp_tmp = odp_packet_copy(*((odp_packet_t *)pd->packet), gconf->pool);
 	if (pkt_cp_tmp == ODP_PACKET_INVALID) {
 		debug("Error: Tmp packet copy failed for sending %s \n", __FILE__);
 		return;
 	}
+	info ("pkt cpy passed\n");
 
 	for (port = 0;port < total_ports;port++){
 
@@ -221,7 +234,7 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
 				continue;
 			}
 			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
-			odp_send_packet(pkt_cp, port);
+			odp_send_packet(&pkt_cp, port);
 		}
 	}
 
@@ -249,7 +262,6 @@ int bcast_buf(packet_descriptor_t* pd, macs_conf_t* mconf, int port_in)
 	unsigned buf_len;
 	odp_packet_t pkt;
 	pkt = *((odp_packet_t *)pd->packet);
-
 	for (port_out = 0; port_out < gconf->appl.if_count; port_out++) {
 		if (port_out == port_in)
 			continue;
@@ -284,6 +296,7 @@ static inline int updt_send_packet_buf(packet_descriptor_t* pd, macs_conf_t* mco
 	info("ingress port is %d and egress port is %d \n", inport, port);
 
 
+	dbg_print_headers(pd);
 	if (port==100) {
 	//	maco_bcast_packet(pd, inport);
 	bcast_buf (pd, mconf, if_idx);
@@ -293,6 +306,7 @@ static inline int updt_send_packet_buf(packet_descriptor_t* pd, macs_conf_t* mco
 	buf_id = mconf->pktio[port].buf.len;
 	mconf->pktio[port].buf.pkt[buf_id] = pkt;
 	mconf->pktio[port].buf.len++;
+		//	info("unicast pkt added to out buf");
 	}
 
 }
@@ -326,6 +340,7 @@ void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, 
 	handle_packet(pd, state_tmp->tables);
 }
 
+#if 0
 void maco_pktio_queue_thread (void *arg)
 {
         int pkts, i;
@@ -414,6 +429,7 @@ void maco_pktio_queue_thread (void *arg)
 }
         return;
 }
+#endif
 
 void odp_main_worker (void *arg)
 {
@@ -426,7 +442,7 @@ void odp_main_worker (void *arg)
 	odp_pktio_t pktio;
 	odp_pktin_queue_t pktin;
 	odp_pktout_queue_t pktout;
-	int pkts_ok;
+	int pkts_ok = 0;
 	odp_packet_t pkt_tbl[MAX_PKT_BURST];
 	unsigned long pkt_cnt = 0;
 	unsigned long err_cnt = 0;
@@ -477,8 +493,8 @@ void odp_main_worker (void *arg)
 			packet_received(&pd, &pkt, if_idx, thr_args->thr_idx);
 			mconf = &(gconf->mconf[if_idx]);
 
-//			send_packet (&pd);
-//#if 0
+			send_packet (&pd);
+#if 0
 			updt_send_packet_buf (&pd, &gconf->mconf[if_idx], if_idx);
 			/* Empty all thread local tx buffers */
 				int port_out, sent, drops;
@@ -498,7 +514,9 @@ void odp_main_worker (void *arg)
 
 				pktout = mconf->pktio[port_out].pktout;
 
-				sent = odp_pktout_send(pktout, tx_pkt_tbl, tx_pkts);
+			info("calling pktout send pkt out of buf");
+			//	sent = odp_pktout_send(mconf->pktio[port_out]., tx_pkt_tbl, tx_pkts);
+				sent = odp_pktout_send(gconf->pktios[port_out].pktout[0], tx_pkt_tbl, tx_pkts);
 				sent = odp_unlikely(sent < 0) ? 0 : sent;
 			//	mconf->stats[port_out]->s.tx_packets += sent;
 
@@ -511,10 +529,11 @@ void odp_main_worker (void *arg)
 
 					/* Drop rejected packets */
 					for (i = sent; i < tx_pkts; i++)
+			info("drop unsend packet");
 						odp_packet_free(tx_pkt_tbl[i]);
 				}
 			}
-//#endif
+#endif
 		}
 
 		/* Print packet counts every once in a while */
@@ -527,6 +546,5 @@ void odp_main_worker (void *arg)
 			tmp = 0;
 		}
 	}
-
 	return;
 }

@@ -227,14 +227,14 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 	odph_table_ops_t *test_ops;
 	test_ops = &odph_hash_table_ops;
 	extended_table_t* ext = (extended_table_t*)t->table;
-	info(":::: EXECUTING exact lookup on table %s \n", t->name);
-	info("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
+//	info(":::: EXECUTING exact lookup on table %s \n", t->name);
+//	info("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
 	ret = test_ops->f_get(ext->odp_table, key, buffer, t->val_size);
 	if (ret != 0) {
 		debug("  :: EXACT lookup fail \n");
 		return t->default_val;
 	}
-	info("  :: EXACT lookup success \n");
+//	info("  :: EXACT lookup success \n");
 	return buffer;
 }
 
