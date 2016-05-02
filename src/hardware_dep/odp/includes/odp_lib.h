@@ -181,7 +181,11 @@ struct socket_state state[NB_SOCKETS];
 typedef union {                                                                  
     struct {                                                                     
         /** Number of forwarded packets */                                       
-        uint64_t packets;                                                        
+        uint64_t packets;
+        /** Number of received packets */
+        uint64_t rx_packets;
+        /** Number of transmitted packets */
+        uint64_t tx_packets;		
         /** Packets dropped due to receive error */                              
         uint64_t rx_drops;                                                       
         /** Packets dropped due to transmit error */                             
@@ -190,6 +194,14 @@ typedef union {
                                                                                  
     uint8_t padding[ODP_CACHE_LINE_SIZE];                                        
 } stats_t ODP_ALIGNED_CACHE;
+
+/**
+ * Packet buffer
+ */
+typedef struct pkt_buf_t {
+	odp_packet_t pkt[MAX_PKT_BURST]; /**< Array of packet handles */
+	unsigned len;            /**< Number of packets in buffer */
+} pkt_buf_t;
 
 typedef struct macs_conf{
     char *pktio_dev;    /**< Interface name to use */
@@ -207,7 +219,8 @@ typedef struct macs_conf{
         int rx_idx;                                                              
         int tx_idx;                                                              
         int rx_queue_idx;                                                        
-        int tx_queue_idx;                                                        
+        int tx_queue_idx;
+	    pkt_buf_t buf;         /**< Packet TX buffer */		
     } pktio[MAX_PKTIOS];                                                         
                                                                                  
     stats_t *stats; /**< Pointer to per thread stats */                          

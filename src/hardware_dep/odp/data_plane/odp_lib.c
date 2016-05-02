@@ -563,6 +563,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 	int num_workers, i;
 	int cpu;
 	int ret;
+	stats_t (*stats);
 
 	//parse args
 	odp_shm_t shm;
@@ -641,6 +642,9 @@ uint8_t odpc_initialize(int argc, char **argv)
 		gconf->pktios[i].pktio = create_pktio(gconf->appl.if_names[i], i,  pool, gconf->appl.mode);
 		info("interface id %d, ifname %s, pktio:%02" PRIu64 " \n", i, gconf->appl.if_names[i],odp_pktio_to_u64(gconf->pktios[i].pktio));
 	}
+
+	stats = gconf->stats;
+
 	/* Create and init worker threads */
 	memset(gconf->thread_tbl, 0, sizeof(gconf->thread_tbl));
 
@@ -653,7 +657,9 @@ uint8_t odpc_initialize(int argc, char **argv)
 	/* number of interface and workers should be same */
 	for (i = 0; i < num_workers; ++i) {
 //		int if_idx;
-                odp_cpumask_t thd_mask;
+        odp_cpumask_t thd_mask;
+
+		gconf->mconf[i].stats = stats[i];
 
 		void *(*thr_run_func) (void *);
 

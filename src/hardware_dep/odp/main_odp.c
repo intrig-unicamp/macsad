@@ -242,22 +242,73 @@ static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 	MODIFY_INT32_INT32(packet_desc, field_instance_standard_metadata_ingress_port, inport);
 }
 
+int bcast_buf(packet_descriptor_t* pd, macs_conf_t* mconf, int port_in)
+{
+	odp_bool_t first = 1;
+	uint8_t port_out;
+	unsigned buf_len;
+
+	for (port_out = 0; port_out < gconf->appl.if_count; port_out++) {
+		if (port_out == port_in)
+			continue;
+
+		buf_len = mconf->pktio[port_out].buf.len;
+
+		if (first) { /* No need to copy for the first interface */
+			mconf->pktio[port_out].buf.pkt[buf_len] = pkt;
+			first = 0;
+		} else {
+			odp_packet_t pkt_cp;
+
+			pkt_cp = odp_packet_copy(pkt, gbl_args->pool);
+			if (pkt_cp == ODP_PACKET_INVALID) {
+				printf("Error: packet copy failed\n");
+				continue;
+			}
+			mconf->pktio[port_out].buf.pkt[buf_len] = pkt_cp;
+		}
+		mconf->pktio[port_out].buf.len++;
+	}
+}
+
+static inline int updt_send_packet_buf(packet_descriptor_t* pd, macs_conf_t* mconf, int if_idx)
+{
+    unsigned buf_id;
+	int port = EXTRACT_EGRESSPORT(pd);
+	int inport = EXTRACT_INGRESSPORT(pd);
+
+	info("ingress port is %d and egress port is %d \n", inport, port);
+	
+
+	if (port==100) {
+	//	maco_bcast_packet(pd, inport);
+	bcast_buf (pd, mconf, if_idx, port);
+	} else {
+		/* o/p queue, pkt, no. of pkt to send */
+	//	odp_send_packet((odp_packet_t *)pd->packet, port);
+	buf_id = mconf->pktio[port].buf.len;
+	mconf->pktio[port].buf.pkt[buf_id] = pkt;
+	mconf->pktio[port].buf.len++;
+	}
+
+}
+
 static inline int send_packet(packet_descriptor_t* pd)
 {
-        int port = EXTRACT_EGRESSPORT(pd);
-        int inport = EXTRACT_INGRESSPORT(pd);
+	int port = EXTRACT_EGRESSPORT(pd);
+	int inport = EXTRACT_INGRESSPORT(pd);
 
-        dbg_print_headers(pd);
-        info("ingress port is %d and egress port is %d \n", inport, port);
+	dbg_print_headers(pd);
+	info("ingress port is %d and egress port is %d \n", inport, port);
 
-        if (port==100) {
-                maco_bcast_packet(pd, inport);
-        } else {
-                /* o/p queue, pkt, no. of pkt to send */
-                odp_send_packet((odp_packet_t *)pd->packet, port);
-        }
+	if (port==100) {
+		maco_bcast_packet(pd, inport);
+	} else {
+		/* o/p queue, pkt, no. of pkt to send */
+		odp_send_packet((odp_packet_t *)pd->packet, port);
+	}
 
-        return 0;
+	return 0;
 }
 
 void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, int thr_idx)
@@ -405,30 +456,70 @@ void odp_main_worker (void *arg)
 	/* Loop packets */
 	for (;;) {
 		pkts = odp_pktin_recv(gconf->pktios[if_idx].pktin[0], pkt_tbl, MAX_PKT_BURST);
-		if (pkts > 0) {
-			for (i = 0; i < pkts; i++) {
-				odp_packet_t pkt = pkt_tbl[i];
-				/* Save interface ethernet address */
-				if (odp_pktio_mac_addr(gconf->pktios[if_idx].pktio,
-							gconf->port_eth_addr[if_idx].addr,
-							ODPH_ETHADDR_LEN) != ODPH_ETHADDR_LEN) {
-					debug("Error: interface ethernet address unknown\n");
-					exit(1);
+		if (odp_unlikely(pkts <= 0))
+			continue;
+		thr_args->stats[if_idx]->s.rx_packets += pkts;
+
+		for (i = 0; i < pkts; i++) {
+			odp_packet_t pkt = pkt_tbl[i];
+			/* Save interface ethernet address */
+			if (odp_pktio_mac_addr(gconf->pktios[if_idx].pktio,
+						gconf->port_eth_addr[if_idx].addr,
+						ODPH_ETHADDR_LEN) != ODPH_ETHADDR_LEN) {
+				debug("Error: interface ethernet address unknown\n");
+				exit(1);
+			}
+
+			packet_received(&pd, &pkt, if_idx, thr_args->thr_idx);
+			mconf = gconf->mconf[if_idx];
+
+			send_packet (&pd);
+#if 0	
+			updt_send_packet_buf (&pd, gconf->mconf[if_idx]);
+			/* Empty all thread local tx buffers */
+			for (port_out = 0; port_out < gbl_args->appl.if_count;
+					port_out++) {
+				unsigned tx_pkts;
+				odp_packet_t *tx_pkt_tbl;
+
+				if (port_out == if_idx ||
+						mconf->pktio[port_out].buf.len == 0)
+					continue;
+
+				tx_pkts = mconf->pktio[port_out].buf.len;
+				mconf->pktio[port_out].buf.len = 0;
+
+				tx_pkt_tbl = mconf->pktio[port_out].buf.pkt;
+
+				pktout = mconf->pktio[port_out].pktout;
+
+				sent = odp_pktout_send(pktout, tx_pkt_tbl, tx_pkts);
+				sent = odp_unlikely(sent < 0) ? 0 : sent;
+			//	mconf->stats[port_out]->s.tx_packets += sent;
+
+				drops = tx_pkts - sent;
+
+				if (odp_unlikely(drops)) {
+					unsigned i;
+
+			//		mconf->stats[port_out]->s.tx_drops += drops;
+
+					/* Drop rejected packets */
+					for (i = sent; i < tx_pkts; i++)
+						odp_packet_free(tx_pkt_tbl[i]);
 				}
-
-				packet_received(&pd, &pkt, if_idx, thr_args->thr_idx);
-				send_packet (&pd);
 			}
+#endif
+		}
 
-			/* Print packet counts every once in a while */
-			tmp += pkts_ok;
-			if (odp_unlikely((tmp >= 100000) || /* OR first print:*/
-						((pkt_cnt == 0) && ((tmp-1) < MAX_PKT_BURST)))) {
-				pkt_cnt += tmp;
-				info("  [%02i] pkt_cnt:%lu\n", thr, pkt_cnt);
-				fflush(NULL);
-				tmp = 0;
-			}
+		/* Print packet counts every once in a while */
+		tmp += pkts_ok;
+		if (odp_unlikely((tmp >= 100000) || /* OR first print:*/
+					((pkt_cnt == 0) && ((tmp-1) < MAX_PKT_BURST)))) {
+			pkt_cnt += tmp;
+			info("  [%02i] pkt_cnt:%lu\n", thr, pkt_cnt);
+			fflush(NULL);
+			tmp = 0;
 		}
 	}
 
