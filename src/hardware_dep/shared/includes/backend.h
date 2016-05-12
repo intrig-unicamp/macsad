@@ -18,6 +18,11 @@
 #define info(args, ...) fprintf(stderr, "[INFO] %s:%d " args "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 #endif
 
+#ifdef NSIGG
+#define sigg(args, ...)
+#else
+#define sigg(args, ...) fprintf(stdout, args "\n", ##__VA_ARGS__)
+#endif
 /*
 #define debug_print(fmt, ...) \
         do { if (DEBUG) fprintf(stderr, "%s:%d:%s(): " fmt, __FILE__, \

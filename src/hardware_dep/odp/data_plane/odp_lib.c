@@ -78,6 +78,33 @@ static int parse_portmask(const char *portmask)
 	return pm;
 }
 
+static int maco_get_first_cpu(const odp_cpumask_t * mask)
+{
+	int cpu;
+	cpu = odp_cpumask_first(mask);
+	return cpu;
+}
+
+static int maco_get_next_cpu(const odp_cpumask_t * mask, int cpu)
+{
+	int cpu_first = odp_cpumask_first(mask);
+	int cpu_last = odp_cpumask_last(mask);
+/* if only one cpu available */
+	if (cpu_first == cpu_last)
+		return cpu_first;
+
+/* send the next cpumask if available */
+	for (cpu += 1; cpu <= cpu_last; cpu++)
+		if (odp_cpumask_isset(mask, cpu))
+			return cpu;
+
+/* if "cpu" is the last one, send again the first cpumask */
+	return cpu_first;
+
+	return -1;
+
+}
+
 static void print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 {
 #if 0
@@ -335,10 +362,18 @@ static odp_pktio_t create_pktio(const char *name, int if_idx, odp_pool_t pool, i
 	if (ret != 0)
 		debug("Error: unable to start %s\n", name);
 
-	ret = odp_pktio_promisc_mode_set(pktio, 1);
-	if (ret != 0) {
-		debug("Error: failed to set port %s to promiscuous mode with return id %d.\n",  name, ret);
+//TODO
+//promisc mode set alway fails. Need to check the reason.
+#if 0
+	ret=odp_pktio_promisc_mode(pktio);
+	info("%s promiscious mode is %d\n",name, ret);
+	if(ret == 0) {
+		ret = odp_pktio_promisc_mode_set(pktio, 1);
+		if (ret != 0) {
+			debug("Error: failed to set port %s to promiscuous mode with return id %d.\n",  name, ret);
+		}
 	}
+#endif
 
 	info("  created pktio:%02" PRIu64
 			", dev:%s, queue mode (ATOMIC queues)\n"
@@ -364,17 +399,18 @@ static void usage(char *progname)
            "MACSAD forwarding plane\n"
            "\n"
            "Usage: %s OPTIONS\n"
-           "  E.g. %s -i eth0,eth1,eth2,eth3 \n"
+           "  E.g. %s -i eth0,eth1 \n"
            "\n"
            "Mandatory OPTIONS:\n"
            "  -i, --interface Eth interfaces (comma-separated, no spaces)\n"
            "                  Interface count min 1, max %i\n"
            "\n"
            "Optional OPTIONS:\n"
-           "  -c, --count <number> CPU count.\n"
-           "  -m, --mode      0: Receive and send directly (no queues)\n"
-           "                  1: Receive and send via queues.\n"
-           "                  2: Receive via scheduler, send via queues.\n"
+   //        "  -c, --count <number> CPU count.\n"
+			 "  -m, --multi <0/1> Use Multiple CPU(Boolean).\n"
+ //          "  -m, --mode      0: Receive and send directly (no queues)\n"
+//           "                  1: Receive and send via queues.\n"
+//           "                  2: Receive via scheduler, send via queues.\n"
            "  -h, --help           Display help and exit.\n\n"
            "\n", NO_PATH(progname), NO_PATH(progname), MAX_PKTIOS
         );
@@ -396,9 +432,10 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
     size_t len;
     int i;
     static struct option longopts[] = {
-        {"count", required_argument, NULL, 'c'},
+//        {"count", required_argument, NULL, 'c'},
         {"interface", required_argument, NULL, 'i'},
-        {"mode", required_argument, NULL, 'm'},     /* return 'm' */
+//        {"mode", required_argument, NULL, 'm'},     /* return 'm' */
+        {"multi", required_argument, NULL, 'm'},     /* return 'm' */
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
@@ -457,7 +494,9 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 
         case 'm':
             i = atoi(optarg);
-            switch (i) {
+			appl_args->mcpu_enable = atoi(optarg);
+#if 0
+			switch (i) {
             case 0:
                 appl_args->mode = APPL_MODE_PKT_BURST;
                 break;
@@ -471,8 +510,8 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
                 usage(argv[0]);
                 exit(EXIT_FAILURE);
             }
+#endif
             break;
-
         case 'h':
             usage(argv[0]);
             exit(EXIT_SUCCESS);
@@ -518,9 +557,9 @@ static void print_info(char *progname, appl_args_t *appl_args)
            progname, appl_args->if_count);
     for (i = 0; i < appl_args->if_count; ++i)
         printf(" %s", appl_args->if_names[i]);
+#if 0
     printf("\n"
            "Mode:            ");
-#if 0
 	switch (appl_args->mode) {
     case APPL_MODE_PKT_BURST:
         PRINT_APPL_MODE(APPL_MODE_PKT_BURST);
@@ -646,6 +685,15 @@ uint8_t odpc_initialize(int argc, char **argv)
 
 	//stats = gconf->stats;
 
+	/* Initialize all the tables defined in p4 src */
+	odpc_lookup_tbls_init();
+
+	/* initiate control plane */
+	init_control_plane();
+
+	// TODO
+	odpc_lcore_conf_init();
+
 	/* Create and init worker threads */
 	memset(gconf->thread_tbl, 0, sizeof(gconf->thread_tbl));
 
@@ -653,9 +701,10 @@ uint8_t odpc_initialize(int argc, char **argv)
 	thr_params.thr_type = ODP_THREAD_WORKER;
 	thr_params.instance = instance;
 
-	cpu = odp_cpumask_first(&cpumask);
+	cpu = maco_get_first_cpu(&cpumask);
 	info("count threadmask %d\n ", odp_cpumask_count(&cpumask));
-	/* number of interface and workers should be same */
+	info("num worksers is %d\n", num_workers);
+
 	for (i = 0; i < num_workers; ++i) {
 //		int if_idx;
         odp_cpumask_t thd_mask;
@@ -691,17 +740,9 @@ uint8_t odpc_initialize(int argc, char **argv)
 				&thd_mask, &thr_params);
 
             // Enable this to use one cpu per thread per interface
-	    cpu = odp_cpumask_next(&cpumask, cpu);
+		if (gconf->appl.mcpu_enable == 1)
+			cpu = maco_get_next_cpu(&cpumask, cpu);
 	}
-
-	/* Initialize all the tables defined in p4 src */
-	odpc_lookup_tbls_init();
-
-	/* initiate control plane */
-	init_control_plane();
-
-	// TODO
-	odpc_lcore_conf_init();
 
 	/* Master thread waits for other threads to exit */
 	odph_linux_pthread_join(gconf->thread_tbl, num_workers);

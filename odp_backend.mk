@@ -56,14 +56,14 @@ LIBS = -lodp-linux -lodphelper-linux -lpthread
 
 OBJS = $(SRCS-y:.c=.o)
 
-MAIN = mac_ad
+MAIN = macsad
 
 all: $(MAIN)
 	@echo  $(MAIN) successfully compiled
 
 $(MAIN):
-#	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 1>/dev/null
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 2>/dev/null
+#	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 
 
 .c.o:
 	$(CC) $(CFLAGS) -c $<  -o $@

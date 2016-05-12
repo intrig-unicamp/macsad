@@ -73,7 +73,7 @@ for pe_name, pe in hlir_pes.items():
 
 
 
-#[ #include "dpdk_lib.h"
+#[ #include "odp_lib.h"
 #[ #include "actions.h" // TODO remove me
 #[ void print_mac(uint8_t* v) { printf("%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX\n", v[0], v[1], v[2], v[3], v[4], v[5]); }
 #[ void print_ip(uint8_t* v) { printf("%d.%d.%d.%d\n",v[0],v[1],v[2],v[3]); }

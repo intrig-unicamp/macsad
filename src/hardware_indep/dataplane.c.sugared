@@ -7,7 +7,7 @@ def fld_id(f): return fld_prefix(f.instance.name + "_" + f.name)
 
 #[ #include <stdlib.h>
 #[ #include <string.h>
-#[ #include "dpdk_lib.h"
+#[ #include "odp_lib.h"
 #[ #include "actions.h"
 #[ 
 #[ extern void parse_packet(packet_descriptor_t* pd, lookup_table_t** tables);

@@ -26,7 +26,7 @@ def showWarnings():
    for w in warnings: print w
 
 
-disable_hlir_messages = False
+disable_hlir_messages = True
 
 simplePrimitives = set(["drop", "no_op"])
 
