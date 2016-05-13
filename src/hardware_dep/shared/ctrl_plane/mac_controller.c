@@ -84,7 +84,7 @@ void mac_learn_digest(void* b) {
     memcpy(port, df->value, 2);
 
     uint8_t p = port[0];
-    printf("Ctrl: mac_learn_digest PORT: %d MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", p, mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+    printf("[CONTROLLER] PORT: %d MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", p, mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     fill_dmac_table(p, mac);
     fill_smac_table(p, mac);
 }
@@ -147,7 +147,7 @@ void test_learn_ip(void* b) {
 void dhf(void* b) {
     struct p4_header* h = netconv_p4_header(unpack_p4_header(b, 0));
     if (h->type != P4T_DIGEST) {
-        printf("Method is not implemented\n");
+        printf("Method not found\n");
         return;
     }
 
@@ -168,7 +168,7 @@ void set_default_action_smac()
     struct p4_set_default_action* sda;
     struct p4_action* a;
 
-    printf("Generate set_default_action message for table smac\n");
+//    printf("Generate set_default_action message for table smac\n");
 
     h = create_p4_header(buffer, 0, sizeof(buffer));
 
@@ -192,7 +192,7 @@ void set_default_action_dmac()
     struct p4_set_default_action* sda;
     struct p4_action* a;
 
-    printf("Generate set_default_action message for table dmac\n");
+//    printf("Generate set_default_action message for table dmac\n");
 
     h = create_p4_header(buffer, 0, sizeof(buffer));
 
@@ -216,13 +216,13 @@ void init() {
 
 int main()
 {
-	printf("Create and configure controller...\n");
+//	printf("Create and configure controller...\n");
 //	c = create_controller(11111, 3, dhf);
     c = create_controller_with_init(11111, 3, dhf, init);
-	printf("Launching controller's main loop...\n");
+	printf("MACSAD controller started...\n");
 	execute_controller(c);
 
-	printf("Destroy controller\n");
+	printf("MACSAD controller terminated\n");
 	destroy_controller(c);
 
 	return 0;

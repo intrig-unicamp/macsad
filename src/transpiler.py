@@ -94,7 +94,7 @@ def generate_code(file, genfile, localvars={}):
         
 	localvars['generated_code'] = ""
 
-        print "Desugaring %s..." % file
+       # print "Desugaring %s..." % file
 
         exec(code, localvars, localvars)
     #    if file.endswith("tables.c.sugared"):
@@ -120,7 +120,7 @@ def generate_all_in_dir(dir, gendir, outdir, hlir):
 	code = generate_code(full_file, genfile, {'hlir': hlir})
 
         outfile = join(outdir, re.sub(r'\.sugared$', '', file))
-        print(outfile)
+        #print(outfile)
         write_file(outfile, code)
 
 
@@ -132,11 +132,11 @@ def make_dirs(compiler_files_path, desugared_path, generated_path):
 
     if not os.path.isdir(desugared_path):
         os.makedirs(desugared_path)
-        print("Generating path for desugared compiler files: {0}".format(desugared_path))
+#        print("Generating path for desugared compiler files: {0}".format(desugared_path))
 
     if not os.path.isdir(generated_path):
         os.makedirs(generated_path)
-        print("Generating path for generated files: {0}".format(generated_path))
+#        print("Generating path for generated files: {0}".format(generated_path))
 
 
 def setup_paths():
@@ -171,7 +171,8 @@ def write_file(filename, text):
 
 def main():
     if len(sys.argv) <= 1:
-        print("Usage: %s p4_file [compiler_files_dir] [generated_dir]" % (os.path.basename(__file__)))
+        #print("Usage: %s p4_file [compiler_files_dir] [generated_dir]" % (os.path.basename(__file__)))
+        print("Usage: %s <p4 file>" % (os.path.basename(__file__)))
         sys.exit(1)
 
     p4_path, compiler_files_path, desugared_path, generated_path = setup_paths()
@@ -179,12 +180,11 @@ def main():
     hlir = HLIR(p4_path)
     build_hlir(hlir)
 
-    print("HLIR build done")
-    print("generate_all_in_dir called in main")
+#    print("HLIR build done")
     generate_all_in_dir(compiler_files_path, desugared_path, generated_path, hlir)
 
     utils.showErrors()
     utils.showWarnings()
-
+    print("Datapath Logic is Created");
 
 main()

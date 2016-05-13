@@ -9,7 +9,7 @@ def match_type_order(t):
     if t is p4.p4_match_type.P4_MATCH_LPM:     return 1
     if t is p4.p4_match_type.P4_MATCH_TERNARY: return 2
 
-#[ #include "dpdk_lib.h"
+#[ #include "odp_lib.h"
 #[ #include "actions.h"
 #[ 
 #[ extern void table_setdefault_promote  (int tableid, uint8_t* value);

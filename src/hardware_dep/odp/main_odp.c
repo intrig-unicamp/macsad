@@ -202,7 +202,7 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
 	for (port = 0;port < total_ports;port++){
 		if (port == ingress_port)
 			continue;
-		if (first) { 
+		if (first) {
 			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
 			odp_send_packet((odp_packet_t *)pd->packet, port);
 			first = 0;
@@ -236,6 +236,7 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
 			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
 			odp_send_packet(&pkt_cp, port);
 		}
+		sigg("[Broadcast] recvd port id - %d, sent port id - %d\n", ingress_port, port);
 	}
 
 	odp_packet_free (pkt_cp_tmp);
@@ -324,6 +325,7 @@ static inline int send_packet(packet_descriptor_t* pd)
 	} else {
 		/* o/p queue, pkt, no. of pkt to send */
 		odp_send_packet((odp_packet_t *)pd->packet, port);
+		sigg("[Unicast] recvd port id - %d, sent port id - %d\n", inport, port);
 	}
 
 	return 0;

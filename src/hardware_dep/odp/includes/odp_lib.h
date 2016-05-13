@@ -145,7 +145,8 @@ typedef enum pktout_mode_t {
  * Parsed command line application arguments                                     
  */                                                                              
 typedef struct appl_args {                                                      
-    int cpu_count;                                                               
+    int cpu_count;  
+	int mcpu_enable;	
     int if_count;       /**< Number of interfaces to be used */                  
     int num_workers;    /**< Number of worker threads */                         
     char **if_names;    /**< Array of pointers to interface names */             

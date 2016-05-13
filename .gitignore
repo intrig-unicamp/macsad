@@ -28,6 +28,7 @@
 *.x86_64
 *.hex
 mac_ad
+macsad
 
 #proj generated files
 src/*.pyc
