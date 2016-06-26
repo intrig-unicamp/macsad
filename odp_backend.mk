@@ -47,6 +47,7 @@ SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/odp_primitives.c
 #SRCS-y += odp_primitives.c
 SRCS-Y += vector.c
 
+CC = clang
 
 LDFLAGS += -L$(ODP_SDK)/lib/
 LDFLAGS += -L$(ODP_SDK)/lib/.libs

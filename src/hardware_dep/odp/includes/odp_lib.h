@@ -81,12 +81,13 @@ struct mbuf_table {
 /** @def PKT_POOL_SIZE                                                           
  * @brief Size of the shared memory block                                        
  */                   
-#define PKT_POOL_SIZE      (512*2048)   /**< pkt pool size */ 
-//#define PKT_POOL_SIZE 8192                                                       
-/** @def PKT_POOL_BUF_SIZE                                                       
+//#define PKT_POOL_SIZE      (512*2048)   /**< pkt pool size */ 
+#define PKT_POOL_SIZE 8192                                                   
+/** @def PKT_POOL_BUF_SIZE    
  * @brief Buffer size of the packet pool buffer                                  
  */                                                                              
-#define PKT_POOL_BUF_SIZE 1856                                                   
+#define PKT_POOL_BUF_SIZE 1856
+
 /** @def MAX_PKT_BURST                                                           
  * @brief Maximum number of packet in a burst                                    
  */                                                                              

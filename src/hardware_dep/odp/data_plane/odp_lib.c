@@ -602,7 +602,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 	int num_workers, i;
 	int cpu;
 	int ret;
-	stats_t (*stats);
+	//stats_t (*stats);
 
 	//parse args
 	odp_shm_t shm;
@@ -623,13 +623,12 @@ uint8_t odpc_initialize(int argc, char **argv)
 	}
 
 	/* Reserve memory for args from shared mem */
-	shm = odp_shm_reserve("shm_args", sizeof(mac_global_t),
+	shm = odp_shm_reserve("shm_gconf", sizeof(mac_global_t),
 			ODP_CACHE_LINE_SIZE, 0);
 	gconf = odp_shm_addr(shm);
 
 	if (gconf == NULL) {
-		debug("Error: shared mem alloc failed.\n");
-		//exit(EXIT_FAILURE);
+		debug("Error: Shared mem alloc failed for global configuration.\n");
 		exit(1);
 	}
 	gconf_init(gconf);
@@ -641,13 +640,15 @@ uint8_t odpc_initialize(int argc, char **argv)
 	print_info(NO_PATH(argv[0]), &gconf->appl);
 
 	/* Default to ODP_MAX_LCORE  unless user specified */
-	num_workers = ODP_MAX_LCORE;
-	if (gconf->appl.cpu_count)
+	if (gconf->appl.cpu_count) {
 		num_workers = gconf->appl.cpu_count;
-	info("odp_max num worker threads: %i\n", num_workers);
+	} else {
+		num_workers = ODP_MAX_LCORE;
+	}
+	info("Max num worker threads: %i\n", num_workers);
 
 	/* Get default worker cpumask */
-	odp_cpumask_default_worker(&cpumask, num_workers);
+	num_workers = odp_cpumask_default_worker(&cpumask, num_workers);
 	(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
 
 	gconf->appl.num_workers = num_workers;
@@ -663,24 +664,28 @@ uint8_t odpc_initialize(int argc, char **argv)
 	odp_pool_param_init(&params);
 	params.pkt.seg_len = PKT_POOL_BUF_SIZE;
 	params.pkt.len     = PKT_POOL_BUF_SIZE;
-//	params.pkt.num     = PKT_POOL_SIZE;
-	params.pkt.num     = PKT_POOL_SIZE/PKT_POOL_BUF_SIZE;
+	params.pkt.num     = PKT_POOL_SIZE;
+//	params.pkt.num     = PKT_POOL_SIZE/PKT_POOL_BUF_SIZE;
 	params.type        = ODP_POOL_PACKET;
 
-	pool = odp_pool_create("packet pool", &params);
+	pool = odp_pool_create("PktsPool", &params);
 	if (pool == ODP_POOL_INVALID) {
 		debug("Error: packet pool create failed.\n");
 		exit(1);
 	}
 	gconf->pool = pool;
+
 	/* TODO implement this function */
 	//    odp_pool_print(pool);
 
 	/* Create a pktio instance for each interface */
 	for (i = 0; i < gconf->appl.if_count; ++i)
 	{
-		gconf->pktios[i].pktio = create_pktio(gconf->appl.if_names[i], i,  pool, gconf->appl.mode);
-		info("interface id %d, ifname %s, pktio:%02" PRIu64 " \n", i, gconf->appl.if_names[i],odp_pktio_to_u64(gconf->pktios[i].pktio));
+		gconf->pktios[i].pktio = create_pktio(gconf->appl.if_names[i],
+												i, pool, gconf->appl.mode);
+		info("interface id %d, ifname %s, pktio:%02" PRIu64 " \n", /
+			   	i, gconf->appl.if_names[i], /
+				odp_pktio_to_u64(gconf->pktios[i].pktio));
 	}
 
 	//stats = gconf->stats;
