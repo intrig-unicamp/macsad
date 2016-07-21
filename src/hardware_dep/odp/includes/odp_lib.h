@@ -41,11 +41,11 @@ extern int numa_on;
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 // TODO is the longer version better?
 /*
-#define NB_MBUF RTE_MAX	(																	\
-				(nb_ports*nb_rx_queue*RTE_TEST_RX_DESC_DEFAULT +							\
-				nb_ports*nb_lcores*MAX_PKT_BURST +											\
-				nb_ports*n_tx_queue*RTE_TEST_TX_DESC_DEFAULT +								\
-				nb_lcores*MEMPOOL_CACHE_SIZE),												\
+#define NB_MBUF RTE_MAX	(					\
+				(nb_ports*nb_rx_queue*RTE_TEST_RX_DESC_DEFAULT +	\
+				nb_ports*nb_lcores*MAX_PKT_BURST +				\
+				nb_ports*n_tx_queue*RTE_TEST_TX_DESC_DEFAULT +	\
+				nb_lcores*MEMPOOL_CACHE_SIZE),					\
 				(unsigned)8192)
 */
 #define NB_MBUF 8192
@@ -74,54 +74,46 @@ struct mbuf_table {
 #define NB_TABLES 0
 #endif
 
-#define ODP_MAX_LCORE 2
+#define MAC_MAX_LCORE 32
 #define NB_REPLICA 2
 #define SOCKET_DEF 0
 
 /** @def PKT_POOL_SIZE                                                           
  * @brief Size of the shared memory block                                        
  */                   
-//#define PKT_POOL_SIZE      (512*2048)   /**< pkt pool size */ 
 #define PKT_POOL_SIZE 8192                                                   
 /** @def PKT_POOL_BUF_SIZE    
  * @brief Buffer size of the packet pool buffer                                  
  */                                                                              
 #define PKT_POOL_BUF_SIZE 1856
-
 /** @def MAX_PKT_BURST                                                           
  * @brief Maximum number of packet in a burst                                    
  */                                                                              
 #define MAX_PKT_BURST 32                                                         
-                                                                                 
 /** @def MAX_WORKERS                                                             
- *  * @brief Maximum number of worker threads                                    
- *   */                                                                          
+ * @brief Maximum number of worker threads                                    
+ */                                                                          
 #define MAX_WORKERS            32                                                
-                                                                                 
 /** Maximum number of pktio queues per interface */                              
 #define MAX_QUEUES             32                                                
-                                                                                 
 /** Maximum number of pktio interfaces */                                        
 #define MAX_PKTIOS             8           
-
 /** @def APPL_MODE_PKT_BURST
- *  * @brief The application will handle pakcets in bursts
- *   */
+ * @brief The application will handle pakcets in bursts
+ */
 #define APPL_MODE_PKT_BURST    0
-
 /** @def APPL_MODE_PKT_QUEUE
- *  * @brief The application will handle packets in queues
- *   */
+ * @brief The application will handle packets in queues
+ */
 #define APPL_MODE_PKT_QUEUE    1
-
 /** @def APPL_MODE_PKT_SCHED
- *  * @brief The application will handle packets with sheduler
- *   */
+ * @brief The application will handle packets with sheduler
+ */
 #define APPL_MODE_PKT_SCHED    2
 
 /**                                                                              
  * Packet input mode                                                             
- **/                                                                             
+ */                                                                             
 typedef enum pktin_mode_t {                                                      
     DIRECT_RECV,                                                                 
     PLAIN_QUEUE,                                                                 
@@ -160,8 +152,11 @@ typedef struct appl_args {
     char *if_str;       /**< Storage for interface names */                      
     int error_check;        /**< Check packet errors */                          
 } appl_args_t;                                                                   
-                                                                                 
-static int exit_threads;    /**< Break workers loop if set to 1 */ 
+
+
+/** Global barrier to synchronize main and workers */                            
+extern odp_barrier_t barrier;
+extern int exit_threads;    /**< Break workers loop if set to 1 */ 
 
 typedef struct lcore_state {
 	//ptrs to the containing socket's instance
@@ -207,43 +202,55 @@ typedef struct pkt_buf_t {
 } pkt_buf_t;
 
 typedef struct macs_conf{
-    char *pktio_dev;    /**< Interface name to use */
+//    char *pktio_dev;    /**< Interface name to use */
     int mode;       /**< Thread mode */
-    int thr_idx;                                                                 
-    int num_pktio;                                                               
+    int thr_idx;  
+/** Number of interfaces from which to receive packets */	
+    int num_rx_pktio; 
                                                                                  
-    struct {                                                                     
-        odp_pktio_t rx_pktio;                                                    
-        odp_pktio_t tx_pktio;                                                    
-        odp_pktin_queue_t pktin;                                                 
-        odp_pktout_queue_t pktout;                                               
-        odp_queue_t rx_queue;                                                    
-        odp_queue_t tx_queue;                                                    
-        int rx_idx;                                                              
-        int tx_idx;                                                              
-        int rx_queue_idx;                                                        
-        int tx_queue_idx;
-	    pkt_buf_t buf;         /**< Packet TX buffer */		
-    } pktio[MAX_PKTIOS];                                                         
-                                                                                 
+    struct {  
+/* rx_pktio */                                                                   
+        odp_pktin_queue_t pktin;   /**< Packet input queue */
+        uint8_t port_idx;      /**< Rx Port index */
+        int rqueue_idx;         /**< Queue index */
+/* tx_pktio */
+        odp_pktout_queue_t pktout; /**< Packet output queue */
+        int tqueue_idx;         /**< Queue index */
+        pkt_buf_t buf;         /**< Packet TX buffer */
+    } pktios[MAX_PKTIOS];                         
+
+#if 0                     
+    struct {
+        odp_pktin_queue_t pktin;   /**< Packet input queue */
+        uint8_t port_idx;      /**< Port index */
+        int queue_idx;         /**< Queue index */
+    } rx_pktio[MAX_PKTIOS];
+    struct {
+        odp_pktout_queue_t pktout; /**< Packet output queue */
+        int queue_idx;         /**< Queue index */
+        pkt_buf_t buf;         /**< Packet TX buffer */
+    } tx_pktio[MAX_PKTIOS];
+
     stats_t *stats; /**< Pointer to per thread stats */                          
+#endif
+
+    stats_t *stats[MAX_PKTIOS];    /**< Interface statistics */
 } macs_conf_t;
 
 /**                                                                              
  * Grouping of all global data                                                   
  */
 typedef struct mac_global{
-    /** Per thread packet stats */                                               
-    stats_t stats[MAX_WORKERS];
+	/** Per thread interface statistics */
+	stats_t stats[MAX_WORKERS][MAX_PKTIOS];
     /** Application (parsed) arguments */
     appl_args_t appl;
     /** Table of port ethernet addresses */
-    odph_ethaddr_t port_eth_addr[MAX_PKTIOS];
-/* pkt pool */
-	        odp_pool_t pool; 
-    odph_linux_pthread_t thread_tbl[MAX_WORKERS];
+//    odph_ethaddr_t port_eth_addr[MAX_PKTIOS];
+	/* pkt pool */
+    odp_pool_t pool; 
     /** Thread specific arguments */
-	macs_conf_t mconf[ODP_MAX_LCORE];
+	macs_conf_t mconf[MAC_MAX_LCORE];
 	/** ptr to statefull memories */
 	lcore_state_t state;
 	/** Table of pktio handles */
@@ -251,10 +258,7 @@ typedef struct mac_global{
         odp_pktio_t pktio;
         odp_pktin_queue_t pktin[MAX_QUEUES];
         odp_pktout_queue_t pktout[MAX_QUEUES];
-        odp_queue_t rx_q[MAX_QUEUES];
-        odp_queue_t tx_q[MAX_QUEUES];
         int num_rx_thr;
-        int num_tx_thr;
         int num_rx_queue;
         int num_tx_queue;
         int next_rx_queue;
@@ -266,15 +270,6 @@ typedef struct mac_global{
 mac_global_t *gconf;
 
 #define TABCHANGE_DELAY 50 // microseconds
-
-/* Per-port statistics struct */
-struct l2fwd_port_statistics {
-	uint64_t tx;
-	uint64_t rx;
-	uint64_t dropped;
-} __rte_cache_aligned;
-
-extern struct l2fwd_port_statistics port_statistics[MAX_ETHPORTS];
 
 uint8_t odpc_initialize(int argc, char **argv);
 

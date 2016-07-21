@@ -290,7 +290,7 @@ int odpc_lookup_tbls_init()
     int socketid = SOCKET_DEF;
     unsigned lcore_id;
 	info("Initializing tables...\n");
-    for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) {
+    for (lcore_id = 0; lcore_id < MAC_MAX_LCORE; lcore_id++) {
 /*
         if (rte_lcore_is_enabled(lcore_id) == 0) continue;
         if (numa_on) socketid = rte_lcore_to_socket_id(lcore_id);
@@ -319,7 +319,7 @@ int odpc_lookup_tbls_des()
 	int i, j;
 	unsigned lcore_id;
 	info("Destroying Lookup tables...\n");
-	for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) {
+	for (lcore_id = 0; lcore_id < MAC_MAX_LCORE; lcore_id++) {
 		for(i = 0; i < NB_TABLES; i++) {
 			for(j = 0; j < NB_REPLICA; j++) {
 				if (state[socketid].tables[i][j] != NULL){

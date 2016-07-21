@@ -27,8 +27,6 @@ int numa_on = 0; /**< NUMA is not enabled by default. */
 #define MAX_LCORE_PARAMS 1024
 uint16_t nb_lcore_params;
 
-struct l2fwd_port_statistics port_statistics[MAX_ETHPORTS];
-
 //=   used only here   ========================================================
 #define MAX_JUMBO_PKT_LEN  9600
 
@@ -37,14 +35,15 @@ struct l2fwd_port_statistics port_statistics[MAX_ETHPORTS];
 static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
-extern void
-odp_main_worker (void);
+/** Global barrier to synchronize main and workers */
+odp_barrier_t barrier;
+int exit_threads;    /**< Break workers loop if set to 1 */
+
+extern void odp_main_worker (void);
 //=============================================================================
 
 #define UNUSED(x) (void)(x)
 
-/** Global barrier to synchronize main and workers */
-static odp_barrier_t barrier;
 //--------
 static int parse_max_pkt_len(const char *pktlen)
 {
@@ -121,7 +120,7 @@ int odpc_lcore_conf_init ()
 //	struct macs_conf *qconf;
 	int socketid;
 	unsigned lcore_id;
-	for (lcore_id = 0; lcore_id < ODP_MAX_LCORE; lcore_id++) {
+	for (lcore_id = 0; lcore_id < MAC_MAX_LCORE; lcore_id++) {
 /*		if (rte_lcore_is_enabled(lcore_id) == 0) continue;
 		if (numa_on) socketid = rte_lcore_to_socket_id(lcore_id);
 		else socketid = 0;
@@ -303,14 +302,31 @@ int odpc_stfull_memories_init()
 }
 */
 
-static odp_pktio_t create_pktio(const char *name, int if_idx, odp_pool_t pool, int mode)
+/**
+ * Create a pktio handle
+ *
+ * @param dev        Name of device to open
+ * @param index      Pktio index
+ * @param num_rx     Number of RX queues
+ * @param num_tx     Number of TX queues
+ * @param pool       Pool to associate with device for packet RX/TX
+ *
+ * @retval 0 on success
+ * @retval -1 on failure
+ */
+
+static int create_pktio(const char *name, int if_idx, int num_rx,
+							int num_tx, odp_pool_t pool, int mode)
 {
+	odp_pktio_t pktio;
+    odp_pktio_capability_t capa;
 	odp_pktio_param_t pktio_param;
 	odp_pktin_queue_param_t pktin_param;
 	odp_pktin_queue_param_t in_queue_param;
+	odp_pktout_queue_param_t pktout_param;
 	odp_pktout_queue_param_t out_queue_param;
-	odp_pktio_t pktio;
-
+    odp_pktio_op_mode_t mode_rx;
+    odp_pktio_op_mode_t mode_tx;
 	int ret;
 
 	odp_pktio_param_init(&pktio_param);
@@ -333,55 +349,80 @@ static odp_pktio_t create_pktio(const char *name, int if_idx, odp_pool_t pool, i
 	pktio = odp_pktio_open(name, pool, &pktio_param);
 	if (pktio == ODP_PKTIO_INVALID) {
 		debug("Error: pktio create failed for %s\n", name);
-		exit(1);
+        return -1;
 	}
+
+    printf("created pktio %" PRIu64 " (%s)\n", odp_pktio_to_u64(pktio),
+           name);
+
+    if (odp_pktio_capability(pktio, &capa)) {
+        printf("Error: capability query failed %s\n", name);
+        return -1;
+    }
 
 	odp_pktin_queue_param_init(&pktin_param);
-
-#if 0
 	odp_pktout_queue_param_init(&pktout_param);
-	pktin_param.op_mode = ODP_PKTIO_OP_MT_UNSAFE;
-	pktout_param.op_mode = ODP_PKTIO_OP_MT_UNSAFE;
-#endif
+
+    mode_tx = ODP_PKTIO_OP_MT_UNSAFE;
+    mode_rx = ODP_PKTIO_OP_MT_UNSAFE;
+
+    if (num_rx > (int)capa.max_input_queues) {
+        printf("Sharing %i input queues between %i workers\n",
+               capa.max_input_queues, num_rx);
+        num_rx  = capa.max_input_queues;
+        mode_rx = ODP_PKTIO_OP_MT;
+    }
+
+    if (num_tx > (int)capa.max_output_queues) {
+        printf("Sharing %i output queues between %i workers\n",
+               capa.max_output_queues, num_tx);
+        num_tx  = capa.max_output_queues;
+        mode_tx = ODP_PKTIO_OP_MT;
+    }
+
+    pktin_param.hash_enable = 1;
+    pktin_param.hash_proto.proto.ipv4 = 1;
+//    pktin_param.hash_proto.proto.ipv4_tcp = 1;
+//    pktin_param.hash_proto.proto.ipv4_udp = 1;
+    pktin_param.num_queues  = num_rx;
+    pktin_param.op_mode     = mode_rx;
+
+    pktout_param.num_queues = num_tx;
+    pktout_param.op_mode    = mode_tx;
+
 	if (odp_pktin_queue_config(pktio, &pktin_param))
+	{
 		debug("Error: pktin config failed for %s\n", name);
-
-	if (odp_pktout_queue_config(pktio, NULL))
-		debug("Error: pktout config failed for %s\n", name);
-
-        if (odp_pktin_queue(pktio, &gconf->pktios[if_idx].pktin[0], 1) != 1) {
-                debug("  Error: no pktin queue for %s\n", name);
-                return NULL;
-        }
-        if (odp_pktout_queue(pktio, &gconf->pktios[if_idx].pktout[0], 1) != 1) {
-                debug("  Error: no pktin queue for %s\n", name);
-                return NULL;
-        }
-
-	ret = odp_pktio_start(pktio);
-	if (ret != 0)
-		debug("Error: unable to start %s\n", name);
-
-//TODO
-//promisc mode set alway fails. Need to check the reason.
-#if 0
-	ret=odp_pktio_promisc_mode(pktio);
-	info("%s promiscious mode is %d\n",name, ret);
-	if(ret == 0) {
-		ret = odp_pktio_promisc_mode_set(pktio, 1);
-		if (ret != 0) {
-			debug("Error: failed to set port %s to promiscuous mode with return id %d.\n",  name, ret);
-		}
+		return -1;
 	}
-#endif
 
-	info("  created pktio:%02" PRIu64
-			", dev:%s, queue mode (ATOMIC queues)\n"
-			"  \tdefault pktio%02" PRIu64 "\n",
-			odp_pktio_to_u64(pktio), name,
-			odp_pktio_to_u64(pktio));
+	if (odp_pktout_queue_config(pktio, &pktout_param))
+	{
+		debug("Error: pktout config failed for %s\n", name);
+		return -1;
+	}
 
-	return pktio;
+	if (odp_pktin_queue(pktio, &gconf->pktios[if_idx].pktin, num_rx)
+						!= num_rx)
+	{
+		debug("  Error: no pktin queue for %s\n", name);
+        return -1;
+	}
+	if (odp_pktout_queue(pktio, &gconf->pktios[if_idx].pktout, num_tx)
+						!= num_tx)
+	{
+		debug("  Error: no pktout queue for %s\n", name);
+        return -1;
+	}
+
+    printf("created %i input and %i output queues on (%s)\n", num_rx,
+           num_tx, name);
+
+    gconf->pktios[if_idx].num_rx_queue = num_rx;
+    gconf->pktios[if_idx].num_tx_queue = num_tx;
+    gconf->pktios[if_idx].pktio        = pktio;
+
+	return 0;
 }
 
 static void *launch_worker(void *arg)
@@ -406,7 +447,7 @@ static void usage(char *progname)
            "                  Interface count min 1, max %i\n"
            "\n"
            "Optional OPTIONS:\n"
-   //        "  -c, --count <number> CPU count.\n"
+             "  -c, --count <number> CPU count.\n"
 			 "  -m, --multi <0/1> Use Multiple CPU(Boolean).\n"
  //          "  -m, --mode      0: Receive and send directly (no queues)\n"
 //           "                  1: Receive and send via queues.\n"
@@ -417,7 +458,7 @@ static void usage(char *progname)
 }
 
 /**
- * Parse and store the command line arguments
+ * Parse command line arguments
  *
  * @param argc       argument count
  * @param argv[]     argument vector
@@ -432,7 +473,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
     size_t len;
     int i;
     static struct option longopts[] = {
-//        {"count", required_argument, NULL, 'c'},
+        {"count", required_argument, NULL, 'c'},
         {"interface", required_argument, NULL, 'i'},
 //        {"mode", required_argument, NULL, 'm'},     /* return 'm' */
         {"multi", required_argument, NULL, 'm'},     /* return 'm' */
@@ -440,11 +481,20 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
         {NULL, 0, NULL, 0}
     };
 
-    while (1) {
-        opt = getopt_long(argc, argv, "+c:+t:+a:i:m:o:r:d:s:e:h",
-                  longopts, &long_index);
+	static const char *shortopts = "+c:+i:+m:h";
 
-        if (opt == -1)
+	/* let helper collect its own arguments (e.g. --odph_proc) */
+	odph_parse_options(argc, argv, shortopts, longopts);
+
+    appl_args->time = 0; /* loop forever if time to run is 0 */
+    appl_args->accuracy = 10; /* get and print pps stats second */
+
+	opterr = 0; /* do not issue errors on helper options */
+
+    while (1) {
+		opt = getopt_long(argc, argv, shortopts, longopts, &long_index);
+
+		if (opt == -1)
             break;  /* No more options */
 
         switch (opt) {
@@ -495,22 +545,6 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
         case 'm':
             i = atoi(optarg);
 			appl_args->mcpu_enable = atoi(optarg);
-#if 0
-			switch (i) {
-            case 0:
-                appl_args->mode = APPL_MODE_PKT_BURST;
-                break;
-            case 1:
-                appl_args->mode = APPL_MODE_PKT_QUEUE;
-                break;
-            case 2:
-                appl_args->mode = APPL_MODE_PKT_SCHED;
-                break;
-            default:
-                usage(argv[0]);
-                exit(EXIT_FAILURE);
-            }
-#endif
             break;
         case 'h':
             usage(argv[0]);
@@ -557,23 +591,219 @@ static void print_info(char *progname, appl_args_t *appl_args)
            progname, appl_args->if_count);
     for (i = 0; i < appl_args->if_count; ++i)
         printf(" %s", appl_args->if_names[i]);
-#if 0
-    printf("\n"
-           "Mode:            ");
-	switch (appl_args->mode) {
-    case APPL_MODE_PKT_BURST:
-        PRINT_APPL_MODE(APPL_MODE_PKT_BURST);
-        break;
-    case APPL_MODE_PKT_QUEUE:
-        PRINT_APPL_MODE(APPL_MODE_PKT_QUEUE);
-        break;
-    case APPL_MODE_PKT_SCHED:
-        PRINT_APPL_MODE(APPL_MODE_PKT_SCHED);
-        break;
-    }
-#endif
     printf("\n\n");
     fflush(NULL);
+}
+
+static void print_port_mapping(void)
+{
+    int if_count, num_workers;
+    int thr, pktio;
+
+    if_count    = gconf->appl.if_count;
+    num_workers = gconf->appl.num_workers;
+
+    printf("\nWorker mapping table (port[queue])\n--------------------\n");
+    for (thr = 0; thr < num_workers; thr++) {
+        uint8_t port_idx;
+        int queue_idx;
+        macs_conf_t *thr_args = &gconf->mconf[thr];
+        int num = thr_args->num_rx_pktio;
+
+        printf("Worker %i\n", thr);
+
+        for (pktio = 0; pktio < num; pktio++) {
+            port_idx = thr_args->pktios[pktio].port_idx;
+            queue_idx =  thr_args->pktios[pktio].rqueue_idx;
+            printf("  %i[%i]\n", port_idx, queue_idx);
+        }
+    }
+
+    printf("\nPort config\n--------------------\n");
+    for (pktio = 0; pktio < if_count; pktio++) {
+        const char *dev = gconf->appl.if_names[pktio];
+
+        printf("Port %i (%s)\n", pktio, dev);
+        printf("  rx workers %i\n",
+               gconf->pktios[pktio].num_rx_thr);
+        printf("  rx queues %i\n",
+               gconf->pktios[pktio].num_rx_queue);
+        printf("  tx queues %i\n",
+               gconf->pktios[pktio].num_tx_queue);
+    }
+    printf("\n");
+}
+
+static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
+                 int duration, int timeout)
+{
+    uint64_t rx_pkts_prev[MAX_PKTIOS] = {0};
+    uint64_t tx_pkts_prev[MAX_PKTIOS] = {0};
+    uint64_t rx_pkts_tot;
+    uint64_t tx_pkts_tot;
+    uint64_t rx_pps;
+    uint64_t tx_pps;
+    int i, j;
+    int elapsed = 0;
+    int stats_enabled = 1;
+    int loop_forever = (duration == 0);
+    int num_ifaces = gconf->appl.if_count;
+
+    if (timeout <= 0) {
+        stats_enabled = 0;
+        timeout = 1;
+    }
+    /* Wait for all threads to be ready*/
+    odp_barrier_wait(&barrier);
+
+    do {
+#if 0
+        uint64_t rx_pkts[MAX_PKTIOS] = {0};
+        uint64_t tx_pkts[MAX_PKTIOS] = {0};
+        uint64_t rx_drops = 0;
+        uint64_t tx_drops = 0;
+
+        rx_pkts_tot = 0;
+        tx_pkts_tot = 0;
+
+        sleep(timeout);
+        elapsed += timeout;
+
+        for (i = 0; i < num_workers; i++) {
+            for (j = 0; j < num_ifaces; j++) {
+                rx_pkts[j] += thr_stats[i][j].s.rx_packets;
+                tx_pkts[j] += thr_stats[i][j].s.tx_packets;
+                rx_drops += thr_stats[i][j].s.rx_drops;
+                tx_drops += thr_stats[i][j].s.tx_drops;
+            }
+        }
+
+        if (!stats_enabled)
+            continue;
+
+        for (j = 0; j < num_ifaces; j++) {
+            rx_pps = (rx_pkts[j] - rx_pkts_prev[j]) / timeout;
+            tx_pps = (tx_pkts[j] - tx_pkts_prev[j]) / timeout;
+            printf("  Port %d: %" PRIu64 " rx pps, %" PRIu64
+                   " tx pps, %" PRIu64 " rx pkts, %" PRIu64
+                   " tx pkts\n", j, rx_pps, tx_pps, rx_pkts[j],
+                   tx_pkts[j]);
+
+            rx_pkts_prev[j] = rx_pkts[j];
+            tx_pkts_prev[j] = tx_pkts[j];
+            rx_pkts_tot += rx_pkts[j];
+            tx_pkts_tot += tx_pkts[j];
+        }
+
+        printf("Total: %" PRIu64 " rx pkts, %" PRIu64 " tx pkts, %"
+               PRIu64 " rx drops, %" PRIu64 " tx drops\n", rx_pkts_tot,
+               tx_pkts_tot, rx_drops, tx_drops);
+#endif
+    } while (loop_forever || (elapsed < duration));
+
+    return rx_pkts_tot > 100 ? 0 : -1;
+}
+
+/*
+ * Set worker thread afinity for switch ports and calculate number of
+ * queues needed.
+ * less workers (N) than interfaces (M)
+ *  - assign each worker to process every Nth interface
+ *  - workers process inequal number of interfaces, when M is not divisible by N
+ *  - needs only single queue per interface
+ * otherwise
+ *  - assign an interface to every Mth worker
+ *  - interfaces are processed by inequal number of workers, when N is not
+ *    divisible by M
+ *  - tries to configure a queue per worker per interface
+ *  - shares queues, if interface capability does not allows a queue per worker
+ */
+static void macs_set_worker_afinity(void)
+{
+    int if_count, num_workers;
+    int rx_idx, mconf_id, pktio;
+    macs_conf_t *mconf;
+
+    if_count    = gconf->appl.if_count;
+    num_workers = gconf->appl.num_workers;
+
+    if (if_count > num_workers) {
+        mconf_id = 0;
+
+        for (rx_idx = 0; rx_idx < if_count; rx_idx++) {
+            mconf = &gconf->mconf[mconf_id];
+            pktio    = mconf->num_rx_pktio;
+            mconf->pktios[pktio].port_idx = rx_idx;
+            mconf->num_rx_pktio++;
+
+            gconf->pktios[rx_idx].num_rx_thr++;
+
+            mconf_id++;
+            if (mconf_id >= num_workers)
+                mconf_id = 0;
+        }
+    } else {
+        rx_idx = 0;
+
+        for (mconf_id = 0; mconf_id < num_workers; mconf_id++) {
+            mconf = &gconf->mconf[mconf_id];
+            pktio    = mconf->num_rx_pktio;
+            mconf->pktios[pktio].port_idx = rx_idx;
+            mconf->num_rx_pktio++;
+
+            gconf->pktios[rx_idx].num_rx_thr++;
+
+            rx_idx++;
+            if (rx_idx >= if_count)
+                rx_idx = 0;
+        }
+    }
+	return;
+}
+
+/*
+ * Set queue afinity with threads and fill in missing thread arguments (handles)
+ */
+static void macs_set_queue_afinity(void)
+{
+    int num_workers;
+    int mconf_id, pktio;
+	int rx_idx, tx_queue, rx_queue;
+	macs_conf_t *mconf = NULL;
+    num_workers = gconf->appl.num_workers;
+
+    for (mconf_id = 0; mconf_id < num_workers; mconf_id++) {
+        mconf = &gconf->mconf[mconf_id];
+        int num = mconf->num_rx_pktio;
+
+        /* Receive only from selected ports */
+        for (pktio = 0; pktio < num; pktio++) {
+            rx_idx   = mconf->pktios[pktio].port_idx;
+            rx_queue = gconf->pktios[rx_idx].next_rx_queue;
+
+            mconf->pktios[pktio].pktin =
+                gconf->pktios[rx_idx].pktin[rx_queue];
+            mconf->pktios[pktio].rqueue_idx = rx_queue;
+
+            rx_queue++;
+            if (rx_queue >= gconf->pktios[rx_idx].num_rx_queue)
+                rx_queue = 0;
+            gconf->pktios[rx_idx].next_rx_queue = rx_queue;
+        }
+        /* Send to all ports */
+        for (pktio = 0; pktio < (int)gconf->appl.if_count; pktio++) {
+            tx_queue = gconf->pktios[pktio].next_tx_queue;
+
+            mconf->pktios[pktio].pktout =
+                gconf->pktios[pktio].pktout[tx_queue];
+            mconf->pktios[pktio].tqueue_idx = tx_queue;
+
+            tx_queue++;
+            if (tx_queue >= gconf->pktios[pktio].num_tx_queue)
+                tx_queue = 0;
+            gconf->pktios[pktio].next_tx_queue = tx_queue;
+        }
+    }
 }
 
 static void gconf_init(mac_global_t *gconf)
@@ -581,31 +811,25 @@ static void gconf_init(mac_global_t *gconf)
 	int pktio, queue;
 
 	memset(gconf, 0, sizeof(mac_global_t));
-
 	for (pktio = 0; pktio < MAX_PKTIOS; pktio++) {
 		gconf->pktios[pktio].pktio = ODP_PKTIO_INVALID;
-
-		for (queue = 0; queue < MAX_QUEUES; queue++)
-			gconf->pktios[pktio].rx_q[queue] = ODP_QUEUE_INVALID;
 	}
 }
 
 uint8_t odpc_initialize(int argc, char **argv)
 {
 	odph_linux_pthread_t thd;
-	odp_pool_t pool;
 	odp_pool_param_t params;
 	odp_instance_t instance;
 	odp_cpumask_t cpumask;
 	odph_linux_thr_params_t thr_params;
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
-	int num_workers, i;
-	int cpu;
+	int num_workers, i, j;
+	int cpu, if_count;
 	int ret;
-	//stats_t (*stats);
-
-	//parse args
+	stats_t (*stats)[MAX_PKTIOS];
 	odp_shm_t shm;
+	odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
 
 	/* initialize ports */
 	int nb_ports = 2;
@@ -639,22 +863,22 @@ uint8_t odpc_initialize(int argc, char **argv)
 	/* Print both system and application information */
 	print_info(NO_PATH(argv[0]), &gconf->appl);
 
-	/* Default to ODP_MAX_LCORE  unless user specified */
+	/* Default to MAC_MAX_LCORE  unless user specified */
 	if (gconf->appl.cpu_count) {
 		num_workers = gconf->appl.cpu_count;
 	} else {
-		num_workers = ODP_MAX_LCORE;
+		num_workers = MAC_MAX_LCORE;
 	}
-	info("Max num worker threads: %i\n", num_workers);
 
 	/* Get default worker cpumask */
 	num_workers = odp_cpumask_default_worker(&cpumask, num_workers);
 	(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
-
 	gconf->appl.num_workers = num_workers;
 
 	for (i = 0; i < num_workers; i++)
 		gconf->mconf[i].thr_idx = i;
+
+    if_count = gconf->appl.if_count;
 
 	info("num worker threads: %i\n", num_workers);
 	info("first CPU:          %i\n", odp_cpumask_first(&cpumask));
@@ -665,30 +889,46 @@ uint8_t odpc_initialize(int argc, char **argv)
 	params.pkt.seg_len = PKT_POOL_BUF_SIZE;
 	params.pkt.len     = PKT_POOL_BUF_SIZE;
 	params.pkt.num     = PKT_POOL_SIZE;
-//	params.pkt.num     = PKT_POOL_SIZE/PKT_POOL_BUF_SIZE;
 	params.type        = ODP_POOL_PACKET;
 
-	pool = odp_pool_create("PktsPool", &params);
-	if (pool == ODP_POOL_INVALID) {
+	gconf->pool = odp_pool_create("PktsPool", &params);
+	if (gconf->pool == ODP_POOL_INVALID) {
 		debug("Error: packet pool create failed.\n");
 		exit(1);
 	}
-	gconf->pool = pool;
+	odp_pool_print(gconf->pool);
 
-	/* TODO implement this function */
-	//    odp_pool_print(pool);
+	macs_set_worker_afinity();
 
 	/* Create a pktio instance for each interface */
-	for (i = 0; i < gconf->appl.if_count; ++i)
+	for (i = 0; i < if_count; ++i)
 	{
-		gconf->pktios[i].pktio = create_pktio(gconf->appl.if_names[i],
-												i, pool, gconf->appl.mode);
-		info("interface id %d, ifname %s, pktio:%02" PRIu64 " \n", /
-			   	i, gconf->appl.if_names[i], /
-				odp_pktio_to_u64(gconf->pktios[i].pktio));
-	}
+        const char *dev = gconf->appl.if_names[i];
+        int num_rx;
 
-	//stats = gconf->stats;
+        /* An RX queue per assigned worker thread.
+		 * A private TX queue each worker thread */
+        num_rx = gconf->pktios[i].num_rx_thr;
+
+		if (create_pktio(dev, i, num_rx, num_workers,
+					gconf->pool, gconf->appl.mode))
+		{
+			exit(EXIT_FAILURE);
+		}
+
+		info("interface id %d, ifname %s, pktio:%02" PRIu64 " \n", i, gconf->appl.if_names[i], odp_pktio_to_u64(gconf->pktios[i].pktio));
+
+        ret = odp_pktio_promisc_mode_set(gconf->pktios[i].pktio, 1);
+        if (ret != 0) {
+            printf("Error: failed to set port to promiscuous mode.\n");
+            exit(EXIT_FAILURE);
+        }
+	}
+    gconf->pktios[i].pktio = ODP_PKTIO_INVALID;
+
+	macs_set_queue_afinity();
+
+    print_port_mapping();
 
 	/* Initialize all the tables defined in p4 src */
 	odpc_lookup_tbls_init();
@@ -700,60 +940,82 @@ uint8_t odpc_initialize(int argc, char **argv)
 	odpc_lcore_conf_init();
 
 	/* Create and init worker threads */
-	memset(gconf->thread_tbl, 0, sizeof(gconf->thread_tbl));
+	memset(thread_tbl, 0, sizeof(thread_tbl));
+
+    odp_barrier_init(&barrier, num_workers + 1);
+
+	stats = gconf->stats;
 
 	memset(&thr_params, 0, sizeof(thr_params));
 	thr_params.thr_type = ODP_THREAD_WORKER;
 	thr_params.instance = instance;
+	thr_params.start    = launch_worker;
 
+	    /* Create worker threads */
 	cpu = maco_get_first_cpu(&cpumask);
 	info("count threadmask %d\n ", odp_cpumask_count(&cpumask));
 	info("num worksers is %d\n", num_workers);
 
 	for (i = 0; i < num_workers; ++i) {
-//		int if_idx;
         odp_cpumask_t thd_mask;
 
-		//gconf->mconf[i].stats = gconf->stats[i];
+		for (j = 0; j < MAX_PKTIOS; j++)
+			gconf->mconf[i].stats[j] = &stats[i][j];
 
-		void *(*thr_run_func) (void *);
+		//void *(*thr_run_func) (void *);
 
-//		if_idx = i % gconf->appl.if_count;
-
-		gconf->mconf[i].pktio_dev = gconf->appl.if_names[i];
 		gconf->mconf[i].mode = gconf->appl.mode;
 
-		info("if %s and pktio_dev %s \n ", gconf->appl.if_names[i], gconf->mconf[i].pktio_dev);
+//		gconf->mconf[i].pktio_dev = gconf->appl.if_names[i];
+//		info("if %s and pktio_dev %s \n ", gconf->appl.if_names[i], gconf->mconf[i].pktio_dev);
 
-		if (gconf->appl.mode == APPL_MODE_PKT_BURST) {
-			thr_run_func = launch_worker;
+//		if (gconf->appl.mode == APPL_MODE_PKT_BURST) {
+//			thr_run_func = launch_worker;
 			info("thread func set to launch_worker\n ");
-		}
+//		}
 		/*
 		 * Create threads one-by-one instead of all-at-once,
-		 * because each thread might get different arguments.
-		 * Calls odp_thread_create(cpu) for each thread
+		 * because each thread gets different arguments.
 		 */
 
 		thr_params.arg      = &gconf->mconf[i];
-		thr_params.start    = thr_run_func;
+//		thr_params.start    = thr_run_func;
 
-                odp_cpumask_zero(&thd_mask);
-                odp_cpumask_set(&thd_mask, cpu);
-
-		odph_linux_pthread_create(&gconf->thread_tbl[i],
+		odp_cpumask_zero(&thd_mask);
+		odp_cpumask_set(&thd_mask, cpu);
+		odph_odpthreads_create(&thread_tbl[i],
 				&thd_mask, &thr_params);
 
-            // Enable this to use one cpu per thread per interface
+//		cpu = maco_get_next_cpu(&cpumask, cpu);
+		// Enable this to use one cpu per thread per interface
 		if (gconf->appl.mcpu_enable == 1)
 			cpu = maco_get_next_cpu(&cpumask, cpu);
 	}
 
-	/* Master thread waits for other threads to exit */
-	odph_linux_pthread_join(gconf->thread_tbl, num_workers);
+    /* Start packet receive and transmit */
+    for (i = 0; i < if_count; ++i) {
+        odp_pktio_t pktio;
 
-//	free(gconf->appl.if_names);
-//	free(gconf->appl.if_str);
+        pktio = gconf->pktios[i].pktio;
+        ret   = odp_pktio_start(pktio);
+        if (ret) {
+            printf("Error: unable to start %s\n",
+                   gconf->appl.if_names[i]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    ret = print_speed_stats(num_workers, gconf->stats,
+                gconf->appl.time, gconf->appl.accuracy);
+    exit_threads = 1;
+
+    /* Master thread waits for other threads to exit */
+	for (i = 0; i < num_workers; ++i)
+		odph_odpthreads_join(&thread_tbl[i]);
+
+	free(gconf->appl.if_names);
+	free(gconf->appl.if_str);
+// TODO
 //	free(gconf);
 	printf("Exit\n\n");
 

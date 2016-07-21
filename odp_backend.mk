@@ -47,7 +47,7 @@ SRCS-y += $(CDIR)/src/hardware_dep/odp/data_plane/odp_primitives.c
 #SRCS-y += odp_primitives.c
 SRCS-Y += vector.c
 
-CC = clang
+#CC = clang
 
 LDFLAGS += -L$(ODP_SDK)/lib/
 LDFLAGS += -L$(ODP_SDK)/lib/.libs
@@ -63,8 +63,8 @@ all: $(MAIN)
 	@echo  $(MAIN) successfully compiled
 
 $(MAIN):
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 2>/dev/null
-#	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 
+#	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 2>/dev/null
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 
 
 .c.o:
 	$(CC) $(CFLAGS) -c $<  -o $@
