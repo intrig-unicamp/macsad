@@ -316,7 +316,7 @@ int odpc_stfull_memories_init()
  */
 
 static int create_pktio(const char *name, int if_idx, int num_rx,
-							int num_tx, odp_pool_t pool, int mode)
+							int num_tx, odp_pool_t pool)
 {
 	odp_pktio_t pktio;
     odp_pktio_capability_t capa;
@@ -327,25 +327,20 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 	odp_pktout_queue_param_t out_queue_param;
     odp_pktio_op_mode_t mode_rx;
     odp_pktio_op_mode_t mode_tx;
-	int ret;
+	int ret, num_tx_shared;
+    odp_schedule_sync_t  sync_mode;
+	pktin_mode_t in_mode = gconf->appl.in_mode;
 
 	odp_pktio_param_init(&pktio_param);
 
-	switch (mode) {
-		case  APPL_MODE_PKT_BURST:
-			pktio_param.in_mode = ODP_PKTIN_MODE_DIRECT;
-			break;
-		case APPL_MODE_PKT_QUEUE:
-			pktio_param.in_mode = ODP_PKTIN_MODE_QUEUE;
-			break;
-		case APPL_MODE_PKT_SCHED:
-			pktio_param.in_mode = ODP_PKTIN_MODE_SCHED;
-			break;
-		default:
-			debug("invalid mode %d\n", mode);
-	}
+	if (gconf->appl.in_mode == PLAIN_QUEUE)
+		pktio_param.in_mode = ODP_PKTIN_MODE_QUEUE;
+	else if (gconf->appl.in_mode != DIRECT_RECV) /* pktin_mode SCHED_* */
+		pktio_param.in_mode = ODP_PKTIN_MODE_SCHED;
 
-    /* Open a packet IO instance */
+	if (gconf->appl.out_mode != PKTOUT_DIRECT)
+		pktio_param.out_mode = ODP_PKTOUT_MODE_QUEUE;
+
 	pktio = odp_pktio_open(name, pool, &pktio_param);
 	if (pktio == ODP_PKTIO_INVALID) {
 		debug("Error: pktio create failed for %s\n", name);
@@ -365,6 +360,27 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 
     mode_tx = ODP_PKTIO_OP_MT_UNSAFE;
     mode_rx = ODP_PKTIO_OP_MT_UNSAFE;
+
+	if (sched_mode(in_mode)) {
+		num_tx_shared = 1;
+		mode_tx = ODP_PKTIO_OP_MT;
+		mode_rx = ODP_PKTIO_OP_MT;
+
+		if (gconf->appl.in_mode == SCHED_ATOMIC)
+			sync_mode = ODP_SCHED_SYNC_ATOMIC;
+		else if (gconf->appl.in_mode == SCHED_ORDERED)
+			sync_mode = ODP_SCHED_SYNC_ORDERED;
+		else
+			sync_mode = ODP_SCHED_SYNC_PARALLEL;
+
+		pktin_param.queue_param.sched.prio  = ODP_SCHED_PRIO_DEFAULT;
+		pktin_param.queue_param.sched.sync  = sync_mode;
+		pktin_param.queue_param.sched.group = ODP_SCHED_GROUP_ALL;
+	} else {
+		num_tx_shared = capa.max_output_queues;
+		mode_tx = ODP_PKTIO_OP_MT_UNSAFE;
+		mode_rx = ODP_PKTIO_OP_MT_UNSAFE;
+	}
 
     if (num_rx > (int)capa.max_input_queues) {
         printf("Sharing %i input queues between %i workers\n",
@@ -402,17 +418,37 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 		return -1;
 	}
 
-	if (odp_pktin_queue(pktio, &gconf->pktios[if_idx].pktin, num_rx)
-						!= num_rx)
-	{
-		debug("  Error: no pktin queue for %s\n", name);
-        return -1;
+
+	if (gconf->appl.in_mode == DIRECT_RECV) {
+		if (odp_pktin_queue(pktio, &gconf->pktios[if_idx].pktin, num_rx)
+				!= num_rx)
+		{
+			debug("  Error: no pktin queue for %s\n", name);
+			return -1;
+		}
+	} else {
+		if (odp_pktin_event_queue(pktio,
+					gconf->pktios[if_idx].rx_q,
+					num_rx) != num_rx) {
+			debug("Error: pktin event queue query failed %s\n",name);
+			return -1;
+		}
 	}
-	if (odp_pktout_queue(pktio, &gconf->pktios[if_idx].pktout, num_tx)
-						!= num_tx)
-	{
-		debug("  Error: no pktout queue for %s\n", name);
-        return -1;
+
+	if (gconf->appl.out_mode == PKTOUT_DIRECT) {
+		if (odp_pktout_queue(pktio, &gconf->pktios[if_idx].pktout, num_tx)
+				!= num_tx)
+		{
+			debug("  Error: no pktout queue for %s\n", name);
+			return -1;
+		}
+	} else {
+		if (odp_pktout_event_queue(pktio,
+					gconf->pktios[if_idx].tx_q,
+					num_tx) != num_tx) {
+			debug("Error: event queue query failed %s\n", name);
+			return -1;
+		}
 	}
 
     printf("created %i input and %i output queues on (%s)\n", num_rx,
@@ -423,12 +459,6 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
     gconf->pktios[if_idx].pktio        = pktio;
 
 	return 0;
-}
-
-static void *launch_worker(void *arg)
-{
-	odp_main_worker();
-	return NULL;
 }
 
 /**
@@ -448,10 +478,16 @@ static void usage(char *progname)
            "\n"
            "Optional OPTIONS:\n"
              "  -c, --count <number> CPU count.\n"
-			 "  -m, --multi <0/1> Use Multiple CPU(Boolean).\n"
- //          "  -m, --mode      0: Receive and send directly (no queues)\n"
-//           "                  1: Receive and send via queues.\n"
-//           "                  2: Receive via scheduler, send via queues.\n"
+//			 "  -m, --multi <0/1> Use Multiple CPU(Boolean).\n"
+           "  -m, --mode      Packet input mode\n"
+           "                  0: Direct mode: PKTIN_MODE_DIRECT (default)\n"
+           "                  1: Scheduler mode with parallel queues: PKTIN_MODE_SCHED + SCHED_SYNC_PARALLEL\n"
+           "                  2: Scheduler mode with atomic queues:   PKTIN_MODE_SCHED + SCHED_SYNC_ATOMIC\n"
+           "                  3: Scheduler mode with ordered queues:  PKTIN_MODE_SCHED + SCHED_SYNC_ORDERED\n"
+           "                  4: Plain queue mode: ODP_PKTIN_MODE_QUEUE\n"
+           "  -o, --out_mode  Packet output mode\n"
+           "                  0: Direct mode: PKTOUT_MODE_DIRECT (default)\n"
+           "                  1: Queue mode:  PKTOUT_MODE_QUEUE\n"
            "  -h, --help           Display help and exit.\n\n"
            "\n", NO_PATH(progname), NO_PATH(progname), MAX_PKTIOS
         );
@@ -475,8 +511,8 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
     static struct option longopts[] = {
         {"count", required_argument, NULL, 'c'},
         {"interface", required_argument, NULL, 'i'},
-//        {"mode", required_argument, NULL, 'm'},     /* return 'm' */
-        {"multi", required_argument, NULL, 'm'},     /* return 'm' */
+        {"mode", required_argument, NULL, 'm'},
+        {"out_mode", required_argument, NULL, 'o'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
@@ -488,6 +524,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 
     appl_args->time = 0; /* loop forever if time to run is 0 */
     appl_args->accuracy = 10; /* get and print pps stats second */
+    appl_args->cpu_count = 0; /* single cpu by default */
 
 	opterr = 0; /* do not issue errors on helper options */
 
@@ -544,7 +581,21 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 
         case 'm':
             i = atoi(optarg);
-			appl_args->mcpu_enable = atoi(optarg);
+            if (i == 1)
+                appl_args->in_mode = SCHED_PARALLEL;
+            else if (i == 2)
+                appl_args->in_mode = SCHED_ATOMIC;
+            else if (i == 3)
+                appl_args->in_mode = SCHED_ORDERED;
+            else if (i == 4)
+                appl_args->in_mode = PLAIN_QUEUE;
+            else
+                appl_args->in_mode = DIRECT_RECV;
+            break;
+        case 'o':
+            i = atoi(optarg);
+            if (i != 0)
+                appl_args->out_mode = PKTOUT_QUEUE;
             break;
         case 'h':
             usage(argv[0]);
@@ -591,6 +642,24 @@ static void print_info(char *progname, appl_args_t *appl_args)
            progname, appl_args->if_count);
     for (i = 0; i < appl_args->if_count; ++i)
         printf(" %s", appl_args->if_names[i]);
+	 printf("\n"
+           "Mode:            ");
+    if (appl_args->in_mode == DIRECT_RECV)
+        printf("PKTIN_DIRECT, ");
+    else if (appl_args->in_mode == PLAIN_QUEUE)
+        printf("PKTIN_QUEUE, ");
+    else if (appl_args->in_mode == SCHED_PARALLEL)
+        printf("PKTIN_SCHED_PARALLEL, ");
+    else if (appl_args->in_mode == SCHED_ATOMIC)
+        printf("PKTIN_SCHED_ATOMIC, ");
+    else if (appl_args->in_mode == SCHED_ORDERED)
+        printf("PKTIN_SCHED_ORDERED, ");
+
+    if (appl_args->out_mode)
+        printf("PKTOUT_QUEUE");
+    else
+        printf("PKTOUT_DIRECT");
+
     printf("\n\n");
     fflush(NULL);
 }
@@ -605,7 +674,7 @@ static void print_port_mapping(void)
 
     printf("\nWorker mapping table (port[queue])\n--------------------\n");
     for (thr = 0; thr < num_workers; thr++) {
-        uint8_t port_idx;
+        uint8_t rx_idx;
         int queue_idx;
         macs_conf_t *thr_args = &gconf->mconf[thr];
         int num = thr_args->num_rx_pktio;
@@ -613,9 +682,9 @@ static void print_port_mapping(void)
         printf("Worker %i\n", thr);
 
         for (pktio = 0; pktio < num; pktio++) {
-            port_idx = thr_args->pktios[pktio].port_idx;
-            queue_idx =  thr_args->pktios[pktio].rqueue_idx;
-            printf("  %i[%i]\n", port_idx, queue_idx);
+            rx_idx = thr_args->rx_pktios[pktio].rx_idx;
+            queue_idx =  thr_args->rx_pktios[pktio].rqueue_idx;
+            printf("  %i[%i]\n", rx_idx, queue_idx);
         }
     }
 
@@ -721,7 +790,7 @@ static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
 static void macs_set_worker_afinity(void)
 {
     int if_count, num_workers;
-    int rx_idx, mconf_id, pktio;
+    int rx_idx, mconf_id, pktio_id;
     macs_conf_t *mconf;
 
     if_count    = gconf->appl.if_count;
@@ -732,8 +801,8 @@ static void macs_set_worker_afinity(void)
 
         for (rx_idx = 0; rx_idx < if_count; rx_idx++) {
             mconf = &gconf->mconf[mconf_id];
-            pktio    = mconf->num_rx_pktio;
-            mconf->pktios[pktio].port_idx = rx_idx;
+            pktio_id = mconf->num_rx_pktio;
+            mconf->rx_pktios[pktio_id].rx_idx = rx_idx;
             mconf->num_rx_pktio++;
 
             gconf->pktios[rx_idx].num_rx_thr++;
@@ -747,8 +816,8 @@ static void macs_set_worker_afinity(void)
 
         for (mconf_id = 0; mconf_id < num_workers; mconf_id++) {
             mconf = &gconf->mconf[mconf_id];
-            pktio    = mconf->num_rx_pktio;
-            mconf->pktios[pktio].port_idx = rx_idx;
+            pktio_id    = mconf->num_rx_pktio;
+            mconf->rx_pktios[pktio_id].rx_idx = rx_idx;
             mconf->num_rx_pktio++;
 
             gconf->pktios[rx_idx].num_rx_thr++;
@@ -778,12 +847,16 @@ static void macs_set_queue_afinity(void)
 
         /* Receive only from selected ports */
         for (pktio = 0; pktio < num; pktio++) {
-            rx_idx   = mconf->pktios[pktio].port_idx;
+            rx_idx   = mconf->rx_pktios[pktio].rx_idx;
             rx_queue = gconf->pktios[rx_idx].next_rx_queue;
 
-            mconf->pktios[pktio].pktin =
+            mconf->rx_pktios[pktio].pktin =
                 gconf->pktios[rx_idx].pktin[rx_queue];
-            mconf->pktios[pktio].rqueue_idx = rx_queue;
+            mconf->rx_pktios[pktio].rqueue_idx = rx_queue;
+            mconf->rx_pktios[pktio].rx_queue =
+                gconf->pktios[rx_idx].rx_q[rx_queue];
+            //thr_args->pktio[pktio].rx_pktio =
+            //    gbl_args->pktios[rx_idx].pktio;
 
             rx_queue++;
             if (rx_queue >= gconf->pktios[rx_idx].num_rx_queue)
@@ -794,9 +867,11 @@ static void macs_set_queue_afinity(void)
         for (pktio = 0; pktio < (int)gconf->appl.if_count; pktio++) {
             tx_queue = gconf->pktios[pktio].next_tx_queue;
 
-            mconf->pktios[pktio].pktout =
+            mconf->tx_pktios[pktio].pktout =
                 gconf->pktios[pktio].pktout[tx_queue];
-            mconf->pktios[pktio].tqueue_idx = tx_queue;
+            mconf->tx_pktios[pktio].tqueue_idx = tx_queue;
+            mconf->tx_pktios[pktio].tx_queue =
+                gconf->pktios[pktio].tx_q[tx_queue];
 
             tx_queue++;
             if (tx_queue >= gconf->pktios[pktio].num_tx_queue)
@@ -806,6 +881,52 @@ static void macs_set_queue_afinity(void)
     }
 }
 
+#if 0
+    for (thr = 0; thr < num_workers; thr++) {
+        int rx_idx, tx_idx;
+        thread_args_t *thr_args = &gbl_args->thread[thr];
+        int num = thr_args->num_pktio;
+
+        for (pktio = 0; pktio < num; pktio++) {
+            int rx_queue, tx_queue;
+
+            rx_idx   = thr_args->pktio[pktio].rx_idx;
+            rx_queue = gbl_args->pktios[rx_idx].next_rx_queue;
+
+            thr_args->pktio[pktio].rx_queue_idx = rx_queue;
+            thr_args->pktio[pktio].pktin =
+                gbl_args->pktios[rx_idx].pktin[rx_queue];
+            thr_args->pktio[pktio].rx_queue =
+                gbl_args->pktios[rx_idx].rx_q[rx_queue];
+            thr_args->pktio[pktio].rx_pktio =
+                gbl_args->pktios[rx_idx].pktio;
+
+            rx_queue++;
+            if (rx_queue >= gbl_args->pktios[rx_idx].num_rx_queue)
+                rx_queue = 0;
+            gbl_args->pktios[rx_idx].next_rx_queue = rx_queue;
+
+            tx_queue = gbl_args->pktios[tx_idx].next_tx_queue;
+            thr_args->pktio[pktio].tx_queue_idx = tx_queue;
+            thr_args->pktio[pktio].pktout =
+                gbl_args->pktios[tx_idx].pktout[tx_queue];
+            thr_args->pktio[pktio].tx_queue =
+                gbl_args->pktios[tx_idx].tx_q[tx_queue];
+            thr_args->pktio[pktio].tx_pktio =
+                gbl_args->pktios[tx_idx].pktio;
+            tx_queue++;
+
+            if (tx_queue >= gbl_args->pktios[tx_idx].num_tx_queue)
+                tx_queue = 0;
+
+            gbl_args->pktios[tx_idx].next_tx_queue = tx_queue;
+
+            tx_idx   = thr_args->pktio[pktio].tx_idx;
+        }
+    }
+
+#endif
+
 static void gconf_init(mac_global_t *gconf)
 {
 	int pktio, queue;
@@ -813,6 +934,9 @@ static void gconf_init(mac_global_t *gconf)
 	memset(gconf, 0, sizeof(mac_global_t));
 	for (pktio = 0; pktio < MAX_PKTIOS; pktio++) {
 		gconf->pktios[pktio].pktio = ODP_PKTIO_INVALID;
+
+        for (queue = 0; queue < MAX_QUEUES; queue++)
+            gconf->pktios[pktio].rx_q[queue] = ODP_QUEUE_INVALID;
 	}
 }
 
@@ -830,6 +954,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 	stats_t (*stats)[MAX_PKTIOS];
 	odp_shm_t shm;
 	odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
+    int (*thr_run_func)(void *);
 
 	/* initialize ports */
 	int nb_ports = 2;
@@ -894,7 +1019,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 	gconf->pool = odp_pool_create("PktsPool", &params);
 	if (gconf->pool == ODP_POOL_INVALID) {
 		debug("Error: packet pool create failed.\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	odp_pool_print(gconf->pool);
 
@@ -904,17 +1029,17 @@ uint8_t odpc_initialize(int argc, char **argv)
 	for (i = 0; i < if_count; ++i)
 	{
         const char *dev = gconf->appl.if_names[i];
-        int num_rx;
+        int num_rx, num_tx;
 
-        /* An RX queue per assigned worker thread.
-		 * A private TX queue each worker thread */
-        num_rx = gconf->pktios[i].num_rx_thr;
+        if (gconf->appl.in_mode == DIRECT_RECV ||
+            gconf->appl.in_mode == PLAIN_QUEUE) {
+            /* A queue per assigned worker */
+            num_rx = gconf->pktios[i].num_rx_thr;
+        //    num_tx = gconf->pktios[i].num_tx_thr;
+        }
 
-		if (create_pktio(dev, i, num_rx, num_workers,
-					gconf->pool, gconf->appl.mode))
-		{
+		if (create_pktio(dev, i, num_rx, num_workers, gconf->pool))
 			exit(EXIT_FAILURE);
-		}
 
 		info("interface id %d, ifname %s, pktio:%02" PRIu64 " \n", i, gconf->appl.if_names[i], odp_pktio_to_u64(gconf->pktios[i].pktio));
 
@@ -928,7 +1053,9 @@ uint8_t odpc_initialize(int argc, char **argv)
 
 	macs_set_queue_afinity();
 
-    print_port_mapping();
+    if (gconf->appl.in_mode == DIRECT_RECV ||
+        gconf->appl.in_mode == PLAIN_QUEUE)
+        print_port_mapping();
 
 	/* Initialize all the tables defined in p4 src */
 	odpc_lookup_tbls_init();
@@ -942,57 +1069,46 @@ uint8_t odpc_initialize(int argc, char **argv)
 	/* Create and init worker threads */
 	memset(thread_tbl, 0, sizeof(thread_tbl));
 
-    odp_barrier_init(&barrier, num_workers + 1);
-
 	stats = gconf->stats;
 
-	memset(&thr_params, 0, sizeof(thr_params));
-	thr_params.thr_type = ODP_THREAD_WORKER;
-	thr_params.instance = instance;
-	thr_params.start    = launch_worker;
+    odp_barrier_init(&barrier, num_workers + 1);
 
-	    /* Create worker threads */
+    if (gconf->appl.in_mode == DIRECT_RECV)
+        thr_run_func = odpc_worker_mode_direct;
+	else if (gconf->appl.in_mode == PLAIN_QUEUE)
+		thr_run_func = odpc_worker_mode_queue;
+	else /* SCHED_PARALLEL / SCHED_ATOMIC / SCHED_ORDERED */
+		thr_run_func = odpc_worker_mode_sched;
+
+	/* Create worker threads */
 	cpu = maco_get_first_cpu(&cpumask);
 	info("count threadmask %d\n ", odp_cpumask_count(&cpumask));
 	info("num worksers is %d\n", num_workers);
 
 	for (i = 0; i < num_workers; ++i) {
-        odp_cpumask_t thd_mask;
+		odp_cpumask_t thd_mask;
+		odph_odpthread_params_t thr_params;
+
+		memset(&thr_params, 0, sizeof(thr_params));
+		thr_params.thr_type = ODP_THREAD_WORKER;
+		thr_params.instance = instance;
+		thr_params.arg      = &gconf->mconf[i];
+        thr_params.start    = thr_run_func;
 
 		for (j = 0; j < MAX_PKTIOS; j++)
 			gconf->mconf[i].stats[j] = &stats[i][j];
-
-		//void *(*thr_run_func) (void *);
-
-		gconf->mconf[i].mode = gconf->appl.mode;
-
-//		gconf->mconf[i].pktio_dev = gconf->appl.if_names[i];
-//		info("if %s and pktio_dev %s \n ", gconf->appl.if_names[i], gconf->mconf[i].pktio_dev);
-
-//		if (gconf->appl.mode == APPL_MODE_PKT_BURST) {
-//			thr_run_func = launch_worker;
-			info("thread func set to launch_worker\n ");
-//		}
-		/*
-		 * Create threads one-by-one instead of all-at-once,
-		 * because each thread gets different arguments.
-		 */
-
-		thr_params.arg      = &gconf->mconf[i];
-//		thr_params.start    = thr_run_func;
+	//	gconf->mconf[i].stats = &stats[i];
 
 		odp_cpumask_zero(&thd_mask);
 		odp_cpumask_set(&thd_mask, cpu);
-		odph_odpthreads_create(&thread_tbl[i],
-				&thd_mask, &thr_params);
+		odph_odpthreads_create(&thread_tbl[i], &thd_mask, &thr_params);
 
-//		cpu = maco_get_next_cpu(&cpumask, cpu);
 		// Enable this to use one cpu per thread per interface
-		if (gconf->appl.mcpu_enable == 1)
+		if (gconf->appl.cpu_count > 0)
 			cpu = maco_get_next_cpu(&cpumask, cpu);
 	}
 
-    /* Start packet receive and transmit */
+	/* Start packet receive and transmit */
     for (i = 0; i < if_count; ++i) {
         odp_pktio_t pktio;
 
@@ -1013,33 +1129,29 @@ uint8_t odpc_initialize(int argc, char **argv)
 	for (i = 0; i < num_workers; ++i)
 		odph_odpthreads_join(&thread_tbl[i]);
 
-	free(gconf->appl.if_names);
-	free(gconf->appl.if_str);
 // TODO
 //	free(gconf);
-	printf("Exit\n\n");
 
-	return 0;
-}
-
-uint8_t odpc_des ()
-{
+    free(gconf->appl.if_names);
+	free(gconf->appl.if_str);
 #if 0
 	if (odpc_lookup_tbls_des()) {
 		info("Lookup table destroy failed.\n");
 	}
-
-
-	if (odp_term_local()) {
-		info("Error: ODP local term failed.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (odp_term_global()) {
-		debug("Error: ODP global term failed.\n");
-		exit(EXIT_FAILURE);
-	}
 #endif
+	if (odp_pool_destroy(gconf->pool)) {
+		debug("Error: pool destroy\n");
+		exit(EXIT_FAILURE);
+	}
+	if (odp_term_local()) {
+		debug("Error: term local\n");
+		exit(EXIT_FAILURE);
+	}
+	if (odp_term_global(instance)) {
+		debug("Error: term global\n");
+		exit(EXIT_FAILURE);
+	}
+	printf("Exit\n\n");
 	return 0;
 }
 

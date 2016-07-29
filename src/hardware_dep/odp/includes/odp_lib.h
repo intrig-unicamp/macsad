@@ -81,7 +81,8 @@ struct mbuf_table {
 /** @def PKT_POOL_SIZE                                                           
  * @brief Size of the shared memory block                                        
  */                   
-#define PKT_POOL_SIZE 8192                                                   
+//#define PKT_POOL_SIZE 8192                                                   
+#define PKT_POOL_SIZE (512*2048)                   
 /** @def PKT_POOL_BUF_SIZE    
  * @brief Buffer size of the packet pool buffer                                  
  */                                                                              
@@ -98,28 +99,16 @@ struct mbuf_table {
 #define MAX_QUEUES             32                                                
 /** Maximum number of pktio interfaces */                                        
 #define MAX_PKTIOS             8           
-/** @def APPL_MODE_PKT_BURST
- * @brief The application will handle pakcets in bursts
- */
-#define APPL_MODE_PKT_BURST    0
-/** @def APPL_MODE_PKT_QUEUE
- * @brief The application will handle packets in queues
- */
-#define APPL_MODE_PKT_QUEUE    1
-/** @def APPL_MODE_PKT_SCHED
- * @brief The application will handle packets with sheduler
- */
-#define APPL_MODE_PKT_SCHED    2
 
 /**                                                                              
  * Packet input mode                                                             
  */                                                                             
 typedef enum pktin_mode_t {                                                      
-    DIRECT_RECV,                                                                 
-    PLAIN_QUEUE,                                                                 
-    SCHED_PARALLEL,                                                              
-    SCHED_ATOMIC,                                                                
-    SCHED_ORDERED,                                                               
+    DIRECT_RECV,  /* PKT_BURST */                                              
+    PLAIN_QUEUE, /* PKT_QUEUE */                                              
+    SCHED_PARALLEL, /* PKT_SCHED_PARALLEL */                                  
+    SCHED_ATOMIC,/* PKT_SCHED_ATOMIC */                                     
+    SCHED_ORDERED,/* PKT_SCHED_ORDERED */                                      
 } pktin_mode_t;                                                                  
                                                                                  
 /**                                                                              
@@ -129,6 +118,13 @@ typedef enum pktout_mode_t {
     PKTOUT_DIRECT,                                                               
     PKTOUT_QUEUE                                                                 
 } pktout_mode_t; 
+
+static inline int sched_mode(pktin_mode_t in_mode)
+{   
+    return (in_mode == SCHED_PARALLEL) ||
+           (in_mode == SCHED_ATOMIC)   ||
+           (in_mode == SCHED_ORDERED);
+}
 
 /** Get rid of path in filename - only for unix-type paths using '/' */          
 #define NO_PATH(file_name) (strrchr((file_name), '/') ? \
@@ -207,32 +203,22 @@ typedef struct macs_conf{
     int thr_idx;  
 /** Number of interfaces from which to receive packets */	
     int num_rx_pktio; 
+//    int num_tx_pktio; 
                                                                                  
-    struct {  
 /* rx_pktio */                                                                   
+    struct {  
         odp_pktin_queue_t pktin;   /**< Packet input queue */
-        uint8_t port_idx;      /**< Rx Port index */
+        odp_queue_t rx_queue;
+        uint8_t rx_idx;      /**< Rx Port index */
         int rqueue_idx;         /**< Queue index */
+    } rx_pktios[MAX_PKTIOS];                         
 /* tx_pktio */
+    struct {  
         odp_pktout_queue_t pktout; /**< Packet output queue */
+        odp_queue_t tx_queue;
         int tqueue_idx;         /**< Queue index */
         pkt_buf_t buf;         /**< Packet TX buffer */
-    } pktios[MAX_PKTIOS];                         
-
-#if 0                     
-    struct {
-        odp_pktin_queue_t pktin;   /**< Packet input queue */
-        uint8_t port_idx;      /**< Port index */
-        int queue_idx;         /**< Queue index */
-    } rx_pktio[MAX_PKTIOS];
-    struct {
-        odp_pktout_queue_t pktout; /**< Packet output queue */
-        int queue_idx;         /**< Queue index */
-        pkt_buf_t buf;         /**< Packet TX buffer */
-    } tx_pktio[MAX_PKTIOS];
-
-    stats_t *stats; /**< Pointer to per thread stats */                          
-#endif
+    } tx_pktios[MAX_PKTIOS];                         
 
     stats_t *stats[MAX_PKTIOS];    /**< Interface statistics */
 } macs_conf_t;
@@ -258,7 +244,10 @@ typedef struct mac_global{
         odp_pktio_t pktio;
         odp_pktin_queue_t pktin[MAX_QUEUES];
         odp_pktout_queue_t pktout[MAX_QUEUES];
+        odp_queue_t rx_q[MAX_QUEUES];
+        odp_queue_t tx_q[MAX_QUEUES];
         int num_rx_thr;
+        int num_tx_thr;
         int num_rx_queue;
         int num_tx_queue;
         int next_rx_queue;
@@ -272,9 +261,18 @@ mac_global_t *gconf;
 #define TABCHANGE_DELAY 50 // microseconds
 
 uint8_t odpc_initialize(int argc, char **argv);
+//void odpc_worker_mode_direct(void *arg);
+//void odpc_worker_mode_direct(void *arg);
+//void odpc_worker_mode_direct(void *arg);
+
+void odpc_worker_mode_direct(void *arg);                                  
+void odpc_worker_mode_queue(void *arg);                                   
+void odpc_worker_mode_sched(void *arg); 
 
 //TODO where to defien these two
 uint32_t value32;
 uint32_t res32;
+
+
 
 #endif // ODP_LIB_H

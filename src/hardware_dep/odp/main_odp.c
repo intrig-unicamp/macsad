@@ -5,8 +5,6 @@
 #include <odp/helper/eth.h>
 #include <odp/helper/ip.h>
 
-//extern void p4_handle_packet(packet* p, unsigned portid);
-
 uint32_t enabled_port_mask = 0;
 struct ether_addr ports_eth_addr[MAX_ETHPORTS];
 
@@ -186,10 +184,10 @@ static void odp_send_packet(odp_packet_t *p, uint8_t port, int thr_idx)
 	}
 */
 	info("Inside odp_send_packet \n");
-	buf_id = gconf->mconf[thr_idx].pktios[port].buf.len;
+	buf_id = gconf->mconf[thr_idx].tx_pktios[port].buf.len;
 
-	gconf->mconf[thr_idx].pktios[port].buf.pkt[buf_id] = pkt;
-	gconf->mconf[thr_idx].pktios[port].buf.len++;
+	gconf->mconf[thr_idx].tx_pktios[port].buf.pkt[buf_id] = pkt;
+	gconf->mconf[thr_idx].tx_pktios[port].buf.len++;
 }
 
 #define EXTRACT_EGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/6) & /*mask*/0x7fc) >> /*bitoffset*/2
@@ -215,9 +213,9 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 	for (port = 0; port < total_ports; port++) {
 		if (port == ingress_port)
 			continue;
-		buf_len = gconf->mconf[thr_idx].pktios[port].buf.len;
+		buf_len = gconf->mconf[thr_idx].tx_pktios[port].buf.len;
 		if (first) {
-			gconf->mconf[thr_idx].pktios[port].buf.pkt[buf_len] = pkt;
+			gconf->mconf[thr_idx].tx_pktios[port].buf.pkt[buf_len] = pkt;
 			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
 			//			odp_send_packet((odp_packet_t *)pd->packet, port);
 			first = 0;
@@ -231,9 +229,9 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 			}
 			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
 			//	odp_send_packet(&pkt_cp, port);
-			gconf->mconf[thr_idx].pktios[port].buf.pkt[buf_len] = pkt_cp;
+			gconf->mconf[thr_idx].tx_pktios[port].buf.pkt[buf_len] = pkt_cp;
 		}
-		gconf->mconf[thr_idx].pktios[port].buf.len++;
+		gconf->mconf[thr_idx].tx_pktios[port].buf.len++;
 		sigg("[Broadcast] recvd port id - %d, sent port id - %d\n", ingress_port, port);
 	}
 
@@ -283,12 +281,295 @@ void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, 
 	handle_packet(pd, state_tmp->tables);
 }
 
+
+static inline int event_queue_send(odp_queue_t queue, odp_packet_t *pkt_tbl,
+		unsigned pkts)
+{
+	int ret;
+	unsigned i;
+	unsigned sent = 0;
+	odp_event_t ev_tbl[pkts];
+
+	for (i = 0; i < pkts; i++)
+		ev_tbl[i] = odp_packet_to_event(pkt_tbl[i]);
+
+	while (sent < pkts) {
+		ret = odp_queue_enq_multi(queue, &ev_tbl[sent], pkts - sent);
+
+		if (ret < 0) {
+			debug("Failed to send packet as events\n");
+			break;
+		}
+
+		sent += ret;
+	}
+
+	return sent;
+}
+
+/**
+ * Packet IO worker thread using scheduled queues
+ *
+ * @param arg  thread arguments of type 'macs_conf_t *'
+ */
+void odpc_worker_mode_sched (void *arg)
+{
+    odp_event_t  ev_tbl[MAX_PKT_BURST];
+    odp_packet_t pkt_tbl[MAX_PKT_BURST];
+    int pkts;
+    int thr;
+    uint64_t wait;
+    int dst_idx, port_in, port_out;
+    int thr_idx;
+    int i;
+    odp_pktout_queue_t pktout[MAX_PKTIOS];
+    odp_queue_t tx_queue[MAX_PKTIOS];
+    macs_conf_t *mconf = arg;
+    packet_descriptor_t pd;
+    odp_packet_t pkt;
+    stats_t *stats = mconf->stats;
+    int use_event_queue = gconf->appl.out_mode;
+    pktin_mode_t in_mode = gconf->appl.in_mode;
+	unsigned drops;
+	int if_idx = 0, idx = 0;
+
+    thr = odp_thread_id();
+    thr_idx = mconf->thr_idx;
+    port_in  = mconf->rx_pktios[idx].rx_idx;
+
+    memset(pktout, 0, sizeof(pktout));
+
+    for (i = 0; i < MAX_PKTIOS; i++)
+        tx_queue[i] = ODP_QUEUE_INVALID;
+
+    for (i = 0; i < gconf->appl.if_count; i++) {
+        if (gconf->pktios[i].num_tx_queue ==
+            gconf->appl.num_workers) {
+            pktout[i]   = gconf->pktios[i].pktout[thr_idx];
+            tx_queue[i] = gconf->pktios[i].tx_q[thr_idx];
+        } else if (gconf->pktios[i].num_tx_queue == 1) {
+            pktout[i]   = gconf->pktios[i].pktout[0];
+            tx_queue[i] = gconf->pktios[i].tx_q[0];
+        } else {
+            debug("Bad number of output queues %i\n", i);
+        }
+    }
+
+    printf("[%02i] PKTIN_SCHED_%s, %s\n", thr,
+           (in_mode == SCHED_PARALLEL) ? "PARALLEL" :
+           ((in_mode == SCHED_ATOMIC) ? "ATOMIC" : "ORDERED"),
+           (use_event_queue) ? "PKTOUT_QUEUE" : "PKTOUT_DIRECT");
+
+    odp_barrier_wait(&barrier);
+
+    wait = odp_schedule_wait_time(ODP_TIME_MSEC_IN_NS * 100);
+
+    /* Loop packets */
+    while (!exit_threads) {
+        int sent;
+        unsigned tx_drops;
+
+        pkts = odp_schedule_multi(NULL, wait, ev_tbl, MAX_PKT_BURST);
+
+        if (pkts <= 0)
+            continue;
+
+        for (i = 0; i < pkts; i++)
+            pkt_tbl[i] = odp_packet_from_event(ev_tbl[i]);
+
+    info("  pkt recv %d \n",pkts);
+        mconf->stats[port_in]->s.rx_packets += pkts;
+
+        for (i = 0; i < pkts; i++) {
+            pkt = pkt_tbl[i];
+            if (!odp_packet_has_eth(pkt)) {
+                odp_packet_free(pkt);
+                continue;
+            }
+            packet_received(&pd, &pkt, port_in, mconf->thr_idx);
+        //  mconf = &(gconf->mconf[port_in]);
+            send_packet (&pd, mconf->thr_idx);
+        }
+
+		/* Empty all thread local tx buffers */
+		for (port_out = 0; port_out < gconf->appl.if_count;
+				port_out++) {
+			info("  Start emptying Tx buffer for port=%d\n",port_out);
+			unsigned tx_pkts;
+			odp_packet_t *tx_pkt_tbl;
+
+			if (port_out == port_in ||
+					mconf->tx_pktios[port_out].buf.len == 0)
+				continue;
+
+			tx_pkts = mconf->tx_pktios[port_out].buf.len;
+			mconf->tx_pktios[port_out].buf.len = 0;
+
+			tx_pkt_tbl = mconf->tx_pktios[port_out].buf.pkt;
+
+			pktout[port_out] = mconf->tx_pktios[port_out].pktout;
+
+			if (odp_unlikely(use_event_queue))
+				sent = event_queue_send(tx_queue[port_out], tx_pkt_tbl, tx_pkts);
+			else
+				sent = odp_pktout_send(pktout[port_out], tx_pkt_tbl, tx_pkts);
+
+			sent = odp_unlikely(sent < 0) ? 0 : sent;
+
+			mconf->stats[port_out]->s.tx_packets += sent;
+
+			drops = tx_pkts - sent;
+
+			if (odp_unlikely(drops)) {
+				unsigned i;
+
+				mconf->stats[port_out]->s.tx_drops += drops;
+
+				/* Drop rejected packets */
+				for (i = sent; i < tx_pkts; i++)
+					odp_packet_free(tx_pkt_tbl[i]);
+			}
+			info("  Finish emptying Tx buffer for port=%d\n",port_out);
+		}
+		info("  Finish emptying all Tx buffers for thread %d\n",mconf->thr_idx);
+	}
+
+    /* Make sure that latest stat writes are visible to other threads */
+    odp_mb_full();
+
+    return 0;
+}
+
+/**
+ * Packet IO worker thread using plain queues
+ *
+ * @param arg  thread arguments of type 'macs_conf_t *'
+ */
+void odpc_worker_mode_queue(void *arg)
+{
+    int pkts, i;
+    int portid, port_in, num_pktio, port_out;
+    int thr, thr_idx;
+    macs_conf_t *mconf = arg;
+    odp_pktio_t pktio;
+    odp_pktin_queue_t pktin;
+    odp_pktout_queue_t pktout;
+    int pkts_ok = 0;
+    odp_packet_t pkt_tbl[MAX_PKT_BURST];
+    odp_queue_t tx_queue;
+	odp_queue_t queue;
+    unsigned long pkt_cnt = 0;
+    unsigned long err_cnt = 0;
+    unsigned long tmp = 0;
+    int if_idx = 0, idx = 0;
+    packet_descriptor_t pd;
+    odp_packet_t pkt;
+//  init_dataplane(&pd, gconf->state.tables);
+    int use_event_queue = gconf->appl.out_mode;
+	unsigned drops;
+
+    info(":: INSIDE odp_main_worker\n");
+//  thr = odp_thread_id();
+//  info("  the thread id is %d\n",thr);
+
+    num_pktio = mconf->num_rx_pktio;
+    pktin     = mconf->rx_pktios[idx].pktin;
+    port_in  = mconf->rx_pktios[idx].rx_idx;
+
+    info("  before barrier %d, exit thread %d \n",mconf->thr_idx, exit_threads);
+    odp_barrier_wait(&barrier);
+
+    /* Loop packets */
+    while (!exit_threads) {
+        int sent;
+        unsigned drops;
+        odp_event_t event[MAX_PKT_BURST];
+        int i;
+
+		if (num_pktio > 1) {
+			queue     = mconf->rx_pktios[idx].rx_queue;
+			//   pktout    = mconf->pktio[pktio].pktout;
+			idx++;
+			if (idx == num_pktio)
+				idx = 0;
+		}
+		pkts = odp_queue_deq_multi(queue, event, MAX_PKT_BURST);
+		if (odp_unlikely(pkts <= 0))
+			continue;
+
+		for (i = 0; i < pkts; i++)
+			pkt_tbl[i] = odp_packet_from_event(event[i]);
+
+		mconf->stats[port_in]->s.rx_packets += pkts;
+
+		for (i = 0; i < pkts; i++) {
+			pkt = pkt_tbl[i];
+			if (!odp_packet_has_eth(pkt)) {
+				odp_packet_free(pkt);
+				continue;
+			}
+			packet_received(&pd, &pkt, port_in, mconf->thr_idx);
+			//  mconf = &(gconf->mconf[port_in]);
+			send_packet (&pd, mconf->thr_idx);
+		}
+
+		for (port_out = 0; port_out < gconf->appl.if_count;
+                port_out++) {
+            info("  Start emptying Tx buffer for port=%d\n",port_out);
+            unsigned tx_pkts;
+            odp_packet_t *tx_pkt_tbl;
+
+            if (port_out == port_in ||
+                mconf->tx_pktios[port_out].buf.len == 0)
+                continue;
+
+            tx_pkts = mconf->tx_pktios[port_out].buf.len;
+            mconf->tx_pktios[port_out].buf.len = 0;
+
+            tx_pkt_tbl = mconf->tx_pktios[port_out].buf.pkt;
+
+            pktout = mconf->tx_pktios[port_out].pktout;
+
+        if (odp_unlikely(use_event_queue))
+		{
+			tx_queue = mconf->tx_pktios[port_out].tx_queue;
+            sent = event_queue_send(tx_queue, tx_pkt_tbl, tx_pkts);
+		}
+	   	else
+		{
+            sent = odp_pktout_send(pktout, tx_pkt_tbl, tx_pkts);
+		}
+
+            sent = odp_unlikely(sent < 0) ? 0 : sent;
+
+            mconf->stats[port_out]->s.tx_packets += sent;
+
+            drops = tx_pkts - sent;
+
+            if (odp_unlikely(drops)) {
+                unsigned i;
+
+                mconf->stats[port_out]->s.tx_drops += drops;
+
+                /* Drop rejected packets */
+                for (i = sent; i < tx_pkts; i++)
+                    odp_packet_free(tx_pkt_tbl[i]);
+            }
+            info("  Finish emptying Tx buffer for port=%d\n",port_out);
+        }
+            info("  Finish emptying all Tx buffers for thread %d\n",mconf->thr_idx);
+    }
+
+    /* Make sure that latest stat writes are visible to other threads */
+    odp_mb_full();
+    return;
+}
+
 /**
  * Switch worker thread
- *
  * @param arg  Thread arguments of type 'macs_conf_t *'
  */
-void odp_main_worker (void *arg)
+void odpc_worker_mode_direct(void *arg)
 {
 	int pkts, i;
 	int portid, port_in, num_pktio, port_out;
@@ -299,6 +580,7 @@ void odp_main_worker (void *arg)
 	odp_pktout_queue_t pktout;
 	int pkts_ok = 0;
 	odp_packet_t pkt_tbl[MAX_PKT_BURST];
+	odp_queue_t tx_queue;
 	unsigned long pkt_cnt = 0;
 	unsigned long err_cnt = 0;
 	unsigned long tmp = 0;
@@ -306,14 +588,15 @@ void odp_main_worker (void *arg)
 	packet_descriptor_t pd;
 	odp_packet_t pkt;
 //	init_dataplane(&pd, gconf->state.tables);
+    int use_event_queue = gconf->appl.out_mode;
 
 	info(":: INSIDE odp_main_worker\n");
 //	thr = odp_thread_id();
 //	info("	the thread id is %d\n",thr);
 
     num_pktio = mconf->num_rx_pktio;
-    pktin     = mconf->pktios[idx].pktin;
-    port_in  = mconf->pktios[idx].port_idx;
+    pktin     = mconf->rx_pktios[idx].pktin;
+    port_in  = mconf->rx_pktios[idx].rx_idx;
 
 	info("	before barrier %d, exit thread %d \n",mconf->thr_idx, exit_threads);
     odp_barrier_wait(&barrier);
@@ -325,8 +608,8 @@ void odp_main_worker (void *arg)
         unsigned drops;
 
         if (num_pktio > 1) {
-            pktin     = mconf->pktios[idx].pktin;
-            port_in = mconf->pktios[idx].port_idx;
+            pktin   = mconf->rx_pktios[idx].pktin;
+            port_in = mconf->rx_pktios[idx].rx_idx;
             idx++;
             if (idx == num_pktio)
                 idx = 0;
@@ -358,17 +641,25 @@ void odp_main_worker (void *arg)
             odp_packet_t *tx_pkt_tbl;
 
             if (port_out == port_in ||
-                mconf->pktios[port_out].buf.len == 0)
+                mconf->tx_pktios[port_out].buf.len == 0)
                 continue;
 
-            tx_pkts = mconf->pktios[port_out].buf.len;
-            mconf->pktios[port_out].buf.len = 0;
+            tx_pkts = mconf->tx_pktios[port_out].buf.len;
+            mconf->tx_pktios[port_out].buf.len = 0;
 
-            tx_pkt_tbl = mconf->pktios[port_out].buf.pkt;
+            tx_pkt_tbl = mconf->tx_pktios[port_out].buf.pkt;
 
-            pktout = mconf->pktios[port_out].pktout;
+            pktout = mconf->tx_pktios[port_out].pktout;
 
-            sent = odp_pktout_send(pktout, tx_pkt_tbl, tx_pkts);
+			if (odp_unlikely(use_event_queue))
+			{
+				tx_queue = mconf->tx_pktios[port_out].tx_queue;
+				sent = event_queue_send(tx_queue, tx_pkt_tbl, tx_pkts);
+			}
+			else
+			{
+				sent = odp_pktout_send(pktout, tx_pkt_tbl, tx_pkts);
+			}
             sent = odp_unlikely(sent < 0) ? 0 : sent;
 
             mconf->stats[port_out]->s.tx_packets += sent;
