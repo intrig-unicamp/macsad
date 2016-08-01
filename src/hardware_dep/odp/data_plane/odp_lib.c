@@ -32,8 +32,6 @@ uint16_t nb_lcore_params;
 
 #define RTE_TEST_RX_DESC_DEFAULT 128
 #define RTE_TEST_TX_DESC_DEFAULT 512
-static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
-static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /** Global barrier to synchronize main and workers */
 odp_barrier_t barrier;
@@ -322,12 +320,10 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
     odp_pktio_capability_t capa;
 	odp_pktio_param_t pktio_param;
 	odp_pktin_queue_param_t pktin_param;
-	odp_pktin_queue_param_t in_queue_param;
 	odp_pktout_queue_param_t pktout_param;
-	odp_pktout_queue_param_t out_queue_param;
     odp_pktio_op_mode_t mode_rx;
     odp_pktio_op_mode_t mode_tx;
-	int ret, num_tx_shared;
+	int num_tx_shared;
     odp_schedule_sync_t  sync_mode;
 	pktin_mode_t in_mode = gconf->appl.in_mode;
 
@@ -505,7 +501,6 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
     int opt;
     int long_index;
     char *token;
-    char *addr_str;
     size_t len;
     int i;
     static struct option longopts[] = {
@@ -706,17 +701,10 @@ static void print_port_mapping(void)
 static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
                  int duration, int timeout)
 {
-    uint64_t rx_pkts_prev[MAX_PKTIOS] = {0};
-    uint64_t tx_pkts_prev[MAX_PKTIOS] = {0};
     uint64_t rx_pkts_tot;
-    uint64_t tx_pkts_tot;
-    uint64_t rx_pps;
-    uint64_t tx_pps;
-    int i, j;
     int elapsed = 0;
     int stats_enabled = 1;
     int loop_forever = (duration == 0);
-    int num_ifaces = gconf->appl.if_count;
 
     if (timeout <= 0) {
         stats_enabled = 0;
@@ -942,11 +930,9 @@ static void gconf_init(mac_global_t *gconf)
 
 uint8_t odpc_initialize(int argc, char **argv)
 {
-	odph_linux_pthread_t thd;
 	odp_pool_param_t params;
 	odp_instance_t instance;
 	odp_cpumask_t cpumask;
-	odph_linux_thr_params_t thr_params;
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
 	int num_workers, i, j;
 	int cpu, if_count;
@@ -955,9 +941,6 @@ uint8_t odpc_initialize(int argc, char **argv)
 	odp_shm_t shm;
 	odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
     int (*thr_run_func)(void *);
-
-	/* initialize ports */
-	int nb_ports = 2;
 
 	/* init ODP  before calling anything else */
 	if (odp_init_global(&instance, NULL, NULL)) {
@@ -1029,7 +1012,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 	for (i = 0; i < if_count; ++i)
 	{
         const char *dev = gconf->appl.if_names[i];
-        int num_rx, num_tx;
+        int num_rx;
 
         if (gconf->appl.in_mode == DIRECT_RECV ||
             gconf->appl.in_mode == PLAIN_QUEUE) {

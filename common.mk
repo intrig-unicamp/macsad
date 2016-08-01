@@ -8,8 +8,8 @@ endif
 
 CFLAGS += -Wall 
 CFLAGS += -Wno-unused-function
-CFLAGS += -Wno-unused-variable
-CFLAGS += -Wno-unused-value
+#CFLAGS += -Wno-unused-variable
+#CFLAGS += -Wno-unused-value
 CFLAGS += -Wmaybe-uninitialized
 
 CFLAGS += -std=gnu99

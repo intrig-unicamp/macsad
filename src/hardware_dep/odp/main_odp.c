@@ -20,8 +20,6 @@ int64_t timer_period = 10 * TIMER_MILLISECOND * 1000; /* default period is 10 se
 
 #define RTE_TEST_RX_DESC_DEFAULT 128
 #define RTE_TEST_TX_DESC_DEFAULT 512
-uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
-uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 #define PKT_MBUF_DATA_SIZE      RTE_MBUF_DEFAULT_BUF_SIZE
 #define NB_PKT_MBUF				8192
@@ -149,40 +147,12 @@ static inline uint32_t bitcnt(uint32_t v)
 
 	return (n);
 }
-#if 0
-static void swap_dmac_addr(odp_packet_t pkt, unsigned port) {
-
-	odph_ethhdr_t *eth;
-	odph_ethaddr_t tmp_addr;
-	odph_ipv4hdr_t *ip;
-	odp_u32be_t ip_tmp_addr; /* tmp ip addr */
-	unsigned i;
-
-	if (odp_packet_has_eth(pkt)) {
-		eth = (odph_ethhdr_t *)odp_packet_l2_ptr(pkt, NULL);
-
-		tmp_addr = eth->dst;
-		eth->dst = gconf->;
-		eth->src = tmp_addr;
-	}
-}
-#endif
 
 /* send one pkt each time */
 static void odp_send_packet(odp_packet_t *p, uint8_t port, int thr_idx)
 {
-	int sent;
 	odp_packet_t pkt = *p;
     unsigned buf_id;
-//	swap_dmac_addr (p, port);
-/*
-	sent = odp_pktout_send(gconf->pktios[port].pktout[0], &pkt, 1);
-	if (sent < 0)
-	{
-		debug("pkt sent failed \n");
-		odp_packet_free(pkt);
-	}
-*/
 	info("Inside odp_send_packet \n");
 	buf_id = gconf->mconf[thr_idx].tx_pktios[port].buf.len;
 
@@ -319,7 +289,7 @@ void odpc_worker_mode_sched (void *arg)
     int pkts;
     int thr;
     uint64_t wait;
-    int dst_idx, port_in, port_out;
+    int port_in, port_out;
     int thr_idx;
     int i;
     odp_pktout_queue_t pktout[MAX_PKTIOS];
@@ -327,11 +297,10 @@ void odpc_worker_mode_sched (void *arg)
     macs_conf_t *mconf = arg;
     packet_descriptor_t pd;
     odp_packet_t pkt;
-    stats_t *stats = mconf->stats;
     int use_event_queue = gconf->appl.out_mode;
     pktin_mode_t in_mode = gconf->appl.in_mode;
 	unsigned drops;
-	int if_idx = 0, idx = 0;
+	int idx = 0;
 
     thr = odp_thread_id();
     thr_idx = mconf->thr_idx;
@@ -367,7 +336,6 @@ void odpc_worker_mode_sched (void *arg)
     /* Loop packets */
     while (!exit_threads) {
         int sent;
-        unsigned tx_drops;
 
         pkts = odp_schedule_multi(NULL, wait, ev_tbl, MAX_PKT_BURST);
 
@@ -437,7 +405,7 @@ void odpc_worker_mode_sched (void *arg)
     /* Make sure that latest stat writes are visible to other threads */
     odp_mb_full();
 
-    return 0;
+    return;
 }
 
 /**
@@ -447,26 +415,19 @@ void odpc_worker_mode_sched (void *arg)
  */
 void odpc_worker_mode_queue(void *arg)
 {
-    int pkts, i;
-    int portid, port_in, num_pktio, port_out;
-    int thr, thr_idx;
+    int pkts;
+    int port_in, num_pktio, port_out;
     macs_conf_t *mconf = arg;
-    odp_pktio_t pktio;
     odp_pktin_queue_t pktin;
     odp_pktout_queue_t pktout;
-    int pkts_ok = 0;
     odp_packet_t pkt_tbl[MAX_PKT_BURST];
     odp_queue_t tx_queue;
 	odp_queue_t queue;
-    unsigned long pkt_cnt = 0;
-    unsigned long err_cnt = 0;
-    unsigned long tmp = 0;
-    int if_idx = 0, idx = 0;
+    int idx = 0;
     packet_descriptor_t pd;
     odp_packet_t pkt;
 //  init_dataplane(&pd, gconf->state.tables);
     int use_event_queue = gconf->appl.out_mode;
-	unsigned drops;
 
     info(":: INSIDE odp_main_worker\n");
 //  thr = odp_thread_id();
@@ -572,19 +533,13 @@ void odpc_worker_mode_queue(void *arg)
 void odpc_worker_mode_direct(void *arg)
 {
 	int pkts, i;
-	int portid, port_in, num_pktio, port_out;
-	int thr, thr_idx;
+	int port_in, num_pktio, port_out;
 	macs_conf_t *mconf = arg;
-	odp_pktio_t pktio;
 	odp_pktin_queue_t pktin;
 	odp_pktout_queue_t pktout;
-	int pkts_ok = 0;
 	odp_packet_t pkt_tbl[MAX_PKT_BURST];
 	odp_queue_t tx_queue;
-	unsigned long pkt_cnt = 0;
-	unsigned long err_cnt = 0;
-	unsigned long tmp = 0;
-	int if_idx = 0, idx = 0;
+	int idx = 0;
 	packet_descriptor_t pd;
 	odp_packet_t pkt;
 //	init_dataplane(&pd, gconf->state.tables);
