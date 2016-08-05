@@ -282,7 +282,7 @@ static inline int event_queue_send(odp_queue_t queue, odp_packet_t *pkt_tbl,
  *
  * @param arg  thread arguments of type 'macs_conf_t *'
  */
-void odpc_worker_mode_sched (void *arg)
+int odpc_worker_mode_sched (void *arg)
 {
     odp_event_t  ev_tbl[MAX_PKT_BURST];
     odp_packet_t pkt_tbl[MAX_PKT_BURST];
@@ -404,8 +404,7 @@ void odpc_worker_mode_sched (void *arg)
 
     /* Make sure that latest stat writes are visible to other threads */
     odp_mb_full();
-
-    return;
+    return 0;
 }
 
 /**
@@ -413,7 +412,7 @@ void odpc_worker_mode_sched (void *arg)
  *
  * @param arg  thread arguments of type 'macs_conf_t *'
  */
-void odpc_worker_mode_queue(void *arg)
+int odpc_worker_mode_queue(void *arg)
 {
     int pkts;
     int port_in, num_pktio, port_out;
@@ -523,14 +522,14 @@ void odpc_worker_mode_queue(void *arg)
 
     /* Make sure that latest stat writes are visible to other threads */
     odp_mb_full();
-    return;
+    return 0;
 }
 
 /**
  * Switch worker thread
  * @param arg  Thread arguments of type 'macs_conf_t *'
  */
-void odpc_worker_mode_direct(void *arg)
+int odpc_worker_mode_direct(void *arg)
 {
 	int pkts, i;
 	int port_in, num_pktio, port_out;
@@ -546,8 +545,6 @@ void odpc_worker_mode_direct(void *arg)
     int use_event_queue = gconf->appl.out_mode;
 
 	info(":: INSIDE odp_main_worker\n");
-//	thr = odp_thread_id();
-//	info("	the thread id is %d\n",thr);
 
     num_pktio = mconf->num_rx_pktio;
     pktin     = mconf->rx_pktios[idx].pktin;
@@ -637,5 +634,5 @@ void odpc_worker_mode_direct(void *arg)
 
     /* Make sure that latest stat writes are visible to other threads */
     odp_mb_full();
-	return;
+	return 0;
 }

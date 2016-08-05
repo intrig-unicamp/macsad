@@ -261,13 +261,10 @@ mac_global_t *gconf;
 #define TABCHANGE_DELAY 50 // microseconds
 
 uint8_t odpc_initialize(int argc, char **argv);
-//void odpc_worker_mode_direct(void *arg);
-//void odpc_worker_mode_direct(void *arg);
-//void odpc_worker_mode_direct(void *arg);
 
-void odpc_worker_mode_direct(void *arg);                                  
-void odpc_worker_mode_queue(void *arg);                                   
-void odpc_worker_mode_sched(void *arg); 
+int odpc_worker_mode_direct(void *arg);                                  
+int odpc_worker_mode_queue(void *arg);                                   
+int odpc_worker_mode_sched(void *arg); 
 
 //TODO where to defien these two
 uint32_t value32;

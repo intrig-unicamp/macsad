@@ -416,7 +416,7 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 
 
 	if (gconf->appl.in_mode == DIRECT_RECV) {
-		if (odp_pktin_queue(pktio, &gconf->pktios[if_idx].pktin, num_rx)
+		if (odp_pktin_queue(pktio, gconf->pktios[if_idx].pktin, num_rx)
 				!= num_rx)
 		{
 			debug("  Error: no pktin queue for %s\n", name);
@@ -432,7 +432,7 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 	}
 
 	if (gconf->appl.out_mode == PKTOUT_DIRECT) {
-		if (odp_pktout_queue(pktio, &gconf->pktios[if_idx].pktout, num_tx)
+		if (odp_pktout_queue(pktio, gconf->pktios[if_idx].pktout, num_tx)
 				!= num_tx)
 		{
 			debug("  Error: no pktout queue for %s\n", name);
@@ -518,7 +518,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
 	odph_parse_options(argc, argv, shortopts, longopts);
 
     appl_args->time = 0; /* loop forever if time to run is 0 */
-    appl_args->accuracy = 10; /* get and print pps stats second */
+    appl_args->accuracy = 15; /* get and print pps stats second */
     appl_args->cpu_count = 0; /* single cpu by default */
 
 	opterr = 0; /* do not issue errors on helper options */
@@ -701,7 +701,7 @@ static void print_port_mapping(void)
 static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
                  int duration, int timeout)
 {
-    uint64_t rx_pkts_tot;
+    uint64_t rx_pkts_tot = 0;
     int elapsed = 0;
     int stats_enabled = 1;
     int loop_forever = (duration == 0);
@@ -1012,10 +1012,10 @@ uint8_t odpc_initialize(int argc, char **argv)
 	for (i = 0; i < if_count; ++i)
 	{
         const char *dev = gconf->appl.if_names[i];
-        int num_rx;
+        int num_rx = 0;
 
-        if (gconf->appl.in_mode == DIRECT_RECV ||
-            gconf->appl.in_mode == PLAIN_QUEUE) {
+        if ((gconf->appl.in_mode == DIRECT_RECV) ||
+            (gconf->appl.in_mode == PLAIN_QUEUE)) {
             /* A queue per assigned worker */
             num_rx = gconf->pktios[i].num_rx_thr;
         //    num_tx = gconf->pktios[i].num_tx_thr;
