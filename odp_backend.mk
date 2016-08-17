@@ -52,8 +52,7 @@ SRCS-Y += vector.c
 LDFLAGS += -L$(ODP_SDK)/lib/
 LDFLAGS += -L$(ODP_SDK)/lib/.libs
 LIBS = -lodp-linux -lodphelper-linux -lpthread
-
-#$(info SRCS-y is $(SRCS-y))
+#LIBS = -lodp-dpdk -lodphelper-linux -lpthread
 
 OBJS = $(SRCS-y:.c=.o)
 

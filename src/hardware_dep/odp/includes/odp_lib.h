@@ -34,9 +34,11 @@ extern int promiscuous_on;
 extern int numa_on;
 
 //#define debug 1
-
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1 // rte_log.h
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1 // rte_log.h
+
+#define EXIT_FAILURE 1
+#define EXIT_SUCCESS 0
 
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 // TODO is the longer version better?
