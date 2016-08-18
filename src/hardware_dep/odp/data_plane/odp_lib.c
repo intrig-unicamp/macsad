@@ -394,8 +394,6 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 
     pktin_param.hash_enable = 1;
     pktin_param.hash_proto.proto.ipv4 = 1;
-//    pktin_param.hash_proto.proto.ipv4_tcp = 1;
-//    pktin_param.hash_proto.proto.ipv4_udp = 1;
     pktin_param.num_queues  = num_rx;
     pktin_param.op_mode     = mode_rx;
 
@@ -843,8 +841,6 @@ static void macs_set_queue_afinity(void)
             mconf->rx_pktios[pktio].rqueue_idx = rx_queue;
             mconf->rx_pktios[pktio].rx_queue =
                 gconf->pktios[rx_idx].rx_q[rx_queue];
-            //thr_args->pktio[pktio].rx_pktio =
-            //    gbl_args->pktios[rx_idx].pktio;
 
             rx_queue++;
             if (rx_queue >= gconf->pktios[rx_idx].num_rx_queue)
@@ -868,52 +864,6 @@ static void macs_set_queue_afinity(void)
         }
     }
 }
-
-#if 0
-    for (thr = 0; thr < num_workers; thr++) {
-        int rx_idx, tx_idx;
-        thread_args_t *thr_args = &gbl_args->thread[thr];
-        int num = thr_args->num_pktio;
-
-        for (pktio = 0; pktio < num; pktio++) {
-            int rx_queue, tx_queue;
-
-            rx_idx   = thr_args->pktio[pktio].rx_idx;
-            rx_queue = gbl_args->pktios[rx_idx].next_rx_queue;
-
-            thr_args->pktio[pktio].rx_queue_idx = rx_queue;
-            thr_args->pktio[pktio].pktin =
-                gbl_args->pktios[rx_idx].pktin[rx_queue];
-            thr_args->pktio[pktio].rx_queue =
-                gbl_args->pktios[rx_idx].rx_q[rx_queue];
-            thr_args->pktio[pktio].rx_pktio =
-                gbl_args->pktios[rx_idx].pktio;
-
-            rx_queue++;
-            if (rx_queue >= gbl_args->pktios[rx_idx].num_rx_queue)
-                rx_queue = 0;
-            gbl_args->pktios[rx_idx].next_rx_queue = rx_queue;
-
-            tx_queue = gbl_args->pktios[tx_idx].next_tx_queue;
-            thr_args->pktio[pktio].tx_queue_idx = tx_queue;
-            thr_args->pktio[pktio].pktout =
-                gbl_args->pktios[tx_idx].pktout[tx_queue];
-            thr_args->pktio[pktio].tx_queue =
-                gbl_args->pktios[tx_idx].tx_q[tx_queue];
-            thr_args->pktio[pktio].tx_pktio =
-                gbl_args->pktios[tx_idx].pktio;
-            tx_queue++;
-
-            if (tx_queue >= gbl_args->pktios[tx_idx].num_tx_queue)
-                tx_queue = 0;
-
-            gbl_args->pktios[tx_idx].next_tx_queue = tx_queue;
-
-            tx_idx   = thr_args->pktio[pktio].tx_idx;
-        }
-    }
-
-#endif
 
 static void gconf_init(mac_global_t *gconf)
 {
