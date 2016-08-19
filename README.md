@@ -92,7 +92,7 @@ We need four terminals to perform this test.
 
 Start the minimalistic Controller:
 
-- `cd <mac>/src/hardware_dep/shared/ctrl_plane`
+- `cd src/hardware_dep/shared/ctrl_plane`
 - `make clean`
 - `make mac_controller`
 - `./mac_controller`
