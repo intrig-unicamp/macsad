@@ -33,7 +33,8 @@ macsad
 #proj generated files
 src/*.pyc
 build/
-dpdk_controller
+#src/hardware_dep/shared/ctrl_plane/mac_controller
+mac_controller
 
 # Debug files
 *.dSYM/

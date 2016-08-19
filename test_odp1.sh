@@ -22,6 +22,6 @@ python src/transpiler.py examples/p4_src/l2_switch_test.p4
 ${MAKE_CMD} -j16
 
 # Start the switch
-#echo "Runing the switch with veth1.0 and veth2.0"
-#sudo -E LD_LIBRARY_PATH=/root/odp/lib/.libs ./mac_ad -i veth1.0,veth2.0
+#echo "Runing the switch with veth1 and veth2"
+#sudo -E LD_LIBRARY_PATH=/root/odp/lib/.libs ./mac_ad -i veth1,veth2
 
