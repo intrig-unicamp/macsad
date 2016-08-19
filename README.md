@@ -10,7 +10,7 @@ MACSAD uses ODP for forwarding plane developement. Clone the ODP git project in 
 
 - `git clone https://git.linaro.org/lng/odp.git`
 - `cd odp`
-- `git checkout tags/v1.9.0.0`
+- `git checkout tags/v1.10.1.0`
 - `./bootstrap`
 - `./configure`
 - `make`
@@ -28,7 +28,7 @@ Clone the MACSAD project.
 
 - `git clone https://github.com/intrig-unicamp/mac.git`
 - `cd mac`
-- `git checkout v0.1`
+- `git checkout v0.2`
 
 MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
@@ -52,14 +52,14 @@ NOTE: For any issues refer the README file under p4-hlir directory.
 1) The p4 program needs to be translated for the MACSAD switch project. You can do this as below:
 
 - `cd mac`
-- `python src/compiler.py examples/p4_src/l2_switch_test.p4`
+- `python src/transpiler.py examples/p4_src/l2_fwd.p4`
 
 NOTE: This needs to be done everytime the P4 source file is modified or if any of the sugered file inside `src/hardware_indep` is changed.
 
 2) Create veth interfaces:
 
 - `cd /script`
-- `./host_create_veth_interfaces.sh`
+- `./veth_create.sh`
 
 3) Set the environment variable `LD_LIBRARY_PATH`:
 
@@ -101,7 +101,7 @@ Start the minimalistic Controller:
 
 Start the MACSAD switch with veth interfaces 1 and 2
 
-- `./mac_ad -i veth1,veth2`
+- `./macsad -i veth1,veth2 -c 0 -m 0 --out_mode 0`
 
 NOTE: Run with root privilege.
 
