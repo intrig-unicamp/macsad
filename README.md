@@ -82,9 +82,9 @@ We will use veth'x' interfaces with this example. Veth1 and veth2 will be part o
 Is necessary to use the MAC addresses of veth1 and veth2 interfaces while forming the packets. 
 Let us assume that the MAC addresses are: 
 
-veth2 - a2:5e:37:ac:a1:7f
+veth3 - a2:5e:37:ac:a1:7f
 
-veth1 - fa:4f:e8:df:b1:5f
+veth0 - fa:4f:e8:df:b1:5f
 
 We need four terminals to perform this test.
 
@@ -99,9 +99,9 @@ Start the minimalistic Controller:
 
 ###TERMINAL 2:
 
-Start the MACSAD switch with veth interfaces 0 and 3
+Start the MACSAD switch with veth interfaces 1 and 2
 
-- `./mac_ad -i veth0,veth3`
+- `./mac_ad -i veth1,veth2`
 
 NOTE: Run with root privilege.
 
@@ -116,22 +116,22 @@ NOTE: Run scapy with root privilege.
 
 - `sudo scapy`
 
-Create a packet with veth2 as source and veth1 as destination as below:
+Create a packet with veth3 as source and veth0 as destination as below:
 
 - `pkt1 = Ether(dst='fa:4f:e8:df:b1:5f',src='a2:5e:37:ac:a1:7f')/IP(dst='192.168.0.1',src='192.168.0.2')`
 
 Send one copy of the packet:
 
-- `sendp(pktq,iface="veth2",count=1);`
+- `sendp(pkt1,iface="veth3",count=1);`
 
 You should be able to catch the packet at veth1 using tcpdump/tshark in terminal 4. You can also verify the RX count using ifconfig.
 
 NOTE: The packet processing logs can be seen at TERMINAL 2 as debug output of the switch.
 
-Now send a packet from veth1 to veth2 and verify similarly at terminal 4.
+Now send a packet from veth0 to veth3 and verify similarly at terminal 4.
 
 - `pkt2 = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.2',src='192.168.0.1')`
 
-- `sendp(pkt2,iface="veth1",count=1);`
+- `sendp(pkt2,iface="veth0",count=1);`
 
-The first packet with an unknown destination mac address will be broadcasted by the swith while the source mac address wis learned. Now after the two pakcets sent, the switch has already learned the mac addresses of veth1 and veth2. Now if we send those packets again, switch will forward those pakcets via corresponding ports instead of broadcasting them.
+The first packet with an unknown destination mac address will be broadcasted by the swith while the source mac address wis learned. Now after the two pakcets sent, the switch has already learned the mac addresses of veth0 and veth3. Now if we send those packets again, switch will forward those pakcets via corresponding ports instead of broadcasting them.
