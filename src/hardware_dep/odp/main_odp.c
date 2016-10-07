@@ -329,7 +329,7 @@ int odpc_worker_mode_sched (void *arg)
            ((in_mode == SCHED_ATOMIC) ? "ATOMIC" : "ORDERED"),
            (use_event_queue) ? "PKTOUT_QUEUE" : "PKTOUT_DIRECT");
 
-    odp_barrier_wait(&barrier);
+    //odp_barrier_wait(&barrier);
 
     wait = odp_schedule_wait_time(ODP_TIME_MSEC_IN_NS * 100);
 
@@ -403,7 +403,7 @@ int odpc_worker_mode_sched (void *arg)
 	}
 
     /* Make sure that latest stat writes are visible to other threads */
-    odp_mb_full();
+   // odp_mb_full();
     return 0;
 }
 
@@ -436,8 +436,8 @@ int odpc_worker_mode_queue(void *arg)
     pktin     = mconf->rx_pktios[idx].pktin;
     port_in  = mconf->rx_pktios[idx].rx_idx;
 
-    info("  before barrier %d, exit thread %d \n",mconf->thr_idx, exit_threads);
-    odp_barrier_wait(&barrier);
+   // info("  before barrier %d, exit thread %d \n",mconf->thr_idx, exit_threads);
+ //   odp_barrier_wait(&barrier);
 
     /* Loop packets */
     while (!exit_threads) {
@@ -521,7 +521,7 @@ int odpc_worker_mode_queue(void *arg)
     }
 
     /* Make sure that latest stat writes are visible to other threads */
-    odp_mb_full();
+    //odp_mb_full();
     return 0;
 }
 
@@ -550,8 +550,7 @@ int odpc_worker_mode_direct(void *arg)
     pktin     = mconf->rx_pktios[idx].pktin;
     port_in  = mconf->rx_pktios[idx].rx_idx;
 
-	info("	before barrier %d, exit thread %d \n",mconf->thr_idx, exit_threads);
-    odp_barrier_wait(&barrier);
+    //odp_barrier_wait(&barrier);
 
 	info("	after barrier \n");
 	/* Loop packets */
@@ -633,6 +632,6 @@ int odpc_worker_mode_direct(void *arg)
 	}
 
     /* Make sure that latest stat writes are visible to other threads */
-    odp_mb_full();
+    //odp_mb_full();
 	return 0;
 }

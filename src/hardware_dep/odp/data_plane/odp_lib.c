@@ -34,8 +34,8 @@ uint16_t nb_lcore_params;
 #define RTE_TEST_TX_DESC_DEFAULT 512
 
 /** Global barrier to synchronize main and workers */
-odp_barrier_t barrier;
-int exit_threads;    /**< Break workers loop if set to 1 */
+//odp_barrier_t barrier;
+int exit_threads = 0;    /**< Break workers loop if set to 1 */
 
 extern void odp_main_worker (void);
 //=============================================================================
@@ -709,7 +709,7 @@ static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
         timeout = 1;
     }
     /* Wait for all threads to be ready*/
-    odp_barrier_wait(&barrier);
+//    odp_barrier_wait(&barrier);
 
     do {
 #if 0
@@ -1004,7 +1004,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 
 	stats = gconf->stats;
 
-    odp_barrier_init(&barrier, num_workers + 1);
+ //   odp_barrier_init(&barrier, num_workers + 1);
 
     if (gconf->appl.in_mode == DIRECT_RECV)
         thr_run_func = odpc_worker_mode_direct;
@@ -1054,9 +1054,9 @@ uint8_t odpc_initialize(int argc, char **argv)
         }
     }
 
-    ret = print_speed_stats(num_workers, gconf->stats,
-                gconf->appl.time, gconf->appl.accuracy);
-    exit_threads = 1;
+ //   ret = print_speed_stats(num_workers, gconf->stats,
+ //               gconf->appl.time, gconf->appl.accuracy);
+ //   exit_threads = 1;
 
     /* Master thread waits for other threads to exit */
 	for (i = 0; i < num_workers; ++i)
