@@ -790,7 +790,6 @@ static void macs_set_worker_afinity(void)
             pktio_id = mconf->num_rx_pktio;
             mconf->rx_pktios[pktio_id].rx_idx = rx_idx;
             mconf->num_rx_pktio++;
-
             gconf->pktios[rx_idx].num_rx_thr++;
 
             mconf_id++;
@@ -876,6 +875,13 @@ static void gconf_init(mac_global_t *gconf)
         for (queue = 0; queue < MAX_QUEUES; queue++)
             gconf->pktios[pktio].rx_q[queue] = ODP_QUEUE_INVALID;
 	}
+}
+
+uint32_t packet_length(packet_descriptor_t* pd) {
+	//return rte_pktmbuf_pkt_len(pd->wrapper);
+
+	//Returns sum of buffer lengths over all packet segments.
+	return odp_packet_buf_len(pd->wrapper);
 }
 
 uint8_t odpc_initialize(int argc, char **argv)

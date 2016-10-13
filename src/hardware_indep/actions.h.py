@@ -1,5 +1,3 @@
-from utils import *
-
 #[ #ifndef __ACTION_INFO_GENERATED_H__
 #[ #define __ACTION_INFO_GENERATED_H__
 #[ 
@@ -35,6 +33,7 @@ for table in hlir.p4_tables.values():
     #[ };
 
 for table in hlir.p4_tables.values():
+    #[ void apply_table_${table.name}(packet_descriptor_t *pd, lookup_table_t** tables);
     for action in table.actions:
         if action.signature:
             #[ void action_code_${action.name}(packet_descriptor_t *pd, lookup_table_t **tables, struct action_${action.name}_params);

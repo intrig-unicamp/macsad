@@ -160,8 +160,9 @@ static void odp_send_packet(odp_packet_t *p, uint8_t port, int thr_idx)
 	gconf->mconf[thr_idx].tx_pktios[port].buf.len++;
 }
 
-#define EXTRACT_EGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/6) & /*mask*/0x7fc) >> /*bitoffset*/2
-#define EXTRACT_INGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/0) & /*mask*/0x1ff) >> /*bitoffset*/0
+#define EXTRACT_EGRESSPORT(p) GET_INT32_AUTO(p, field_instance_standard_metadata_egress_port)
+
+#define EXTRACT_INGRESSPORT(p) GET_INT32_AUTO(p, field_instance_standard_metadata_ingress_port)
 
 static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int thr_idx)
 {
@@ -170,10 +171,10 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 	int port;
 	unsigned buf_len;
 	odp_bool_t first = 1;
-	odp_packet_t pkt = *((odp_packet_t *)pd->packet);
+	odp_packet_t pkt = *((odp_packet_t *)pd->wrapper);
 
 	odp_packet_t pkt_cp_tmp;
-	pkt_cp_tmp = odp_packet_copy(*((odp_packet_t *)pd->packet), gconf->pool);
+	pkt_cp_tmp = odp_packet_copy(*((odp_packet_t *)pd->wrapper), gconf->pool);
 	if (pkt_cp_tmp == ODP_PACKET_INVALID) {
 		debug("Error: Tmp packet copy failed for sending %s \n", __FILE__);
 		return;
@@ -211,15 +212,14 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 
 static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 {
-	packet_desc->headers[header_instance_standard_metadata] =
-		(header_descriptor_t) {
-			.type = header_instance_standard_metadata,
-			.length = header_instance_byte_width[header_instance_standard_metadata],
-			.pointer = calloc(header_instance_byte_width[header_instance_standard_metadata], sizeof(uint8_t))
-		};
-
+   // info("Inside init_metadata \n ");
 	int res32; // needs for the macro
-	MODIFY_INT32_INT32(packet_desc, field_instance_standard_metadata_ingress_port, inport);
+	MODIFY_INT32_INT32_BITS(packet_desc, field_instance_standard_metadata_ingress_port, inport);
+
+	/* validate ingressport set */
+	res32 = 0; // needs for the macro
+//	int inp = EXTRACT_INGRESSPORT(packet_desc);
+//	info("[initMetadata] Inport %d is set as %d\n",inport, inp);
 }
 
 static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
@@ -228,12 +228,13 @@ static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
 	int inport = EXTRACT_INGRESSPORT(pd);
 
 	dbg_print_headers(pd);
-	info("send_packet: i/p port=%d and o/p port=%d \n", inport, port);
+	info("send_packet: initial i/p port=%d and o/p port=%d \n", inport, port);
+    reset_headers(pd);// sugar@292
 
 	if (port==100) {
 		maco_bcast_packet(pd, inport, thr_idx);
 	} else {
-		odp_send_packet((odp_packet_t *)pd->packet, port, thr_idx);
+		odp_send_packet((odp_packet_t *)pd->wrapper, port, thr_idx);
 		sigg("[Unicast] recvd port id - %d, sent port id - %d\n", inport, port);
 	}
 
@@ -244,13 +245,11 @@ void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, 
 {
 	struct lcore_state *state_tmp = &gconf->state;
 	pd->pointer = (uint8_t *)odp_packet_data(*p);
-	pd->packet = (packet *)p;
+	pd->wrapper = (packet *)p;
     info("Inside packet received \n ");
-//	set_metadata_inport(pd, portid);
 	init_metadata(pd, portid);
 	handle_packet(pd, state_tmp->tables);
 }
-
 
 static inline int event_queue_send(odp_queue_t queue, odp_packet_t *pkt_tbl,
 		unsigned pkts)
@@ -332,7 +331,6 @@ int odpc_worker_mode_sched (void *arg)
     //odp_barrier_wait(&barrier);
 
     wait = odp_schedule_wait_time(ODP_TIME_MSEC_IN_NS * 100);
-
     /* Loop packets */
     while (!exit_threads) {
         int sent;
@@ -402,7 +400,7 @@ int odpc_worker_mode_sched (void *arg)
 		info("  Finish emptying all Tx buffers for thread %d\n",mconf->thr_idx);
 	}
 
-    /* Make sure that latest stat writes are visible to other threads */
+/* Make sure that latest stat writes are visible to other threads */
    // odp_mb_full();
     return 0;
 }
@@ -541,23 +539,22 @@ int odpc_worker_mode_direct(void *arg)
 	int idx = 0;
 	packet_descriptor_t pd;
 	odp_packet_t pkt;
-//	init_dataplane(&pd, gconf->state.tables);
     int use_event_queue = gconf->appl.out_mode;
-
-	info(":: INSIDE odp_main_worker\n");
-
+//	info(":: INSIDE odp_main_worker\n");
     num_pktio = mconf->num_rx_pktio;
     pktin     = mconf->rx_pktios[idx].pktin;
     port_in  = mconf->rx_pktios[idx].rx_idx;
 
     //odp_barrier_wait(&barrier);
+	//info(" No of intf %d, thread id %d \n", gconf->appl.if_count, mconf->thr_idx);
 
-	info("	after barrier \n");
+	//gconf->state.tables[i] = state[socketid].tables[i][0];
+	init_dataplane(&pd, gconf->state.tables);
+
 	/* Loop packets */
     while (!exit_threads) {
         int sent;
         unsigned drops;
-
         if (num_pktio > 1) {
             pktin   = mconf->rx_pktios[idx].pktin;
             port_in = mconf->rx_pktios[idx].rx_idx;
@@ -570,8 +567,8 @@ int odpc_worker_mode_direct(void *arg)
 //	info("	pkt recv %d \n",pkts);
 		if (odp_unlikely(pkts <= 0))
 			continue;
-	info("	pkt recv %d \n",pkts);
-		mconf->stats[port_in]->s.rx_packets += pkts;
+//	info(" no of pkt recv %d on port %d on thread id %d\n",pkts, idx, mconf->thr_idx);
+//		mconf->stats[port_in]->s.rx_packets += pkts;
 
 		for (i = 0; i < pkts; i++) {
 			pkt = pkt_tbl[i];
@@ -579,11 +576,11 @@ int odpc_worker_mode_direct(void *arg)
 				odp_packet_free(pkt);
 				continue;
 			}
+			//test--- no pkt handling
+			//	odp_packet_free(pkt);
 			packet_received(&pd, &pkt, port_in, mconf->thr_idx);
-		//	mconf = &(gconf->mconf[port_in]);
 			send_packet (&pd, mconf->thr_idx);
 		}
-
         /* Empty all thread local tx buffers */
         for (port_out = 0; port_out < gconf->appl.if_count;
 				port_out++) {

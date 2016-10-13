@@ -66,6 +66,11 @@ void drop                   (packet_descriptor_t* p);
 void generate_digest        (backend bg, char* name, int receiver, struct type_field_list* digest_field_list);
 void no_op                  ();
 
+//=============================================================================
+// Calculations
+//uint16_t calculate_csum16(const void* buf, uint16_t length);
+//uint32_t packet_length(packet_descriptor_t* pd);
+
 //copy_header
 ////void set_field_to_hash_index(packet* p, field* f, field* flc, int base, int size);/
 ////void truncate_pkg           (packet* p, unsigned length);

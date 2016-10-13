@@ -1,6 +1,4 @@
-import utils
-from data_plane_analyser_utils import *
-from utils import *
+from utils.misc import *
 
 from subprocess import call
 
@@ -62,9 +60,6 @@ def translate_file_contents(file, code):
         new_line = code_line
         if has_translateable_comment.match(code_line):
             new_line = translate_line_with_insert(file, line_idx+1, code_line)
-	  #  if file.endswith("generated_metadata.h.sugared"):
-           #     print("sugar code line\n" + code_line) 
-    	    #    print("desugar code line\n" + new_line) 
 
         new_lines.append(new_line)
     return '\n'.join(new_lines)
@@ -87,20 +82,12 @@ def generate_code(file, genfile, localvars={}):
             print(code)
             print(file + " *************************************************")
 
-        #if file.endswith("tables.c.sugared"):
-         #   print(file + " -------------------------------------------------")
-          #  print(code)
-           # print(file + " *************************************************")
-        
-	localvars['generated_code'] = ""
+        localvars['generated_code'] = ""
 
-       # print "Desugaring %s..." % file
+        print "Desugaring %s..." % file
 
         exec(code, localvars, localvars)
-    #    if file.endswith("tables.c.sugared"):
-     #       print(file + " -------------------------------------------------")
-      #      print(localvars['generated_code'])
-       #     print(file + " *************************************************")
+
         return localvars['generated_code']
 
 
@@ -108,19 +95,18 @@ def generate_all_in_dir(dir, gendir, outdir, hlir):
 
     for file in os.listdir(dir):
         full_file = join(dir, file)
-#	print("sugared file"+ file)
+
         if not isfile(full_file):
             continue
 
-        if not full_file.endswith(".sugared"):
+        if not full_file.endswith(".c.py") and not full_file.endswith(".h.py"):
             continue
 
-        genfile = join(gendir, re.sub(r'\.sugared$', '', file)) + ".desugared.py"
-    #    print(file + " file renamed to "+ genfile)
-	code = generate_code(full_file, genfile, {'hlir': hlir})
+        genfile = join(gendir, re.sub(r'\.([ch])\.py$', r'.\1.desugared.py', file))
+        code = generate_code(full_file, genfile, {'hlir': hlir})
 
-        outfile = join(outdir, re.sub(r'\.sugared$', '', file))
-        #print(outfile)
+        outfile = join(outdir, re.sub(r'\.([ch])\.py$', r'.\1', file))
+
         write_file(outfile, code)
 
 
@@ -132,21 +118,21 @@ def make_dirs(compiler_files_path, desugared_path, generated_path):
 
     if not os.path.isdir(desugared_path):
         os.makedirs(desugared_path)
-#        print("Generating path for desugared compiler files: {0}".format(desugared_path))
+        print("Generating path for desugared compiler files: {0}".format(desugared_path))
 
     if not os.path.isdir(generated_path):
         os.makedirs(generated_path)
-#        print("Generating path for generated files: {0}".format(generated_path))
+        print("Generating path for generated files: {0}".format(generated_path))
 
 
 def setup_paths():
     """Gets paths from the command line arguments (or defaults)
        and makes sure that they exist in the file system."""
-    argidx_p4, argidx_srcpath, argidx_genpath = 1, 2, 3
+    argidx_p4, argidx_genpath, argidx_srcpath = 1, 2, 3
 
     p4_path = sys.argv[argidx_p4]
     compiler_files_path = sys.argv[argidx_srcpath] if len(sys.argv) > argidx_srcpath else join("src", "hardware_indep")
-    desugared_path = join("build", "desugared_compiler")
+    desugared_path = join("build", "util", "desugared_compiler")
     generated_path = sys.argv[argidx_genpath] if len(sys.argv) > argidx_genpath else join("build", "src_hardware_indep")
 
     make_dirs(compiler_files_path, desugared_path, generated_path)
@@ -171,20 +157,21 @@ def write_file(filename, text):
 
 def main():
     if len(sys.argv) <= 1:
-        #print("Usage: %s p4_file [compiler_files_dir] [generated_dir]" % (os.path.basename(__file__)))
-        print("Usage: %s <p4 file>" % (os.path.basename(__file__)))
+        print("Usage: %s p4_file [compiler_files_dir] [generated_dir]" % (os.path.basename(__file__)))
         sys.exit(1)
 
     p4_path, compiler_files_path, desugared_path, generated_path = setup_paths()
 
+    if os.path.isfile(p4_path) is False:
+        print("FILE NOT FOUND: %s" % p4_path)
+        sys.exit(1)
+
     hlir = HLIR(p4_path)
     build_hlir(hlir)
 
-#    print("HLIR build done")
     generate_all_in_dir(compiler_files_path, desugared_path, generated_path, hlir)
-
-    utils.showErrors()
-    utils.showWarnings()
-    print("Datapath Logic is Created");
+   
+    showErrors()
+    showWarnings()
 
 main()

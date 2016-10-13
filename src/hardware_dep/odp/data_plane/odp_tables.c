@@ -305,6 +305,7 @@ int odpc_lookup_tbls_init()
 //            create_counters_on_socket(socketid);
         }
     }
+	//create_registers();
     info("Initializing tables Done.\n");
     return 0;
 }

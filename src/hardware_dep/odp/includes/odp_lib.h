@@ -153,7 +153,6 @@ typedef struct appl_args {
 
 
 /** Global barrier to synchronize main and workers */                            
-extern odp_barrier_t barrier;
 extern int exit_threads;    /**< Break workers loop if set to 1 */ 
 
 typedef struct lcore_state {
@@ -241,6 +240,8 @@ typedef struct mac_global{
 	macs_conf_t mconf[MAC_MAX_LCORE];
 	/** ptr to statefull memories */
 	lcore_state_t state;
+
+	int num_pktio;
 	/** Table of pktio handles */
     struct {
         odp_pktio_t pktio;

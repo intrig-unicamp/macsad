@@ -19,7 +19,7 @@ rm -rf build
 python src/transpiler.py examples/p4_src/l2_switch_test.p4
 
 # Compile C sources
-${MAKE_CMD} -j16
+make clean;${MAKE_CMD} -j16
 
 # Start the switch
 #echo "Runing the switch with veth1 and veth2"

@@ -1,8 +1,5 @@
-from utils import getTypeAndLength
 import p4_hlir.hlir.p4 as p4
-from header_info import fld_prefix
-
-def fld_id(f): return fld_prefix(f.instance.name + "_" + f.name)
+from utils.hlir import fld_prefix, fld_id, getTypeAndLength 
 
 def match_type_order(t):
     if t is p4.p4_match_type.P4_MATCH_EXACT:   return 0
@@ -21,7 +18,8 @@ for table in hlir.p4_tables.values():
     #[ extern void table_${table.name}_key(packet_descriptor_t* pd, uint8_t* key); // defined in dataplane.c
 #[
 
-#[ uint8_t reverse_buffer[${max([t[1] for t in map(getTypeAndLength, hlir.p4_tables.values())])}];
+if len(hlir.p4_tables.values())>0:
+    #[ uint8_t reverse_buffer[${max([t[1] for t in map(getTypeAndLength, hlir.p4_tables.values())])}];
 
 for table in hlir.p4_tables.values():
     table_type, key_length = getTypeAndLength(table)
@@ -87,7 +85,7 @@ for table in hlir.p4_tables.values():
             #[ uint8_t* ${name} = (uint8_t*)((struct p4_action_parameter*)ctrl_m->action_params[${j}])->bitmap;
             #[ memcpy(action.${action.name}_params.${name}, ${name}, ${(length+7)/8});
         #[     debug("Reply from the control plane arrived.\n");
-        #[     debug("Addig new entry to ${table.name} with action ${action.name}\n");
+        #[     debug("Adding new entry to ${table.name} with action ${action.name}\n");
         #[     ${table.name}_add(
         for m in table.match_fields:
             match_field, match_type, match_mask = m
@@ -95,7 +93,8 @@ for table in hlir.p4_tables.values():
             if match_type is p4.p4_match_type.P4_MATCH_LPM:
                 #[ ${fld_id(match_field)}_prefix_length,
         #[     action);
-        #[ }
+        #[ } else
+    #[ debug("Table add entry: action name mismatch (%s).\n", ctrl_m->action_name);
     #[ }
 
 for table in hlir.p4_tables.values():
@@ -112,7 +111,8 @@ for table in hlir.p4_tables.values():
         #[     debug("Message from the control plane arrived.\n");
         #[     debug("Set default action for ${table.name} with action ${action.name}\n");
         #[     ${table.name}_setdefault( action );
-        #[ }
+        #[ } else
+    #[ debug("Table setdefault: action name mismatch (%s).\n", ctrl_m->action_name);
     #[ }
 
 
@@ -122,11 +122,15 @@ for table in hlir.p4_tables.values():
 for table in hlir.p4_tables.values():
     #[ if (strcmp("${table.name}", ctrl_m->table_name) == 0)
     #[     ${table.name}_add_table_entry(ctrl_m);
+    #[ else
+#[ debug("Table add entry: table name mismatch (%s).\n", ctrl_m->table_name);
 #[     }
 #[     else if (ctrl_m->type == P4T_SET_DEFAULT_ACTION) {
 for table in hlir.p4_tables.values():
     #[ if (strcmp("${table.name}", ctrl_m->table_name) == 0)
     #[     ${table.name}_set_default_table_action(ctrl_m);
+    #[ else
+#[ debug("Table setdefault: table name mismatch (%s).\n", ctrl_m->table_name);
 #[     }
 #[ }
 

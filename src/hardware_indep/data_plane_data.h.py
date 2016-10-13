@@ -1,5 +1,3 @@
-from utils import *
-
 #[ #ifndef __DATA_PLANE_DATA_H__
 #[ #define __DATA_PLANE_DATA_H__
 #[
@@ -15,11 +13,18 @@ for table in hlir.p4_tables.values():
 #[
 #[ #define NB_COUNTERS ${len(hlir.p4_counters)}
 #[
-if (len(hlir.p4_counters)):
-	#[ enum counter_names {
-	for counter in hlir.p4_counters.values():
-		#[ COUNTER_${counter.name},
-	#[ COUNTER_
-	#[ };
-#[ 
+#[ enum counter_names {
+for counter in hlir.p4_counters.values():
+    #[ COUNTER_${counter.name},
+#[ COUNTER_
+#[ };
+#[
+#[ #define NB_REGISTERS ${len(hlir.p4_registers)}
+#[
+#[ enum register_names {
+for register in hlir.p4_registers.values():
+    #[ REGISTER_${register.name},
+#[ REGISTER_
+#[ };
+#[
 #[ #endif // __DATA_PLANE_DATA_H__
