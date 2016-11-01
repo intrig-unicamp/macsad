@@ -167,7 +167,10 @@ def main():
         sys.exit(1)
 
     hlir = HLIR(p4_path)
-    build_hlir(hlir)
+    success = build_hlir(hlir)
+    if not success:
+        print("Transpiler failed for use-case %s" % (os.path.basename(__file__)))
+        sys.exit(1)
 
     generate_all_in_dir(compiler_files_path, desugared_path, generated_path, hlir)
    

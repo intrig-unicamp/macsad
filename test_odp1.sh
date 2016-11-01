@@ -2,10 +2,15 @@
 MAKE_CMD=${MAKE_CMD-make}
 #LD_LIBRARY_PATH=/root/odp/lib/.libs:$LD_LIBRARY_PATH
 
-# Compile test controller
+# Compile Controller
 cd src/hardware_dep/shared/ctrl_plane
 make clean
 make mac_controller
+ERROR_CODE=$?
+if [ "$ERROR_CODE" -ne 0 ]; then
+    echo Controller compilation failed with error code $ERROR_CODE
+    exit 1
+fi
 cd -
 
 # Restart mac controller in background
@@ -17,6 +22,12 @@ echo "Controller started... "
 echo "Creating Datapath Logic from P4 source."
 rm -rf build
 python src/transpiler.py examples/p4_src/l2_switch_test.p4
+ERROR_CODE=$?
+if [ "$ERROR_CODE" -ne 0 ]; then
+    echo Transpiler failed with error code $ERROR_CODE
+    exit 1
+fi
+
 
 # Compile C sources
 make clean;${MAKE_CMD} -j16
