@@ -6,10 +6,11 @@ endif
 #CFLAGS += -O3
 #CFLAGS += -g3
 
-CFLAGS += -Wall 
+#CFLAGS += -Wall 
+CFLAGS += -w
 CFLAGS += -Wno-unused-function
-#CFLAGS += -Wno-unused-variable
-#CFLAGS += -Wno-unused-value
+CFLAGS += -Wno-unused-variable
+CFLAGS += -Wno-unused-value
 CFLAGS += -Wmaybe-uninitialized
 
 CFLAGS += -std=gnu99
@@ -17,8 +18,8 @@ CFLAGS += -std=gnu99
 #To define the backend used: odp/dpdk
 CFLAGS += -D ODP_BK
 
-CFLAGS += -D NDEBUG
-CFLAGS += -D NINFO
+#CFLAGS += -D NDEBUG
+#CFLAGS += -D NINFO
 #CFLAGS += -D NSIGG
 
 #CFLAGS += -always-make

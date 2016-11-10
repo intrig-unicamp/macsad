@@ -1,5 +1,3 @@
-#define MAC_LEARN 1024
-
 header_type ethernet_t {
     fields {
         dstAddr : 48;
@@ -26,6 +24,7 @@ action _drop() {
 action _nop() {
 }
 
+#define MAC_LEARN_RECEIVER 1024
 
 field_list mac_learn_digest {
     ethernet.srcAddr;
@@ -33,7 +32,7 @@ field_list mac_learn_digest {
 }
 
 action mac_learn() {
-    generate_digest(MAC_LEARN, mac_learn_digest);
+    generate_digest(MAC_LEARN_RECEIVER, mac_learn_digest);
 }
 
 table smac {

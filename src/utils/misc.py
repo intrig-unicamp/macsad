@@ -39,4 +39,5 @@ def build_hlir(hlir):
     if disable_hlir_messages:
         sys.stdout = old_stdout
         sys.stderr = old_stderr
+
     return success

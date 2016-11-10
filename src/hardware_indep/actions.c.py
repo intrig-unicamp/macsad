@@ -193,7 +193,7 @@ def add_to_field(fun, call):
         else:
             addError("generating modify_field", "Bytebufs cannot be modified yet.")
     elif isinstance(val, p4_field):
-        if dst.width <= 32 and val.length <= 32:
+        if dst.width <= 32 and val.width <= 32:
             #[ ${ extract_int32(val, 'value32') }
             #[ ${ extract_int32(dst, 'res32') }
             if (p4_header_keywords.saturating in dst.attributes):

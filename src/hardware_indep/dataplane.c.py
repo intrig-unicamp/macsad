@@ -51,7 +51,7 @@ for table in hlir.p4_tables.values():
 
 for table in hlir.p4_tables.values():
     table_type, key_length = getTypeAndLength(table)
-    lookupfun = {'LOOKUP_EXACT':'exact_lookup'}
+    lookupfun = {'LOOKUP_LPM':'lpm_lookup', 'LOOKUP_EXACT':'exact_lookup', 'LOOKUP_TERNARY':'ternary_lookup'}
     #[ void apply_table_${table.name}(packet_descriptor_t* pd, lookup_table_t** tables)
     #[ {
     #[     debug("  :::: EXECUTING TABLE ${table.name}\n");
@@ -120,24 +120,37 @@ for calc in hlir.p4_field_list_calculations.values():
     #[   uint32_t res = 0, const_tmp;
     #[   void* payload_ptr;
 
-    input_width = 0 #Calculates the width of all p4_fields and sized_integers (PAYLOAD width is not included)
+    fixed_input_width = 0     #Calculates the fixed width of all p4_fields and sized_integers (PAYLOAD width is not included)
+    variable_input_width = "" #Calculates the variable width of all p4_fields
     for field_list in calc.input:
         for item in field_list.fields:
-            input_width += item.width if isinstance(item, p4_field) or isinstance(item, p4_sized_integer) else 0
-    if input_width % 8 != 0:
+            if isinstance(item, p4_field) or isinstance(item, p4_sized_integer):
+                if item.width == p4.P4_AUTO_WIDTH:
+                    variable_input_width += " + field_desc(pd, " + fld_id(item) + ").bitwidth"
+                else:
+                    fixed_input_width += item.width
+    if variable_input_width: #The calculation field-list contains variable length field
+        addWarning("generating field list calculation", "Calculation " + calc.name + " contains variable length fields. Field block bitwidths are not checked!")
+    elif fixed_input_width % 8 != 0:
         addError("generating field list calculation", "The bitwidth of the field_lists for the calculation is incorrect.")
-    #[   uint8_t* buf = malloc(${input_width / 8});
-    #[   memset(buf, 0, ${input_width / 8});
+    #[   uint8_t* buf = malloc((${fixed_input_width}${variable_input_width}) / 8);
+    #[   memset(buf, 0, (${fixed_input_width}${variable_input_width}) / 8);
 
     tmp_list = []
-    byte_offset = 0
+    fixed_bitoffset = 0
+    variable_bitoffset = ""
     for field_list in calc.input:
         item_index = 0
         while item_index < len(field_list.fields):
             start_item = field_list.fields[item_index]
             if isinstance(start_item, p4_field): #Processing field block (multiple continuous fields in a row)
                 inst = start_item.instance
-                bitwidth = start_item.width
+                if start_item.width == p4.P4_AUTO_WIDTH:
+                    fixed_bitwidth = 0
+                    variable_bitwidth = " + field_desc(pd, " + fld_id(start_item) + ").bitwidth"
+                else:
+                    fixed_bitwidth = start_item.width
+                    variable_bitwidth = ""
 
                 inst_index = 0 #The index of the field in the header instance
                 while start_item != inst.fields[inst_index]: inst_index += 1
@@ -145,12 +158,16 @@ for calc in hlir.p4_field_list_calculations.values():
                 while inst_index + 1 < len(inst.fields) and item_index + 1 < len(field_list.fields) and inst.fields[inst_index + 1] == field_list.fields[item_index + 1]:
                     item_index += 1
                     inst_index += 1
-                    bitwidth += field_list.fields[item_index].width
+                    if field_list.fields[item_index].width == p4.P4_AUTO_WIDTH:
+                        variable_bitwidth += " + field_desc(pd, " + fld_id(field_list.fields[item_index]) + ").bitwidth"
+                    else:
+                        fixed_bitwidth += field_list.fields[item_index].width
 
-                if bitwidth % 8 != 0: addError("generating field list calculation", "The bitwidth of a field block is incorrenct!")
-                tmp_list.append((byte_offset, start_item, bitwidth / 8))
+                if (not variable_bitwidth) and fixed_bitwidth % 8 != 0: addError("generating field list calculation", "The bitwidth of a field block is incorrenct!")
+                tmp_list.append(("((" + str(fixed_bitoffset) + variable_bitoffset + ") / 8)", start_item, "((" + str(fixed_bitwidth) + variable_bitwidth + ") / 8)"))
 
-                byte_offset += (bitwidth / 8)
+                fixed_bitoffset += fixed_bitwidth
+                variable_bitoffset += variable_bitwidth
             elif isinstance(start_item, p4_sized_integer):
                 if start_item.width % 8 != 0:
                     addError("generating field list calculation", "Only byte-wide constants are supported in field lists.")
@@ -158,12 +175,12 @@ for calc in hlir.p4_field_list_calculations.values():
                     #TODO: The following byte conversion is only correct on little_endian systems
                     new_value = (unpack(">I", pack("<I", start_item))[0]) >> (32 - start_item.width)
                     #[   const_tmp = ${new_value};
-                    #[   memcpy(buf + ${byte_offset}, &const_tmp, ${start_item.width / 8});
-                    byte_offset += (start_item.width / 8)
+                    #[   memcpy(buf + ((${fixed_bitoffset}${variable_bitoffset}) / 8), &const_tmp, ${start_item.width / 8});
+                    fixed_bitoffset += start_item.width
             else:
                 if item_index == 0 or not isinstance(field_list.fields[item_index - 1], p4_field):
                     addError("generating field list calculation", "Payload element must follow a regular field instance in the field list.")
-                else:
+                elif calc.algorithm == "csum16":
                     hi_name = hdr_prefix(field_list.fields[item_index - 1].instance.name)
                     #[   payload_ptr = (((void*)pd->headers[${hi_name}].pointer) + (pd->headers[${hi_name}].length));
                     #[   res = csum16_add(res, calculate_csum16(payload_ptr, packet_length(pd) - (payload_ptr - ((void*) pd->data))));
@@ -182,9 +199,10 @@ for calc in hlir.p4_field_list_calculations.values():
         #[   }
 
     if calc.algorithm == "csum16":
-        #[   res = csum16_add(res, calculate_csum16(buf, ${input_width / 8}));
+        #[   res = csum16_add(res, calculate_csum16(buf, (${fixed_input_width}${variable_input_width}) / 8));
         #[   res = (res == 0xffff) ? res : ((~res) & 0xffff);
     else:
+        #If a new calculation implementation is added, new PAYLOAD handling should also be added.
         addError("generating field list calculation", "Unsupported field list calculation algorithm: " + calc.algorithm)
     #[   free(buf);
     #[   return res & ${hex((2 ** calc.output_width) - 1)};

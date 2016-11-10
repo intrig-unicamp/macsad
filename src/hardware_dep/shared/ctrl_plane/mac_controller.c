@@ -3,7 +3,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <arpa/inet.h>
 
+#define MAX_MACS 60000
 
 controller c;
 
@@ -147,7 +149,7 @@ void test_learn_ip(void* b) {
 void dhf(void* b) {
     struct p4_header* h = netconv_p4_header(unpack_p4_header(b, 0));
     if (h->type != P4T_DIGEST) {
-        printf("Method not found\n");
+        printf("Method is not implemented\n");
         return;
     }
 
@@ -168,7 +170,7 @@ void set_default_action_smac()
     struct p4_set_default_action* sda;
     struct p4_action* a;
 
-//    printf("Generate set_default_action message for table smac\n");
+//  printf("Generate set_default_action message for table smac\n");
 
     h = create_p4_header(buffer, 0, sizeof(buffer));
 
@@ -192,7 +194,7 @@ void set_default_action_dmac()
     struct p4_set_default_action* sda;
     struct p4_action* a;
 
-//    printf("Generate set_default_action message for table dmac\n");
+//  printf("Generate set_default_action message for table dmac\n");
 
     h = create_p4_header(buffer, 0, sizeof(buffer));
 
@@ -209,16 +211,82 @@ void set_default_action_dmac()
     send_p4_msg(c, buffer, sizeof(buffer));
 }
 
-void init() {
-    set_default_action_smac();
-    set_default_action_dmac();
+uint8_t macs[MAX_MACS][6];
+uint8_t portmap[MAX_MACS];
+int mac_count = -1;
+
+int read_macs_and_ports_from_file(char *filename) {
+        FILE *f;
+        char line[100];
+	int values[6];
+	int port;
+	int i;
+
+        f = fopen(filename, "r");
+        if (f == NULL) return -1;
+
+        while (fgets(line, sizeof(line), f)) {
+                line[strlen(line)-1] = '\0';
+
+		if (7 == sscanf(line, "%x:%x:%x:%x:%x:%x %d%c",
+				&values[0], &values[1], &values[2],
+				&values[3], &values[4], &values[5], &port) )
+		{
+			if (mac_count==MAX_MACS-1)
+			{
+				printf("Too many entries...\n");
+				break;
+			}
+
+			++mac_count;
+			for( i = 0; i < 6; ++i )
+				macs[mac_count][i] = (uint8_t) values[i];
+			portmap[mac_count] = (uint8_t) port;
+
+		} else {
+			printf("Wrong format error in line %d : %s\n", mac_count+2, line);
+			fclose(f);
+			return -1;
+		}
+
+        }
+
+        fclose(f);
+        return 0;
 }
 
-int main()
+void init() {
+	int i;
+	printf("Set default actions.\n");
+	set_default_action_smac();
+	set_default_action_dmac();
+
+	for (i=0;i<=mac_count;++i)
+	{
+		printf("Filling tables smac/dmac PORT: %d MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", portmap[i], macs[i][0],macs[i][1],macs[i][2],macs[i][3],macs[i][4],macs[i][5]);
+		fill_dmac_table(portmap[i], macs[i]);
+		fill_smac_table(portmap[i], macs[i]);
+	}
+
+}
+
+int main(int argc, char* argv[])
 {
-//	printf("Create and configure controller...\n");
-//	c = create_controller(11111, 3, dhf);
-    c = create_controller_with_init(11111, 3, dhf, init);
+	if (argc>1) {
+		if (argc!=2) {
+			printf("Too many arguments...\nUsage: %s <filename(optional)>\n", argv[0]);
+			return -1;
+		}
+		printf("Command line argument is present...\nLoading configuration data...\n");
+		if (read_macs_and_ports_from_file(argv[1])<0) {
+			printf("File cannnot be opened...\n");
+			return -1;
+		}
+	}
+
+	printf("Create and configure controller...\n");
+	c = create_controller_with_init(11111, 3, dhf, init);
+
 	printf("MACSAD controller started...\n");
 	execute_controller(c);
 

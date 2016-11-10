@@ -9,6 +9,7 @@
 #include <odp/helper/linux.h>
 //#include <odp_api.h>
 #include <odp/helper/eth.h>
+#include <odp/helper/chksum.h>
 #include <odp/helper/ip.h>
 #include <odp/helper/table.h>
 #include <net/ethernet.h>
@@ -875,6 +876,13 @@ static void gconf_init(mac_global_t *gconf)
         for (queue = 0; queue < MAX_QUEUES; queue++)
             gconf->pktios[pktio].rx_q[queue] = ODP_QUEUE_INVALID;
 	}
+}
+
+//static inline odp_u16sum_t odph_chksum(void *buffer, int len)
+//return checksum value in host cpu order
+uint16_t calculate_csum16(const void* buf, uint16_t length) {
+	uint16_t value16 = odph_chksum(buf, length);
+	return value16;
 }
 
 uint32_t packet_length(packet_descriptor_t* pd) {

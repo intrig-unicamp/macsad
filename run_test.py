@@ -7,7 +7,7 @@ import socket
 import time 
 from scapy.all import sniff
 from scapy.all import Ether, IP, IPv6, TCP
-NUM_PACKETS = 5
+NUM_PACKETS = 1
 parser = argparse.ArgumentParser(description='run_test.py')
 parser.add_argument('--first',
         help='If set pkts are send through veth0, else veth3',
@@ -108,10 +108,10 @@ send_socket = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
                             socket.htons(0x03))
 
 if args.first:
-    pkt = Ether(dst='fa:4f:e8:df:b1:5f',src='a2:5e:37:ac:a1:7f')/IP(dst='192.168.0.1',src='192.168.0.2')
+    pkt = Ether(dst='a1:4f:e8:df:b1:1f',src='a2:5e:37:ac:a1:2f')/IP(dst='192.168.0.1',src='192.168.0.2')
     port2send = port_map[1]
 else:
-    pkt = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.2',src='192.168.0.1')
+    pkt = Ether(dst='a2:5e:37:ac:a1:2f',src='a1:4f:e8:df:b1:1f')/IP(dst='192.168.0.2',src='192.168.0.1')
     port2send = port_map[2]
 
 send_socket.bind((port2send, 0))
@@ -125,7 +125,7 @@ for d in delays:
 #        pkt["TCP"].dport = random.randint(1025, 65535)
     send_socket.send(str(pkt))
     time.sleep(d / 1000.)
-time.sleep(1)
+time.sleep(2)
 iface, pkt = queue.get()
 while pkt:
     ports.append(iface_map[iface])

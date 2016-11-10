@@ -4,6 +4,8 @@
 //#include "odp_lib.h"
 #include <odp/helper/table.h>
 #include <../odph_hashtable.h>
+#include <../odph_iplookuptable.h>
+#include <../odph_cuckootable.h>
 
 typedef struct extended_table_s {
     void*     odp_table;
@@ -12,7 +14,7 @@ typedef struct extended_table_s {
 } extended_table_t;
 
 /* need to cretae a array of TABLE_MAX to support multiple tables */
-extern odph_table_ops_t odph_hash_table_ops;
+//extern odph_table_ops_t odph_hash_table_ops;
 
 //=============================================================================
 // Table size limits

@@ -83,8 +83,8 @@ struct mbuf_table {
 /** @def PKT_POOL_SIZE                                                           
  * @brief Size of the shared memory block                                        
  */                   
-//#define PKT_POOL_SIZE 8192                                                   
-#define PKT_POOL_SIZE (512*2048)                   
+#define PKT_POOL_SIZE 8192                                                   
+//#define PKT_POOL_SIZE (512*2048)                   
 /** @def PKT_POOL_BUF_SIZE    
  * @brief Buffer size of the packet pool buffer                                  
  */                                                                              

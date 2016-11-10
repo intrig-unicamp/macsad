@@ -113,8 +113,29 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
 	info(":::: EXECUTING table create:\n");
 	switch(t->type) {
 		case LOOKUP_EXACT:
-			test_ops = &odph_hash_table_ops;
+			//test_ops = &odph_hash_table_ops;
+			test_ops = &odph_cuckoo_table_ops;
 			snprintf(name, sizeof(name), "%s_exact_%d_%d", t->name, socketid, replica_id);
+			if ((tbl = test_ops->f_lookup(name)) != NULL){
+				info("  ::table %s already present \n", name);
+				test_ops->f_des(tbl);
+			}
+// name, capacity, key_size, value size
+			//tbl = test_ops->f_create(name, 2, t->key_size, t->val_size);
+			tbl = test_ops->f_create(name, 4, t->key_size, t->val_size);
+			if(tbl == NULL) {
+				debug("  ::Table %s creation fail\n", name);
+			debug("  ::key size %d, val_size %d\n",t->key_size, t->val_size);
+			    exit(0);
+			}
+
+            create_ext_table(t, tbl, socketid);
+			//debug("  ::Table %s creation complete\n", name);
+			debug("  ::Table %s, key size %d, val_size %d created \n", name,t->key_size, t->val_size);
+            break;
+		case LOOKUP_LPM:
+			test_ops = &odph_iplookup_table_ops;
+			snprintf(name, sizeof(name), "%s_lpm_%d_%d", t->name, socketid, replica_id);
 			if ((tbl = test_ops->f_lookup(name)) != NULL){
 				info("  ::table %s already present \n", name);
 				test_ops->f_des(tbl);
@@ -127,6 +148,12 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
 			}
 
             create_ext_table(t, tbl, socketid);
+			debug("  ::Table %s, key size %d, val_size %d created \n", name,t->key_size, t->val_size);
+#if 0
+			if ((tbl = test_ops->f_lookup(name)) != NULL){
+				info("  ::table %s is created and verified \n", name);
+			}
+#endif
             break;
     }
 //	odph_hash_table_imp *tbl_tmp = (odph_hash_table_imp *)tbl;
@@ -164,7 +191,8 @@ void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
 {
 	int ret = 0;
 	odph_table_ops_t *test_ops;
-	test_ops = &odph_hash_table_ops;
+	//test_ops = &odph_hash_table_ops;
+	test_ops = &odph_cuckoo_table_ops;
 	extended_table_t* ext = (extended_table_t*)t->table;
 	if(t->key_size == 0) return; // don't add lines to keyless tables
 	info(":::: EXECUTING exact add on table %s \n", t->name);
@@ -202,6 +230,42 @@ void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
 
 void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
 {
+	int ret = 0;
+	odph_table_ops_t *test_ops;
+	test_ops = &odph_iplookup_table_ops;
+	extended_table_t* ext = (extended_table_t*)t->table;
+	if(t->key_size == 0) return; // don't add lines to keyless tables
+	info(":::: EXECUTING lpm add on table %s, depth %d, keysize %d \n", t->name, depth, t->key_size);
+	info("  :: key:  %x:%x:%x:%x \n",key[0],key[1],key[2],key[3]);
+
+#if 0
+	void *buffer = NULL;
+	if(t->key_size == 0) return t->default_val;
+	// TODO need to free the memory somewhere ??
+	buffer = malloc(sizeof(char)*t->val_size);
+	memset(buffer, 0, t->val_size);
+	ret = test_ops->f_remove(ext->odp_table, key);
+	if (ret != 0) {
+		debug("  :: LPM remove fail \n");
+	}
+#endif
+	ret = test_ops->f_put(ext->odp_table, key, value);
+	if (ret == -1) {
+		debug("  ::LPM table %s add key failed \n", t->name);
+		exit(EXIT_FAILURE);
+	}
+	else {
+		debug("  ::LPM table %s add key success \n", t->name);
+	}
+#if 0
+	ret = test_ops->f_get(ext->odp_table, key, buffer, t->val_size);
+    if (ret == -1) {
+        debug("  :: LPM lookup fail \n");
+    }
+	else {
+        debug("  :: LPM lookup success \n");
+	}
+#endif
 	return;
 }
 
@@ -211,7 +275,7 @@ ternary_add(lookup_table_t* t, uint8_t* key, uint8_t* mask, uint8_t* value)
 	return;
 }
 
-// ----------------------------------------------------------------------------
+// --------------------------------------------------------
 // LOOKUP
 
 //TODO use crc hash func of ODP for HASH table implementaion
@@ -225,7 +289,8 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 	buffer = malloc(sizeof(char)*t->val_size);
 	memset(buffer, 0, t->val_size);
 	odph_table_ops_t *test_ops;
-	test_ops = &odph_hash_table_ops;
+	//test_ops = &odph_hash_table_ops;
+	test_ops = &odph_cuckoo_table_ops;
 	extended_table_t* ext = (extended_table_t*)t->table;
 //	info(":::: EXECUTING exact lookup on table %s \n", t->name);
 //	info("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
@@ -240,7 +305,24 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 
 uint8_t* lpm_lookup(lookup_table_t* t, uint8_t* key)
 {
-    return 0;
+    int ret = 0;
+    void *buffer = NULL;
+    if(t->key_size == 0) return t->default_val;
+    // TODO need to free the memory somewhere ??
+    buffer = malloc(sizeof(char)*t->val_size);
+    memset(buffer, 0, t->val_size);
+    odph_table_ops_t *test_ops;
+    test_ops = &odph_iplookup_table_ops;
+    extended_table_t* ext = (extended_table_t*)t->table;
+//  info(":::: EXECUTING exact lookup on table %s \n", t->name);
+//  info("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
+    ret = test_ops->f_get(ext->odp_table, key, buffer, t->val_size);
+    if (ret == -1) {
+        debug("  :: LPM lookup fail \n");
+        return t->default_val;
+    }
+//  info("  :: EXACT lookup success \n");
+    return buffer;
 }
 
 uint8_t* ternary_lookup(lookup_table_t* t, uint8_t* key)

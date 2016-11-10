@@ -66,13 +66,7 @@ for hi_name, hi in hlir.p4_header_instances.items():
     hi_prefix = hdr_prefix(hi.name)
     #[ static void
     #[ extract_header_${hi}(uint8_t* buf, packet_descriptor_t* pd) {
-    #[     pd->headers[${hi_prefix}] =
-    #[       (header_descriptor_t) {
-    #[         .type = ${hi_prefix},
-    #[         .pointer = buf,
-    #[         .length = header_info(${hi_prefix}).bytewidth,
-    #[         .var_width_field_bitwidth = 0,
-    #[       };
+    #[     pd->headers[${hi_prefix}].pointer = buf;
     if isinstance(hi.header_type.length, p4.p4_expression):
         #[     uint32_t hdr_length = ${format_expr(resolve_field_ref(hlir, hi, hi.header_type.length))};
         #[     pd->headers[${hi_prefix}].length = hdr_length;
@@ -181,4 +175,3 @@ for state_name, parse_state in hlir.p4_parse_states.items():
 #[ void parse_packet(packet_descriptor_t* pd, lookup_table_t** tables) {
 #[     parse_state_start(pd, pd->pointer, tables);
 #[ }
-
