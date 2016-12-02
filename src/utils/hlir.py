@@ -163,6 +163,7 @@ def getTypeAndLength(table) :
       table_type = "LOOKUP_TERNARY"
    elif lpm:
       table_type = "LOOKUP_LPM"
+      key_length += 1 #insert the depth value inside the Key[4]
    else:
       table_type = "LOOKUP_EXACT"
    return (table_type, (key_length+7)/8)

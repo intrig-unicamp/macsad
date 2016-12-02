@@ -235,7 +235,9 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
 	test_ops = &odph_iplookup_table_ops;
 	extended_table_t* ext = (extended_table_t*)t->table;
 	if(t->key_size == 0) return; // don't add lines to keyless tables
+	key[4] = depth; //adding depth to key[4]
 	info(":::: EXECUTING lpm add on table %s, depth %d, keysize %d \n", t->name, depth, t->key_size);
+
 	info("  :: key:  %x:%x:%x:%x \n",key[0],key[1],key[2],key[3]);
 
 #if 0
@@ -314,8 +316,8 @@ uint8_t* lpm_lookup(lookup_table_t* t, uint8_t* key)
     odph_table_ops_t *test_ops;
     test_ops = &odph_iplookup_table_ops;
     extended_table_t* ext = (extended_table_t*)t->table;
-//  info(":::: EXECUTING exact lookup on table %s \n", t->name);
-//  info("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
+   	info(":::: EXECUTING lookup on table %s \n", t->name);
+	info("  :: key:  %x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4]);
     ret = test_ops->f_get(ext->odp_table, key, buffer, t->val_size);
     if (ret == -1) {
         debug("  :: LPM lookup fail \n");

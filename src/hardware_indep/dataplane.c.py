@@ -44,8 +44,10 @@ for table in hlir.p4_tables.values():
     if table_type == "LOOKUP_LPM":
         #[ key -= ${key_length};
         #[ int c, d;
-        #[ for(c = ${key_length-1}, d = 0; c >= 0; c--, d++) *(reverse_buffer+d) = *(key+c);
-        #[ for(c = 0; c < ${key_length}; c++) *(key+c) = *(reverse_buffer+c);
+        #[ for(c = ${key_length-2}, d = 0; c >= 0; c--, d++) *(reverse_buffer+d) = *(key+c); 
+        #[ //key_length-2 reduce the length one extra value
+        #[ for(c = 0; c < ${key_length-1}; c++) *(key+c) = *(reverse_buffer+c);
+        #[ //key_length-1 reduce the length one extra value
     #[ }
     #[
 
