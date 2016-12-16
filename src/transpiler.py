@@ -177,4 +177,8 @@ def main():
     showErrors()
     showWarnings()
 
+    global errors
+    if len(errors) > 0:
+	sys.exit(1)
+
 main()

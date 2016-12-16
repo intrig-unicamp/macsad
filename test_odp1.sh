@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # set default values for variables if they are not already defined
 MAKE_CMD=${MAKE_CMD-make}
 #LD_LIBRARY_PATH=/root/odp/lib/.libs:$LD_LIBRARY_PATH
@@ -6,8 +8,6 @@ MAKE_CMD=${MAKE_CMD-make}
 cd src/hardware_dep/shared/ctrl_plane
 make clean
 make all
-#make mac_controller
-#make mac_l2_l3_controller
 ERROR_CODE=$?
 if [ "$ERROR_CODE" -ne 0 ]; then
     echo Controller compilation failed with error code $ERROR_CODE
@@ -21,7 +21,7 @@ sudo killall mac_controller
 sudo killall mac_l2_l3_controller
 sudo killall mac_l3_controller
 sudo killall mac_l3-full_controller
-./src/hardware_dep/shared/ctrl_plane/mac_controller &
+#./src/hardware_dep/shared/ctrl_plane/mac_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l2_l3_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l3-full_controller &
@@ -29,8 +29,8 @@ sudo killall mac_l3-full_controller
 echo "Controller started... "
 
 echo "Creating Datapath Logic from P4 source."
-rm -rf build
-python src/transpiler.py examples/p4_src/l2_switch_test.p4
+#rm -rf build
+#python src/transpiler.py examples/p4_src/l2_switch_test.p4
 #python src/transpiler.py examples/p4_src/l2_l3.p4
 #python src/transpiler.py examples/p4_src/l3_routing_test.p4
 #python src/transpiler.py examples/p4_src/l3_routing-full.p4

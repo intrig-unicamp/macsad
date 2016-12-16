@@ -133,7 +133,9 @@ def modify_field(fun, call):
     if not isinstance(dst, p4_field):
         addError("generating modify_field", "We do not allow changing an R-REF yet")
     if isinstance(src, int):
-        if dst.width <= 32:
+        if dst.width == p4.P4_AUTO_WIDTH:
+            addError("generating modify_field", "Modifying variable width fields is not supported yet")
+        elif dst.width <= 32:
             #[ value32 = ${src}${mask};
             #[ ${ modify_int32_int32(dst) }
         else:
@@ -143,7 +145,9 @@ def modify_field(fun, call):
             else:
                 addError("generating modify_field", "Improper bytebufs cannot be modified yet.")
     elif isinstance(src, p4_field):
-        if dst.width <= 32 and src.width <= 32:
+        if dst.width == p4.P4_AUTO_WIDTH or src.width == p4.P4_AUTO_WIDTH:
+            addError("generating modify_field", "Modifying variable width fields or modifying with variable width fields are not supported yet")    
+        elif dst.width <= 32 and src.width <= 32:
             if src.instance.metadata == dst.instance.metadata:
                 #[ EXTRACT_INT32_BITS(pd, ${fld_id(src)}, value32)
                 #[ MODIFY_INT32_INT32_BITS(pd, ${fld_id(dst)}, value32${mask})
@@ -162,7 +166,9 @@ def modify_field(fun, call):
         p = "parameters.%s" % str(fun.signature[src.idx])
         l = fun.signature_widths[src.idx]
         # TODO: Mask handling
-        if dst.width <= 32 and l <= 32:
+        if dst.width == p4.P4_AUTO_WIDTH:
+            addError("generating modify_field", "Modifying variable width fields is not supported yet")
+        elif dst.width <= 32 and l <= 32:
             #[ MODIFY_INT32_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${(l+7)/8})
         else:
             if dst.width % 8 == 0 and dst.offset % 8 == 0 and l % 8 == 0: #and dst.instance.metadata:
@@ -183,7 +189,9 @@ def add_to_field(fun, call):
         addError("generating add_to_field", "We do not allow changing an R-REF yet")
     if isinstance(val, int):
         #[ value32 = ${val};
-        if dst.width <= 32:
+        if dst.width == p4.P4_AUTO_WIDTH:
+            addError("generating add_to_field", "add_to_field on variable length fields is not supported yet")
+        elif dst.width <= 32:
             #[ ${ extract_int32(dst, 'res32') }
             if (p4_header_keywords.saturating in dst.attributes):
                #[ ${ add_with_saturating('value32', 'res32', dst.width, (p4_header_keywords.signed in dst.attributes)) }
@@ -193,7 +201,9 @@ def add_to_field(fun, call):
         else:
             addError("generating modify_field", "Bytebufs cannot be modified yet.")
     elif isinstance(val, p4_field):
-        if dst.width <= 32 and val.width <= 32:
+        if src.width == p4.P4_AUTO_WIDTH or dst.width == p4.P4_AUTO_WIDTH:
+            addError("generating add_to_field", "add_to_field on/with variable length fields is not supported yet")
+        elif dst.width <= 32 and val.width <= 32:
             #[ ${ extract_int32(val, 'value32') }
             #[ ${ extract_int32(dst, 'res32') }
             if (p4_header_keywords.saturating in dst.attributes):
@@ -206,7 +216,9 @@ def add_to_field(fun, call):
     elif isinstance(val, p4_signature_ref):
         p = "parameters.%s" % str(fun.signature[val.idx])
         l = fun.signature_widths[val.idx]
-        if dst.width <= 32 and l <= 32:
+        if dst.width == p4.P4_AUTO_WIDTH:
+            addError("generating add_to_field", "add_to_field on variable width fields is not supported yet")
+        elif dst.width <= 32 and l <= 32:
             #[ ${ extract_int32(dst, 'res32') }
             #[ TODO
         else:
@@ -253,7 +265,9 @@ def register_read(fun, call):
     else:
         #[ uint8_t register_value_${rc}[${(register.width+7)/8}];
     #[ read_register(REGISTER_${register.name}, value32, register_value_${rc});
-    if dst.width <= 32:
+    if dst.width == p4.P4_AUTO_WIDTH:
+        addError("generating register_read", "Variable width fields are not supported")
+    elif dst.width <= 32:
         #[ memcpy(&value32, register_value_${rc}, 4);
         #[ ${ modify_int32_int32(dst) }
     else:
@@ -291,7 +305,9 @@ def register_write(fun, call):
         #[ value32 = ${src};
         #[ memcpy(register_value_${rc}, &value32, 4);
     elif isinstance(src, p4_field):
-        if register.width <= 32 and src.width <= 32:
+        if src.width == p4.P4_AUTO_WIDTH:
+            addError("generating register_write", "Variable width fields are not supported yet")
+        elif register.width <= 32 and src.width <= 32:
             #[ ${ extract_int32(src, 'value32') }
             #[ memcpy(register_value_${rc}, &value32, 4);
         else:

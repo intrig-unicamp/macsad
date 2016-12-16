@@ -958,9 +958,9 @@ uint8_t odpc_initialize(int argc, char **argv)
 
 	/* create the packet pool */
 	odp_pool_param_init(&params);
-	params.pkt.seg_len = PKT_POOL_BUF_SIZE;
-	params.pkt.len     = PKT_POOL_BUF_SIZE;
 	params.pkt.num     = PKT_POOL_SIZE;
+	params.pkt.len     = PKT_POOL_BUF_SIZE;
+	params.pkt.seg_len = PKT_POOL_BUF_SIZE;
 	params.type        = ODP_POOL_PACKET;
 
 	gconf->pool = odp_pool_create("PktsPool", &params);

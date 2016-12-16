@@ -23,7 +23,10 @@ def get_key_byte_width(branch_on):
     key_width = 0
     for switch_ref in branch_on:
         if type(switch_ref) is p4.p4_field:
-            key_width += (switch_ref.width+7)/8
+            if switch_ref.width == p4.P4_AUTO_WIDTH:
+                addError("calculating key byte width", "Variable width fields are not supported")
+            else:
+                key_width += (switch_ref.width+7)/8
         elif type(switch_ref) is tuple:
             key_width += max(4, (switch_ref[1] + 7) / 8)
     return key_width
@@ -87,13 +90,16 @@ for state_name, parse_state in hlir.p4_parse_states.items():
         for switch_ref in branch_on:
             if type(switch_ref) is p4.p4_field:
                 field_instance = switch_ref
-                byte_width = (field_instance.width + 7) / 8
-                if byte_width <= 4:
-                    #[ EXTRACT_INT32_BITS(pd, ${fld_id(field_instance)}, *(uint32_t*)key)
-                    #[ key += sizeof(uint32_t);
+                if field_instance.width == p4.P4_AUTO_WIDTH:
+                    addError("generating build_key_" + state_name, "Variable width fields are not supported")
                 else:
-                    #[ EXTRACT_BYTEBUF(pd, ${fld_id(field_instance)}, key)
-                    #[ key += ${byte_width};
+                    byte_width = (field_instance.width + 7) / 8
+                    if byte_width <= 4:
+                        #[ EXTRACT_INT32_BITS(pd, ${fld_id(field_instance)}, *(uint32_t*)key)
+                        #[ key += sizeof(uint32_t);
+                    else:
+                        #[ EXTRACT_BYTEBUF(pd, ${fld_id(field_instance)}, key)
+                        #[ key += ${byte_width};
             elif type(switch_ref) is tuple:
                 #[     uint8_t* ptr;
                 offset, width = switch_ref

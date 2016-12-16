@@ -212,14 +212,16 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 
 static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 {
-   // info("Inside init_metadata \n ");
+    info("Entry init_metadata \n ");
 	int res32; // needs for the macro
 	MODIFY_INT32_INT32_BITS(packet_desc, field_instance_standard_metadata_ingress_port, inport);
 
 	/* validate ingressport set */
-	res32 = 0; // needs for the macro
-//	int inp = EXTRACT_INGRESSPORT(packet_desc);
-//	info("[initMetadata] Inport %d is set as %d\n",inport, inp);
+#if 0 //To test this function
+	res32 = 0;
+	int inp = EXTRACT_INGRESSPORT(packet_desc);
+	info("[initMetadata] Inport %d is set as %d\n",inport, inp);
+#endif
 }
 
 static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
@@ -246,7 +248,7 @@ void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, 
 	struct lcore_state *state_tmp = &gconf->state;
 	pd->pointer = (uint8_t *)odp_packet_data(*p);
 	pd->wrapper = (packet *)p;
-    info("Inside packet received \n ");
+    info("Entry packet_received \n ");
 	init_metadata(pd, portid);
 	handle_packet(pd, state_tmp->tables);
 }

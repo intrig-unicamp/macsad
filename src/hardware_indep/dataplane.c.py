@@ -32,7 +32,9 @@ for table in hlir.p4_tables.values():
     #[ void table_${table.name}_key(packet_descriptor_t* pd, uint8_t* key) {
     sortedfields = sorted(table.match_fields, key=lambda field: match_type_order(field[1]))
     for match_field, match_type, match_mask in sortedfields:
-        if match_field.width <= 32:
+        if match_field.width == p4.P4_AUTO_WIDTH:
+            addError("generating table_" + table.name + "_key", "Variable width fields in table match key are not supported")
+        elif match_field.width <= 32:
             #[ EXTRACT_INT32_BITS(pd, ${fld_id(match_field)}, *(uint32_t*)key)
             #[ key += sizeof(uint32_t);
         elif match_field.width > 32 and match_field.width % 8 == 0:
@@ -60,52 +62,54 @@ for table in hlir.p4_tables.values():
     #[     uint8_t* key[${key_length}];
     #[     table_${table.name}_key(pd, (uint8_t*)key);
     #[     uint8_t* value = ${lookupfun[table_type]}(tables[TABLE_${table.name}], (uint8_t*)key);
-    #[     int index = *(int*)(value+sizeof(struct ${table.name}_action)); (void)index;
     #[     struct ${table.name}_action* res = (struct ${table.name}_action*)value;
-    
+    #[     int index; (void)index;
+
     # COUNTERS
+    #[     if(res != NULL) {
+    #[       index = *(int*)(value+sizeof(struct ${table.name}_action));
     for counter in table.attached_counters:
-        #[ increase_counter(COUNTER_${counter.name}, index);
+        #[       increase_counter(COUNTER_${counter.name}, index);
+    #[     }
 
     # ACTIONS
     #[     if(res == NULL) {
-    #[         debug("    :: NO RESULT, NO DEFAULT ACTION.\n");
+    #[       debug("    :: NO RESULT, NO DEFAULT ACTION.\n");
     #[     } else {
-    #[         switch (res->action_id) {
+    #[       switch (res->action_id) {
     for action in table.actions:
-        #[     case action_${action.name}:
-        #[       debug("    :: EXECUTING ACTION ${action.name}...\n");
+        #[         case action_${action.name}:
+        #[           debug("    :: EXECUTING ACTION ${action.name}...\n");
         if action.signature:
-            #[     action_code_${action.name}(pd, tables, res->${action.name}_params);
+            #[           action_code_${action.name}(pd, tables, res->${action.name}_params);
         else:
-            #[     action_code_${action.name}(pd, tables);
-        #[         break;
+            #[           action_code_${action.name}(pd, tables);
+        #[           break;
     #[       }
     #[     }
-    
+
     # NEXT TABLE
     if 'hit' in table.next_:
+        #[     if(res != NULL && index != DEFAULT_ACTION_INDEX) { //Lookup was successful (not with default action)
         if table.next_['hit'] is not None:
-            #[ if(index != DEFAULT_ACTION_INDEX) {
-            #[     ${format_p4_node(table.next_['hit'])}
-            #[ }
+            #[       ${format_p4_node(table.next_['hit'])}
+        #[     } else {                                           //Lookup failed or returned default action
         if table.next_['miss'] is not None:
-            #[ if(index == DEFAULT_ACTION_INDEX) {
-            #[     ${format_p4_node(table.next_['miss'])}
-            #[ }
+            #[       ${format_p4_node(table.next_['miss'])}
+        #[     }
     else:
-        #[ if (res != NULL) {
-        #[   switch (res->action_id) {
+        #[     if (res != NULL) {
+        #[       switch (res->action_id) {
         for action, nextnode in table.next_.items():
-            #[   case action_${action.name}:
-            #[       ${format_p4_node(nextnode)}
-            #[       break;
-        #[   }
-        #[ } else {
-        #[    debug("    :: IGNORING PACKET.\n");
-        #[    return;
-        #[ }
-    #[ } 
+            #[         case action_${action.name}:
+            #[           ${format_p4_node(nextnode)}
+            #[           break;
+        #[       }
+        #[     } else {
+        #[       debug("    :: IGNORING PACKET.\n");
+        #[       return;
+        #[     }
+    #[ }
     #[
 
 #[

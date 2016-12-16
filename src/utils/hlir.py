@@ -8,6 +8,7 @@ from misc import addError
 # TODO note that this current implementation is true for all fields modified by at least one primitive action;
 #   this should be refined in the future to reflect the intent of selecting frequently accessed field instances only
 def parsed_field(hlir, field):
+    if field.instance.metadata or field.width == p4.P4_AUTO_WIDTH or field.width > 32: return False
     for fun in userActions(hlir):
         for call in fun.call_sequence:
             act = call[0]
@@ -15,7 +16,7 @@ def parsed_field(hlir, field):
             if act.name in ["modify_field", "add_to_field"]:
                 dst = args[0]
                 src = args[1]
-                if not field.instance.metadata and field.width <= 32 and (dst == field or src == field):
+                if dst == field or src == field:
                     return True
     return False
 
@@ -157,8 +158,11 @@ def getTypeAndLength(table) :
        if typ == p4_match_type.P4_MATCH_TERNARY:
            ternary = 1
        elif typ == p4_match_type.P4_MATCH_LPM:
-           lpm += 1          
-       key_length += field.width
+           lpm += 1
+       if field.width == p4.P4_AUTO_WIDTH:
+           addError("determining table type and key length", "Variable width fields in table match key are not supported")
+       else:
+           key_length += field.width
    if (ternary) or (lpm > 1):
       table_type = "LOOKUP_TERNARY"
    elif lpm:
