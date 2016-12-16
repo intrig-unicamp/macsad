@@ -16,12 +16,11 @@ fi
 cd -
 
 # Restart mac controller in background
-#sudo killall mac_controller
 sudo killall mac_controller
 sudo killall mac_l2_l3_controller
 sudo killall mac_l3_controller
 sudo killall mac_l3-full_controller
-#./src/hardware_dep/shared/ctrl_plane/mac_controller &
+./src/hardware_dep/shared/ctrl_plane/mac_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l2_l3_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l3-full_controller &
@@ -29,8 +28,8 @@ sudo killall mac_l3-full_controller
 echo "Controller started... "
 
 echo "Creating Datapath Logic from P4 source."
-#rm -rf build
-#python src/transpiler.py examples/p4_src/l2_switch_test.p4
+rm -rf build
+python src/transpiler.py examples/p4_src/l2_switch_test.p4
 #python src/transpiler.py examples/p4_src/l2_l3.p4
 #python src/transpiler.py examples/p4_src/l3_routing_test.p4
 #python src/transpiler.py examples/p4_src/l3_routing-full.p4
