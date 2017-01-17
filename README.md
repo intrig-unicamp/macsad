@@ -138,8 +138,8 @@ The first packet with an unknown destination mac address will be broadcasted by 
 
 
 Notes:
-1) Update pip, setup tools to latest version
+- Update pip, setup tools to latest version  
     "pip install -U pip setuptools"
 
-2) Pip error:= "locale.Error: unsupported locale setting"
+- Pip error:= "locale.Error: unsupported locale setting"  
    solution :=      "export LC_ALL=C"
