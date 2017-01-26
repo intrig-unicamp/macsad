@@ -6,7 +6,6 @@
 #include "odph_list_internal.h"
 #include "odp_lib.h"
 
-
 #include "actions.h"
 // ============================================================================
 // LOOKUP TABLE IMPLEMENTATIONS

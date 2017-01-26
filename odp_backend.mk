@@ -43,15 +43,14 @@ SRCS-y += $(CDIR)src/hardware_dep/shared/ctrl_plane/threadpool.c
 SRCS-y += $(CDIR)src/hardware_dep/odp/data_plane/odp_lib.c
 SRCS-y += $(CDIR)src/hardware_dep/odp/data_plane/odp_tables.c
 SRCS-y += $(CDIR)src/hardware_dep/odp/data_plane/odp_primitives.c
-#SRCS-y += odp_tables.c
-#SRCS-y += odp_primitives.c
 SRCS-Y += vector.c
 
 #CC = clang
 
 LDFLAGS += -L$(ODP_SDK)/lib/
 LDFLAGS += -L$(ODP_SDK)/lib/.libs
-LIBS = -lodp-linux -lodphelper-linux -lpthread
+#LIBS = -lodp-linux -lodphelper-linux -lpthread
+LIBS = -lodp-linux -lodphelper-linux-generic -lpthread
 #LIBS = -lodp-dpdk -lodphelper-linux -lpthread
 
 OBJS = $(SRCS-y:.c=.o)

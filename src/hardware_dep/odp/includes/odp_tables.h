@@ -1,11 +1,10 @@
 #ifndef DPDK_TABLES_H
 #define DPDK_TABLES_H
 
-//#include "odp_lib.h"
-#include <odp/helper/table.h>
-#include <../odph_hashtable.h>
-#include <../odph_iplookuptable.h>
-#include <../odph_cuckootable.h>
+#include <table.h>
+#include <odph_hashtable.h>
+#include <odph_iplookuptable.h>
+#include <odph_cuckootable.h>
 
 typedef struct extended_table_s {
     void*     odp_table;
