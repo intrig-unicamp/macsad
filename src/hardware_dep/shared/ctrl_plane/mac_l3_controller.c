@@ -27,11 +27,6 @@ void fill_ipv4_fib_lpm_table(uint8_t ip[4], uint8_t port, uint8_t mac[6])
 	a = add_p4_action(h, 2048);
 	strcpy(a->description.name, "fib_hit_nexthop");
 
-/*  ap2 = add_p4_action_parameter(h, a, 2048);
-	strcpy(ap->name, "port");
-    memcpy(ap->bitmap, &port, 1);
-	ap->length = 1*8+0;
-*/
 	ap = add_p4_action_parameter(h, a, 2048);
 	strcpy(ap->name, "dmac");
 	memcpy(ap->bitmap, mac, 6);
@@ -68,7 +63,6 @@ void fill_sendout_table(uint8_t port, uint8_t smac[6])
 
     exact = add_p4_field_match_exact(te, 2048);
     strcpy(exact->header.name, "standard_metadata.egress_port");
-    //memcpy(exact->bitmap, &port, 8 );
     exact->bitmap[0] = port;
 	exact->bitmap[1] = 0;
     exact->length = 2*8+0;
@@ -91,17 +85,12 @@ void fill_sendout_table(uint8_t port, uint8_t smac[6])
     send_p4_msg(c, buffer, 2048);
 }
 
-void mac_learn_digest(void* b) {
-
-}
-
 void test_learn_ip(void* b) {
 	uint8_t ip[4];
 	uint16_t pr;
 	int i1;
 	int i2;
 	int i3;
-
 	uint16_t offset=0;
 	offset = sizeof(struct p4_digest);
 	struct p4_digest_field* df = netconv_p4_digest_field(unpack_p4_digest_field(b, offset));
@@ -158,12 +147,14 @@ void dhf(void* b) {
 
 int main()
 {
-	uint8_t ip[4] = {192,168,0,1};
-	uint8_t mac[6] = {0xd1, 0x69, 0x0f, 0xa8, 0x39, 0x91};
+	uint8_t ip[4] = {192,168,10,20};
+//	uint8_t mac[6] = {0xd1, 0x69, 0x0f, 0xa8, 0x39, 0x91};
+        uint8_t mac[6] = {0x3c, 0xfd, 0x27, 0xba, 0xe2, 0x90};
 	uint8_t port = 0;
 
-	uint8_t ip2[4] = {192,168,0,2};
-	uint8_t mac2[6] = {0xd2, 0x69, 0x0f, 0xa8, 0x39, 0x92};
+	uint8_t ip2[4] = {192,168,10,10};
+//	uint8_t mac2[6] = {0xd2, 0x69, 0x0f, 0xa8, 0x39, 0x92};
+        uint8_t mac2[6] = {0x3d, 0xfd, 0x27, 0xba, 0xe2, 0x90};
 	uint8_t port2 = 1;
 
     uint8_t smac[6] = {0xd0, 0x69, 0x0f, 0xa8, 0x39, 0x90};

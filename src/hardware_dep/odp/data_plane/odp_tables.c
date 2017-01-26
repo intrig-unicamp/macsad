@@ -60,6 +60,21 @@ typedef struct {
 	char name[ODPH_TABLE_NAME_LEN]; /**< table name */
 } odph_hash_table_imp;
 
+static void print_prefix_info(
+                const char *msg, uint32_t ip, uint8_t cidr)
+{
+        int i = 0;
+        uint8_t *ptr = (uint8_t *)(&ip);
+
+        printf("%s IP prefix: ", msg);
+        for (i = 3; i >= 0; i--) {
+                if (i != 3)
+                        printf(".");
+                printf("%d", ptr[i]);
+        }
+        printf("/%d\n", cidr);
+}
+
 // ============================================================================
 // SIMPLE HASH FUNCTION FOR EXACT TABLES
 
@@ -79,13 +94,6 @@ static uint32_t crc32(const void *data, uint32_t data_len,	uint32_t init_val) {
 	}
 	return ~crc;
 }
-
-// ============================================================================
-// LOWER LEVEL TABLE MANAGEMENT
-
-
-// ============================================================================
-// HIGHER LEVEL TABLE MANAGEMENT
 
 // ----------------------------------------------------------------------------
 // CREATE
@@ -157,12 +165,6 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
 #endif
 			break;
 	}
-	//	odph_hash_table_imp *tbl_tmp = (odph_hash_table_imp *)tbl;
-	//	info("  ::Table odp %p %s, lval_size %d created \n", tbl_tmp, tbl_tmp->name, tbl_tmp->value_size);
-
-	//info("  ::Table lookup %p %s,type %d, lval_size %d, socket %d\n", t, t->name, t->type,t->val_size, socketid);
-	//	extended_table_t * ext = t->table;
-	//info(" ::lookup %p, ext %p, tbl %p \n", t, t->table, ext->odp_table);
 }
 
 static uint8_t* add_index(uint8_t* value, int val_size, int index)
@@ -193,12 +195,11 @@ void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
 	extended_table_t* ext = (extended_table_t*)t->table;
 	if(t->key_size == 0) return; // don't add lines to keyless tables
 	info(":::: EXECUTING exact add on table %s, keysize %d \n", t->name,t->key_size);
-//	info("  :: key:  %x:%x:%x:%x:%x:%x \n",key[0],key[1],key[2],key[3],key[4],key[5]);
 	value = add_index(value, t->val_size, t->counter++);
 	ext->content[ext->size] = copy_to_socket(value, t->val_size+sizeof(int), t->socketid);
 	ret = test_ops->f_put(ext->odp_table, key, &(ext->size));
 	ext->size++;
-	if (ret != 0) {
+	if (ret < 0) {
 		debug("  ::EXACT table add key failed \n");
 		exit(EXIT_FAILURE);
 	}
@@ -210,10 +211,20 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
 	odph_table_ops_t *test_ops;
 	test_ops = &odph_iplookup_table_ops;
 	extended_table_t* ext = (extended_table_t*)t->table;
+
 	if(t->key_size == 0) return; // don't add lines to keyless tables
 
 	key[4] = depth; //adding depth to key[4]
 	uint8_t* value2 = *value;
+	
+
+        odph_iplookup_prefix_t prefix;
+	for (int i = 0; i < ODPH_IPV4ADDR_LEN; i++) 
+                if (key[i] > 255)
+                        return -1;
+                
+        prefix.ip = key[0] << 24 | key[1] << 16 | key[2] << 8 | key[3];
+        prefix.cidr = key[4];
 
 	info(":::: EXECUTING lpm add on table %s, depth %d, keysize %d valsize %d, value %p \n", t->name, depth, t->key_size, t->val_size, value);
 	info("  :: key:  %d:%d:%d:%d - %d \n",key[0],key[1],key[2],key[3],key[4]);
@@ -222,32 +233,20 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
 	struct action_fib_hit_nexthop_params* parameters = &(res->fib_hit_nexthop_params);
 	debug("    ::  ipv4 add- dmac %x:%x:%x:%x:%x:%x, port %d:%d\n", parameters->dmac[0],parameters->dmac[1],parameters->dmac[2],parameters->dmac[3],parameters->dmac[4],parameters->dmac[5],parameters->port[0],parameters->port[1]);
 
-    value = add_index(value, t->val_size, t->counter++);
+        value = add_index(value, t->val_size, t->counter++);
 	ext->content[ext->size] = copy_to_socket(value, t->val_size+sizeof(int), t->socketid);
-	//ret = test_ops->f_put(ext->odp_table, key, &value2);
-	ret = test_ops->f_put(ext->odp_table, key, &(ext->size));
+ print_prefix_info("Add", prefix.ip, prefix.cidr);
+	//ret = test_ops->f_put(ext->odp_table, key, &(ext->size));
+	ret = test_ops->f_put(ext->odp_table, &prefix, &(ext->size));
 	ext->size++;
 	if (ret == -1) {
-		debug("  ::LPM table %s add key failed \n", t->name);
+		debug("  ::LPM table %s add key failed for indexID=%d\n", t->name, ext->size);
 		exit(EXIT_FAILURE);
 	}
 	else {
-		debug("  ::LPM table %s add key success \n", t->name);
+		debug("  ::LPM table %s add key success for IndexID=%d\n", t->name,ext->size);
 	}
 
-#if 0 //To verify lpm_add
-	int result = 0;
-	ret = test_ops->f_get(ext->odp_table, key, &result, t->val_size);
-	if (ret == -1) {
-		debug("  :: LPM lookup fail \n");
-	}
-	else {
-		debug("  :: LPM lookup success \n");
-		res = (struct ipv4_fib_lpm_action*)ext->content[result];
-		parameters = &(res->fib_hit_nexthop_params);
-	info("    :02:  ipv4-dmac %x:%x:%x:%x:%x:%x, port %d:%d, value %p\n", parameters->dmac[0],parameters->dmac[1],parameters->dmac[2],parameters->dmac[3],parameters->dmac[4],parameters->dmac[5],parameters->port[0],parameters->port[1], buffer);
-	}
-#endif
 	return;
 }
 
@@ -272,33 +271,50 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 	info ("::: exact_lookup -key- %p,key0- %d,key1- %d \n", key, key[0], key[1]);
 	ret = test_ops->f_get(ext->odp_table, key, &result, t->val_size);
 
-	if (ret != 0) {
-		debug("  :: EXACT lookup fail with ret %d \n", ret);
+	if (ret < 0) {
+		debug("  :: EXACT lookup fail with ret=%d,result=%d \n", ret, result);
 		return t->default_val;
 	}
-	info("  :: EXACT lookup success \n");
+	info("  :: EXACT lookup success with result=%d \n",result);
 	return ext->content[result];
 }
 
 uint8_t* lpm_lookup(lookup_table_t* t, uint8_t* key)
 {
     int ret = 0;
-	int result = 0;
+    int result = 0;
     if(t->key_size == 0) return t->default_val;
     odph_table_ops_t *test_ops;
     test_ops = &odph_iplookup_table_ops;
     extended_table_t* ext = (extended_table_t*)t->table;
 	info(":::: EXECUTING lpm lookup on table %s, keysize %d \n", t->name, t->key_size);
 	debug("  :: key:  %d:%d:%d:%d - %d \n",key[0],key[1],key[2],key[3],key[4]);
-    ret = test_ops->f_get(ext->odp_table, key, &result, t->val_size);
-	if (ret == -1) {
+
+        odph_iplookup_prefix_t prefix;
+        for (int i = 0; i < ODPH_IPV4ADDR_LEN; i++)
+                if (key[i] > 255)
+                        return -1;
+
+        prefix.ip = key[0] << 24 | key[1] << 16 | key[2] << 8 | key[3];
+      //  prefix.cidr = key[4];
+ print_prefix_info("Lookup", prefix.ip, prefix.cidr);
+
+    //ret = test_ops->f_get(ext->odp_table, key, &result, t->val_size);
+    ret = test_ops->f_get(ext->odp_table, &prefix, &result, t->val_size);
+ if (ret < 0) {
+                printf("Failed to find longest prefix with result %d \n", result);
 		debug("  :: LPM lookup fail \n");
 		return t->default_val;
 	}
-	info("  :: LPM lookup success \n");
-    struct ipv4_fib_lpm_action* res = (struct ipv4_fib_lpm_action*)ext->content[result];
-    struct action_fib_hit_nexthop_params* parameters = &(res->fib_hit_nexthop_params);
-    debug("    ::  ipv4 add- dmac %x:%x:%x:%x:%x:%x, port %d:%d\n", parameters->dmac[0],parameters->dmac[1],parameters->dmac[2],parameters->dmac[3],parameters->dmac[4],parameters->dmac[5],parameters->port[0],parameters->port[1]);
+	info("  :: LPM lookup success with result=%d\n", result);
+
+/*
+        print_prefix_info("Lkp", lkp_ip, 32);
+        if (ret < 0 || result != 1) {
+                printf("Error: found result ater deleting\n");
+        if (ret < 0 || result != 2) {
+                printf("Failed to find longest prefix\n");
+*/
 	return ext->content[result];
 }
 
