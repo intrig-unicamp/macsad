@@ -109,10 +109,10 @@ send_socket = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
 		socket.htons(0x03))
 
 if args.first:
-	pkt = Ether(dst='3c:fd:27:ba:e2:90',src='3d:fd:27:ba:e2:90')/IP(dst='192.168.10.20',src='192.168.10.10')
+	pkt = Ether(dst='3d:fd:27:ba:e2:90',src='3c:fd:27:ba:e2:90')/IP(dst='192.168.0.10',src='192.168.0.20')
 	port2send = port_map[1]
 else:
-	pkt = Ether(dst='3d:fd:27:ba:e2:90',src='3c:fd:27:ba:e2:90')/IP(dst='192.168.10.10',src='192.168.10.20')
+	pkt = Ether(dst='3c:fd:27:ba:e2:90',src='3d:fd:27:ba:e2:90')/IP(dst='192.168.0.20',src='192.168.0.10')
 	port2send = port_map[2]
 
 send_socket.bind((port2send, 0))

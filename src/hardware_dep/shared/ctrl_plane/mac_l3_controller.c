@@ -147,12 +147,12 @@ void dhf(void* b) {
 
 int main()
 {
-	uint8_t ip[4] = {192,168,10,20};
+	uint8_t ip[4] = {192,168,0,20};
 //	uint8_t mac[6] = {0xd1, 0x69, 0x0f, 0xa8, 0x39, 0x91};
         uint8_t mac[6] = {0x3c, 0xfd, 0x27, 0xba, 0xe2, 0x90};
 	uint8_t port = 0;
 
-	uint8_t ip2[4] = {192,168,10,10};
+	uint8_t ip2[4] = {192,168,0,10};
 //	uint8_t mac2[6] = {0xd2, 0x69, 0x0f, 0xa8, 0x39, 0x92};
         uint8_t mac2[6] = {0x3d, 0xfd, 0x27, 0xba, 0xe2, 0x90};
 	uint8_t port2 = 1;
