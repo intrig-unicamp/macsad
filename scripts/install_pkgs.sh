@@ -7,7 +7,7 @@ sudo apt-get install -y libtool
 sudo apt-get install -y git
 
 # Libraries for OpenSSL for ODP
-#sudo apt-get install -y libssl-dev
+sudo apt-get install -y libssl-dev
 
 #For p4-hlir
 sudo apt-get install -y python-yaml

@@ -6,12 +6,7 @@
 #include <unistd.h>
 
 #include "odp_lib.h"
-#include <odp/helper/linux.h>
-//#include <odp_api.h>
-#include <odp/helper/eth.h>
-#include <odp/helper/chksum.h>
-#include <odp/helper/ip.h>
-#include <odp/helper/table.h>
+#include <odp/helper/odph_api.h>
 #include <net/ethernet.h>
 
 struct socket_state state[NB_SOCKETS];
@@ -321,11 +316,11 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
     odp_pktio_capability_t capa;
 	odp_pktio_param_t pktio_param;
 	odp_pktin_queue_param_t pktin_param;
+    odp_pktio_op_mode_t mode_rx, mode_tx;
 	odp_pktout_queue_param_t pktout_param;
-    odp_pktio_op_mode_t mode_rx;
-    odp_pktio_op_mode_t mode_tx;
-	int num_tx_shared;
     odp_schedule_sync_t  sync_mode;
+	int num_tx_shared;
+
 	pktin_mode_t in_mode = gconf->appl.in_mode;
 
 	odp_pktio_param_init(&pktio_param);
@@ -340,15 +335,15 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 
 	pktio = odp_pktio_open(name, pool, &pktio_param);
 	if (pktio == ODP_PKTIO_INVALID) {
-		debug("Error: pktio create failed for %s\n", name);
+		debug("Error: pktio open failed for %s\n", name);
         return -1;
 	}
 
-    printf("created pktio %" PRIu64 " (%s)\n", odp_pktio_to_u64(pktio),
-           name);
+    printf("Pktio open success for %" PRIu64 " (%s)\n", \
+			odp_pktio_to_u64(pktio), name);
 
     if (odp_pktio_capability(pktio, &capa)) {
-        printf("Error: capability query failed %s\n", name);
+        debug("Error: capability query failed %s\n", name);
         return -1;
     }
 
@@ -412,7 +407,6 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 		debug("Error: pktout config failed for %s\n", name);
 		return -1;
 	}
-
 
 	if (gconf->appl.in_mode == DIRECT_RECV) {
 		if (odp_pktin_queue(pktio, gconf->pktios[if_idx].pktin, num_rx)
@@ -898,11 +892,10 @@ uint8_t odpc_initialize(int argc, char **argv)
 	odp_instance_t instance;
 	odp_cpumask_t cpumask;
 	char cpumaskstr[ODP_CPUMASK_STR_SIZE];
-	int num_workers, i, j;
-	int cpu, if_count;
-	int ret;
+	int num_workers, i, j, cpu, if_count, ret;
 	stats_t (*stats)[MAX_PKTIOS];
 	odp_shm_t shm;
+	odp_pktio_info_t info;
 	odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
     int (*thr_run_func)(void *);
 
@@ -979,16 +972,20 @@ uint8_t odpc_initialize(int argc, char **argv)
         int num_rx = 0;
 
         if ((gconf->appl.in_mode == DIRECT_RECV) ||
-            (gconf->appl.in_mode == PLAIN_QUEUE)) {
-            /* A queue per assigned worker */
-            num_rx = gconf->pktios[i].num_rx_thr;
-        //    num_tx = gconf->pktios[i].num_tx_thr;
-        }
+				(gconf->appl.in_mode == PLAIN_QUEUE)) {
+			/* A queue per assigned worker */
+			num_rx = gconf->pktios[i].num_rx_thr;
+		}
 
 		if (create_pktio(dev, i, num_rx, num_workers, gconf->pool))
 			exit(EXIT_FAILURE);
 
-		info("interface id %d, ifname %s, pktio:%02" PRIu64 " \n", i, gconf->appl.if_names[i], odp_pktio_to_u64(gconf->pktios[i].pktio));
+		if (odp_pktio_info(gconf->pktios[i].pktio, &info)) {
+			debug("Error: pktio info failed %s\n", dev);
+			return -1;
+		}
+
+		info("interface id %d, ifname %s, drv: %s, pktio:%d, num of rx q=%d \n", i, gconf->appl.if_names[i], info.drv_name, odp_pktio_to_u64(gconf->pktios[i].pktio),gconf->pktios[i].num_rx_thr);
 
         ret = odp_pktio_promisc_mode_set(gconf->pktios[i].pktio, 1);
         if (ret != 0) {
@@ -1018,8 +1015,6 @@ uint8_t odpc_initialize(int argc, char **argv)
 
 	stats = gconf->stats;
 
- //   odp_barrier_init(&barrier, num_workers + 1);
-
     if (gconf->appl.in_mode == DIRECT_RECV)
         thr_run_func = odpc_worker_mode_direct;
 	else if (gconf->appl.in_mode == PLAIN_QUEUE)
@@ -1044,7 +1039,6 @@ uint8_t odpc_initialize(int argc, char **argv)
 
 		for (j = 0; j < MAX_PKTIOS; j++)
 			gconf->mconf[i].stats[j] = &stats[i][j];
-	//	gconf->mconf[i].stats = &stats[i];
 
 		odp_cpumask_zero(&thd_mask);
 		odp_cpumask_set(&thd_mask, cpu);
@@ -1067,10 +1061,6 @@ uint8_t odpc_initialize(int argc, char **argv)
             exit(EXIT_FAILURE);
         }
     }
-
- //   ret = print_speed_stats(num_workers, gconf->stats,
- //               gconf->appl.time, gconf->appl.accuracy);
- //   exit_threads = 1;
 
     /* Master thread waits for other threads to exit */
 	for (i = 0; i < num_workers; ++i)

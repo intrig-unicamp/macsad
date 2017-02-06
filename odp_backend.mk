@@ -5,26 +5,25 @@ VPATH += $(CDIR)/src/hardware_dep/odp/includes
 VPATH += $(CDIR)/src/hardware_dep/odp/ctrl_plane
 VPATH += $(CDIR)/src/hardware_dep/odp/data_plane
 
+VPATH += $(ODP_SDK)/share
 VPATH += $(ODP_SDK)/include
+VPATH += $(ODP_SDK)/helper/include/odp/helper
 VPATH += $(ODP_SDK)/platform/linux-generic/include
 VPATH += $(ODP_SDK)/platform/linux-generic/arch/x86
-VPATH += $(ODP_SDK)/share
-VPATH += $(ODP_SDK)/helper/include/odp/helper
 
 CFLAGS += -I "$(CDIR)src/hardware_dep/odp/includes"
 CFLAGS += -I "$(CDIR)src/hardware_dep/odp/ctrl_plane"
 CFLAGS += -I "$(CDIR)src/hardware_dep/odp/data_plane"
 
 #ODP APIs
+CFLAGS += -I "$(ODP_SDK)/share"
 CFLAGS += -I "$(ODP_SDK)/include"
 CFLAGS += -I "$(ODP_SDK)/platform/linux-generic/include"
 CFLAGS += -I "$(ODP_SDK)/platform/linux-generic/arch/x86"
-CFLAGS += -I "$(ODP_SDK)/share"
 
 #ODP Helper APIs
-CFLAGS += -I "$(ODP_SDK)/helper/include"
 CFLAGS += -I "$(ODP_SDK)/helper"
-CFLAGS += -I "$(ODP_SDK)/helper/include/odp"
+CFLAGS += -I "$(ODP_SDK)/helper/include"
 CFLAGS += -I "$(ODP_SDK)/helper/include/odp/helper"
 
 # odp main
@@ -49,7 +48,6 @@ SRCS-Y += vector.c
 
 LDFLAGS += -L$(ODP_SDK)/lib/
 LDFLAGS += -L$(ODP_SDK)/lib/.libs
-#LIBS = -lodp-linux -lodphelper-linux -lpthread
 LIBS = -lodp-linux -lodphelper-linux-generic -lpthread
 #LIBS = -lodp-dpdk -lodphelper-linux -lpthread
 

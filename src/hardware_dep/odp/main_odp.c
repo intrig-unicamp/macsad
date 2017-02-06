@@ -1,9 +1,7 @@
 #include <odp_api.h>
 #include "odp_lib.h"
 #include <odp/api/packet.h>
-#include <odp/helper/linux.h>
-#include <odp/helper/eth.h>
-#include <odp/helper/ip.h>
+#include <odp/helper/odph_api.h>
 
 uint32_t enabled_port_mask = 0;
 struct ether_addr ports_eth_addr[MAX_ETHPORTS];
@@ -350,10 +348,12 @@ int odpc_worker_mode_sched (void *arg)
 
         for (i = 0; i < pkts; i++) {
             pkt = pkt_tbl[i];
+#if 0 //All test packets have l2 hdr
             if (!odp_packet_has_eth(pkt)) {
                 odp_packet_free(pkt);
                 continue;
             }
+#endif
             packet_received(&pd, &pkt, port_in, mconf->thr_idx);
         //  mconf = &(gconf->mconf[port_in]);
             send_packet (&pd, mconf->thr_idx);
@@ -464,10 +464,13 @@ int odpc_worker_mode_queue(void *arg)
 
 		for (i = 0; i < pkts; i++) {
 			pkt = pkt_tbl[i];
-			if (!odp_packet_has_eth(pkt)) {
-				odp_packet_free(pkt);
-				continue;
-			}
+
+#if 0 //All test packets have l2 hdr
+            if (!odp_packet_has_eth(pkt)) {
+                odp_packet_free(pkt);
+                continue;
+            }
+#endif
 			packet_received(&pd, &pkt, port_in, mconf->thr_idx);
 			//  mconf = &(gconf->mconf[port_in]);
 			send_packet (&pd, mconf->thr_idx);
@@ -531,26 +534,22 @@ int odpc_worker_mode_queue(void *arg)
  */
 int odpc_worker_mode_direct(void *arg)
 {
-	int pkts, i;
-	int port_in, num_pktio, port_out;
 	macs_conf_t *mconf = arg;
 	odp_pktin_queue_t pktin;
 	odp_pktout_queue_t pktout;
 	odp_packet_t pkt_tbl[MAX_PKT_BURST];
 	odp_queue_t tx_queue;
-	int idx = 0;
 	packet_descriptor_t pd;
 	odp_packet_t pkt;
+	int pkts, i;
+	int port_in, num_pktio, port_out;
+	int idx = 0;
     int use_event_queue = gconf->appl.out_mode;
-//	info(":: INSIDE odp_main_worker\n");
-    num_pktio = mconf->num_rx_pktio;
+
+	num_pktio = mconf->num_rx_pktio;
     pktin     = mconf->rx_pktios[idx].pktin;
     port_in  = mconf->rx_pktios[idx].rx_idx;
 
-    //odp_barrier_wait(&barrier);
-	//info(" No of intf %d, thread id %d \n", gconf->appl.if_count, mconf->thr_idx);
-
-	//gconf->state.tables[i] = state[socketid].tables[i][0];
 	init_dataplane(&pd, gconf->state.tables);
 
 	/* Loop packets */
@@ -570,16 +569,15 @@ int odpc_worker_mode_direct(void *arg)
 		if (odp_unlikely(pkts <= 0))
 			continue;
 //	info(" no of pkt recv %d on port %d on thread id %d\n",pkts, idx, mconf->thr_idx);
-//		mconf->stats[port_in]->s.rx_packets += pkts;
 
 		for (i = 0; i < pkts; i++) {
 			pkt = pkt_tbl[i];
+#if 0 //All test packets have l2 hdr
 			if (!odp_packet_has_eth(pkt)) {
 				odp_packet_free(pkt);
 				continue;
 			}
-			//test--- no pkt handling
-			//	odp_packet_free(pkt);
+#endif
 			packet_received(&pd, &pkt, port_in, mconf->thr_idx);
 			send_packet (&pd, mconf->thr_idx);
 		}
@@ -610,27 +608,22 @@ int odpc_worker_mode_direct(void *arg)
 			{
 				sent = odp_pktout_send(pktout, tx_pkt_tbl, tx_pkts);
 			}
-            sent = odp_unlikely(sent < 0) ? 0 : sent;
-
-            mconf->stats[port_out]->s.tx_packets += sent;
-
-            drops = tx_pkts - sent;
-
+            sent = (sent < 0) ? 0 : sent;
+			drops = tx_pkts - sent;
             if (odp_unlikely(drops)) {
-                unsigned i;
-
-                mconf->stats[port_out]->s.tx_drops += drops;
-
                 /* Drop rejected packets */
+				odp_packet_free_multi(&tx_pkt_tbl[sent], drops);
+#if 0
+				unsigned i;
                 for (i = sent; i < tx_pkts; i++)
                     odp_packet_free(tx_pkt_tbl[i]);
-            }
+#endif
+			}
 			info("	Finish emptying Tx buffer for port=%d\n",port_out);
         }
 			info("	Finish emptying all Tx buffers for thread %d\n",mconf->thr_idx);
 	}
 
     /* Make sure that latest stat writes are visible to other threads */
-    //odp_mb_full();
 	return 0;
 }
