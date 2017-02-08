@@ -15,6 +15,8 @@ void fill_ipv4_fib_lpm_table(uint8_t ip[4], uint8_t port, uint8_t mac[6])
 	struct p4_action_parameter* ap,* ap2;
 	struct p4_field_match_exact* exact; // TODO: replace to lpm
 
+    printf("LPM table update \n");
+
 	h = create_p4_header(buffer, 0, 2048);
 	te = create_p4_add_table_entry(buffer,0,2048);
 	strcpy(te->table_name, "ipv4_fib_lpm");
@@ -56,6 +58,7 @@ void fill_sendout_table(uint8_t port, uint8_t smac[6])
     struct p4_action* a;
 	struct p4_action_parameter* ap;
 	struct p4_field_match_exact* exact;
+    printf("Sendout table update \n");
 
     h = create_p4_header(buffer, 0, 2048);
     te = create_p4_add_table_entry(buffer,0,2048);
@@ -148,13 +151,11 @@ void dhf(void* b) {
 int main()
 {
 	uint8_t ip[4] = {192,168,0,20};
-//	uint8_t mac[6] = {0xd1, 0x69, 0x0f, 0xa8, 0x39, 0x91};
-        uint8_t mac[6] = {0x3c, 0xfd, 0x27, 0xba, 0xe2, 0x90};
+    uint8_t mac[6] = {0x3c, 0xfd, 0x27, 0xba, 0xe2, 0x90};
 	uint8_t port = 0;
 
 	uint8_t ip2[4] = {192,168,0,10};
-//	uint8_t mac2[6] = {0xd2, 0x69, 0x0f, 0xa8, 0x39, 0x92};
-        uint8_t mac2[6] = {0x3d, 0xfd, 0x27, 0xba, 0xe2, 0x90};
+    uint8_t mac2[6] = {0x3d, 0xfd, 0x27, 0xba, 0xe2, 0x90};
 	uint8_t port2 = 1;
 
     uint8_t smac[6] = {0xd0, 0x69, 0x0f, 0xa8, 0x39, 0x90};

@@ -20,6 +20,10 @@ sudo killall mac_controller
 sudo killall mac_l2_l3_controller
 sudo killall mac_l3_controller
 sudo killall mac_l3-full_controller
+sudo pkill -f mac_controller
+sudo pkill -f mac_l2_l3_controller
+sudo pkill -f mac_l3_controller
+sudo pkill -f mac_l3-full_controller
 ./src/hardware_dep/shared/ctrl_plane/mac_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l2_l3_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_controller &
@@ -41,6 +45,8 @@ fi
 
 # Compile C sources
 make clean;${MAKE_CMD} -j16
+
+sudo rm -rf /tmp/odp*
 
 # Start the switch
 #echo "Runing the switch with veth1 and veth2"
