@@ -13,7 +13,6 @@ struct socket_state state[NB_SOCKETS];
 
 //=   shared   ================================================================
 extern void init_control_plane();
-//extern __m128i val_eth[MAX_ETHPORTS];
 
 extern uint32_t enabled_port_mask;
 int promiscuous_on = 0; /**< Ports set in promiscuous mode off by default. */
@@ -29,8 +28,6 @@ uint16_t nb_lcore_params;
 #define RTE_TEST_RX_DESC_DEFAULT 128
 #define RTE_TEST_TX_DESC_DEFAULT 512
 
-/** Global barrier to synchronize main and workers */
-//odp_barrier_t barrier;
 int exit_threads = 0;    /**< Break workers loop if set to 1 */
 
 extern void odp_main_worker (void);
@@ -703,8 +700,6 @@ static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
         stats_enabled = 0;
         timeout = 1;
     }
-    /* Wait for all threads to be ready*/
-    //    odp_barrier_wait(&barrier);
 
     do {
 #if 0

@@ -184,14 +184,14 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 			continue;
 		buf_len = gconf->mconf[thr_idx].tx_pktios[port].buf.len;
 		if (first) {
-			gconf->mconf[thr_idx].tx_pktios[port].buf.pkt[buf_len] = pkt;
+			gconf->mconf[thr_idx].tx_pktios[port].buf.pkt[buf_len] = pkt_cp_tmp;
 			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
 			//			odp_send_packet((odp_packet_t *)pd->packet, port);
 			first = 0;
 		} else {
 			odp_packet_t pkt_cp;
 
-			pkt_cp = odp_packet_copy(pkt_cp_tmp, gconf->pool);
+			pkt_cp = odp_packet_copy(pkt, gconf->pool);
 			if (pkt_cp == ODP_PACKET_INVALID) {
 				debug("Error: packet copy failed fo sending %s \n", __FILE__);
 				continue;
@@ -204,7 +204,7 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 		sigg("[Broadcast] recvd port id - %d, sent port id - %d\n", ingress_port, port);
 	}
 
-//	odp_packet_free (pkt_cp_tmp);
+	odp_packet_free (pkt);
 	return;
 }
 
@@ -609,10 +609,10 @@ int odpc_worker_mode_direct(void *arg)
 				sent = odp_pktout_send(pktout, tx_pkt_tbl, tx_pkts);
 			}
             sent = (sent < 0) ? 0 : sent;
-			drops = tx_pkts - sent;
+            drops = tx_pkts - sent;
             if (odp_unlikely(drops)) {
                 /* Drop rejected packets */
-				odp_packet_free_multi(&tx_pkt_tbl[sent], drops);
+	odp_packet_free_multi(&tx_pkt_tbl[sent], drops);
 #if 0
 				unsigned i;
                 for (i = sent; i < tx_pkts; i++)
