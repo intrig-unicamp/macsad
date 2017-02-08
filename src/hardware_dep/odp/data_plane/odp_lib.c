@@ -927,8 +927,8 @@ uint8_t odpc_initialize(int argc, char **argv)
     /* Print both system and application information */
     print_info(NO_PATH(argv[0]), &gconf->appl);
 
-    //if (odp_cpu_count() > 2)
-    if (0)
+    //if (0)
+    if (odp_cpu_count() > 2)
     {
         odp_cpumask_zero(&cpumask);
         /* allocate the 1st available control cpu to main process */
