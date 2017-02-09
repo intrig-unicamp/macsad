@@ -23,9 +23,7 @@ def get_key_byte_width(branch_on):
     key_width = 0
     for switch_ref in branch_on:
         if type(switch_ref) is p4.p4_field:
-            if switch_ref.width == p4.P4_AUTO_WIDTH:
-                addError("calculating key byte width", "Variable width fields are not supported")
-            else:
+            if not is_vwf(switch_ref): #Variable width field in parser return select statement is not supported
                 key_width += (switch_ref.width+7)/8
         elif type(switch_ref) is tuple:
             key_width += max(4, (switch_ref[1] + 7) / 8)
@@ -90,8 +88,8 @@ for state_name, parse_state in hlir.p4_parse_states.items():
         for switch_ref in branch_on:
             if type(switch_ref) is p4.p4_field:
                 field_instance = switch_ref
-                if field_instance.width == p4.P4_AUTO_WIDTH:
-                    addError("generating build_key_" + state_name, "Variable width fields are not supported")
+                if is_vwf(field_instance):
+                    addError("generating build_key_" + state_name, "Variable width field '" + str(field_instance) + "' in parser '" + state_name + "' return select statement is not supported")
                 else:
                     byte_width = (field_instance.width + 7) / 8
                     if byte_width <= 4:
@@ -156,7 +154,7 @@ for state_name, parse_state in hlir.p4_parse_states.items():
                 continue
             if type(branch_case) is int:
                 value = branch_case
-                value_len, l = int_to_byte_array(value)
+                value_len, l = int_to_big_endian_byte_array(value)
                 #[     uint8_t ${value_name}[${value_len}] = {
                 for c in l:
                     #[         ${c},

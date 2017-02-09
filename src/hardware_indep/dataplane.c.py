@@ -4,8 +4,6 @@ from p4_hlir.hlir.p4_headers import p4_field
 from utils.hlir import *
 from utils.misc import addError, addWarning
 
-from struct import pack, unpack
-
 #[ #include <stdlib.h>
 #[ #include <string.h>
 #[ #include "odp_lib.h"
@@ -32,8 +30,8 @@ for table in hlir.p4_tables.values():
     #[ void table_${table.name}_key(packet_descriptor_t* pd, uint8_t* key) {
     sortedfields = sorted(table.match_fields, key=lambda field: match_type_order(field[1]))
     for match_field, match_type, match_mask in sortedfields:
-        if match_field.width == p4.P4_AUTO_WIDTH:
-            addError("generating table_" + table.name + "_key", "Variable width fields in table match key are not supported")
+        if is_vwf(match_field):
+            addError("generating table_" + table.name + "_key", "Variable width field '" + str(match_field) + "' in match key for table '" + table.name + "' is not supported")
         elif match_field.width <= 32:
             #[ EXTRACT_INT32_BITS(pd, ${fld_id(match_field)}, *(uint32_t*)key)
             #[ key += sizeof(uint32_t);
@@ -124,22 +122,24 @@ for table in hlir.p4_tables.values():
 #[
 for calc in hlir.p4_field_list_calculations.values():
     #[ uint32_t calculate_${calc.name}(packet_descriptor_t* pd) {
-    #[   uint32_t res = 0, const_tmp;
+    #[   uint32_t res = 0;
     #[   void* payload_ptr;
 
+    buff_idx = 0
     fixed_input_width = 0     #Calculates the fixed width of all p4_fields and sized_integers (PAYLOAD width is not included)
     variable_input_width = "" #Calculates the variable width of all p4_fields
     for field_list in calc.input:
         for item in field_list.fields:
             if isinstance(item, p4_field) or isinstance(item, p4_sized_integer):
-                if item.width == p4.P4_AUTO_WIDTH:
-                    variable_input_width += " + field_desc(pd, " + fld_id(item) + ").bitwidth"
+                if is_vwf(item):
+                    if field_max_width(item) % 8 == 0 and item.offset % 8 == 0:
+                        variable_input_width += " + field_desc(pd, " + fld_id(item) + ").bitwidth"
+                    else:
+                        addError("generating field list calculation " + calc.name, "Variable width field '" + str(item) + "' in calculation '" + calc.name + "' is not byte-aligned. Field list calculations are only supported on byte-aligned variable width fields!");
                 else:
                     fixed_input_width += item.width
-    if variable_input_width: #The calculation field-list contains variable length field
-        addWarning("generating field list calculation", "Calculation " + calc.name + " contains variable length fields. Field block bitwidths are not checked!")
-    elif fixed_input_width % 8 != 0:
-        addError("generating field list calculation", "The bitwidth of the field_lists for the calculation is incorrect.")
+    if fixed_input_width % 8 != 0:
+        addError("generating field list calculation", "The bitwidth of the field_lists for the calculation '" + calc.name + "' is incorrect.")
     #[   uint8_t* buf = malloc((${fixed_input_width}${variable_input_width}) / 8);
     #[   memset(buf, 0, (${fixed_input_width}${variable_input_width}) / 8);
 
@@ -152,7 +152,7 @@ for calc in hlir.p4_field_list_calculations.values():
             start_item = field_list.fields[item_index]
             if isinstance(start_item, p4_field): #Processing field block (multiple continuous fields in a row)
                 inst = start_item.instance
-                if start_item.width == p4.P4_AUTO_WIDTH:
+                if is_vwf(start_item):
                     fixed_bitwidth = 0
                     variable_bitwidth = " + field_desc(pd, " + fld_id(start_item) + ").bitwidth"
                 else:
@@ -165,7 +165,7 @@ for calc in hlir.p4_field_list_calculations.values():
                 while inst_index + 1 < len(inst.fields) and item_index + 1 < len(field_list.fields) and inst.fields[inst_index + 1] == field_list.fields[item_index + 1]:
                     item_index += 1
                     inst_index += 1
-                    if field_list.fields[item_index].width == p4.P4_AUTO_WIDTH:
+                    if is_vwf(field_list.fields[item_index]):
                         variable_bitwidth += " + field_desc(pd, " + fld_id(field_list.fields[item_index]) + ").bitwidth"
                     else:
                         fixed_bitwidth += field_list.fields[item_index].width
@@ -179,10 +179,10 @@ for calc in hlir.p4_field_list_calculations.values():
                 if start_item.width % 8 != 0:
                     addError("generating field list calculation", "Only byte-wide constants are supported in field lists.")
                 else:
-                    #TODO: The following byte conversion is only correct on little_endian systems
-                    new_value = (unpack(">I", pack("<I", start_item))[0]) >> (32 - start_item.width)
-                    #[   const_tmp = ${new_value};
-                    #[   memcpy(buf + ((${fixed_bitoffset}${variable_bitoffset}) / 8), &const_tmp, ${start_item.width / 8});
+                    buff_idx += 1
+                    byte_array = int_to_big_endian_byte_array_with_length(start_item, start_item.width / 8)
+                    #[   uint8_t buffer_${buff_idx}[${start_item.width / 8}] = {${reduce((lambda a, b: a + ', ' + b), map(lambda x: str(x), byte_array))}};
+                    #[   memcpy(buf + ((${fixed_bitoffset}${variable_bitoffset}) / 8), &buffer_${buff_idx}, ${start_item.width / 8});
                     fixed_bitoffset += start_item.width
             else:
                 if item_index == 0 or not isinstance(field_list.fields[item_index - 1], p4_field):

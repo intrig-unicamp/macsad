@@ -21,7 +21,9 @@
 
 // Modifies a field in the packet by the given source and length [ONLY BYTE ALIGNED]
 #define MODIFY_BYTEBUF_BYTEBUF(pd, dstfield, src, srclen) { \
-    memcpy(field_desc(pd, dstfield).byte_addr, src, srclen); \
+    /*TODO: If the src contains a signed negative value, than the following memset is incorrect*/ \
+    memset(field_desc(pd, dstfield).byte_addr, 0, field_desc(pd, dstfield).bytewidth - srclen); \
+    memcpy(field_desc(pd, dstfield).byte_addr + (field_desc(pd, dstfield).bytewidth - srclen), src, srclen); \
 }
 
 // Modifies a field in the packet by the given source and length (byte conversion when necessary) [MAX 4 BYTES]

@@ -2,7 +2,6 @@
 
 # set default values for variables if they are not already defined
 MAKE_CMD=${MAKE_CMD-make}
-#LD_LIBRARY_PATH=/root/odp/lib/.libs:$LD_LIBRARY_PATH
 
 # Compile Controller
 cd src/hardware_dep/shared/ctrl_plane
@@ -47,8 +46,4 @@ fi
 make clean;${MAKE_CMD} -j16
 
 sudo rm -rf /tmp/odp*
-
-# Start the switch
-#echo "Runing the switch with veth1 and veth2"
-#sudo -E LD_LIBRARY_PATH=/root/odp/lib/.libs ./mac_ad -i veth1,veth2
 

@@ -165,70 +165,68 @@ def header_instance(h):
     else:
         return HeaderInstanceRegular(ht, name)
 
-# ==============================================================================
-# Loading and processing JSON
 
-with open(sys.argv[1]) as data_file:
-    data = json.load(data_file)
+def json2hlir(filepath):
 
-all_p4_objects = []
+    # Loading and processing JSON...
 
-for ht in data["header_types"]:
-    if ht['name'] == 'standard_metadata_t':
-        continue
-    all_p4_objects.append(header_type(ht))
+    with open(filepath) as data_file:
+        data = json.load(data_file)
 
-for h in data["headers"]:
-    all_p4_objects.append(header_instance(h))
+    # Creating the P4 objects described in JSON...
 
-# for x in data["header_stacks"]:
-# for x in data["field_lists"]:
+    all_p4_objects = []
 
-for p in data["parsers"]:
-    for ps in p["parse_states"]:
-        all_p4_objects.append(parse_state(ps))
+    for ht in data["header_types"]:
+        if ht['name'] == 'standard_metadata_t':
+            continue
+        all_p4_objects.append(header_type(ht))
 
-# for x in data["deparsers"]:
-# for x in data["meter_arrays"]:
-# for x in data["counter_arrays"]:
-# for x in data["register_arrays"]:
-# for x in data["calculations"]:
-# for x in data["learn_lists"]:
+    for h in data["headers"]:
+        all_p4_objects.append(header_instance(h))
 
-for a in data["actions"]:
-    all_p4_objects.append(action(a))
+    # for x in data["header_stacks"]:
+    # for x in data["field_lists"]:
 
-for p in data["pipelines"]:
-    all_p4_objects += control(p)
+    for p in data["parsers"]:
+        for ps in p["parse_states"]:
+            all_p4_objects.append(parse_state(ps))
 
-# for x in data["checksums"]:
-# for x in data["force_arith"]:
+    # for x in data["deparsers"]:
+    # for x in data["meter_arrays"]:
+    # for x in data["counter_arrays"]:
+    # for x in data["register_arrays"]:
+    # for x in data["calculations"]:
+    # for x in data["learn_lists"]:
 
-# ==============================================================================
-# Translating the P4 AST into HLIR
+    for a in data["actions"]:
+        all_p4_objects.append(action(a))
 
-print "--------------------"
-print all_p4_objects
-print "--------------------"
+    for p in data["pipelines"]:
+        all_p4_objects += control(p)
 
-p4_program = P4Program("", -1, all_p4_objects)
+    # for x in data["checksums"]:
+    # for x in data["force_arith"]:
 
-with open('./primitives.json') as data_file:
-    primitives = json.load(data_file)
+    # Synthesising the P4 AST...
 
-sc = P4SemanticChecker()
-sc.semantic_check(p4_program, primitives)
+    p4_program = P4Program("", -1, all_p4_objects)
 
-h = HLIR()
+    with open('src/utils/primitives.json') as data_file:
+        primitives = json.load(data_file)
 
-d = P4HlirDumper()
-d.dump_to_p4(h, p4_program, primitives)
+    sc = P4SemanticChecker()
+    sc.semantic_check(p4_program, primitives)
 
-p4_validate(h)
-p4_dependencies(h)
-p4_field_access(h)
+    # Translating the P4 AST to HLIR...
 
-print "--------------------"
-print "HLIR successfully created."
-print h
-print "--------------------"
+    h = HLIR()
+
+    d = P4HlirDumper()
+    d.dump_to_p4(h, p4_program, primitives)
+
+    p4_validate(h)
+    p4_dependencies(h)
+    p4_field_access(h)
+
+    return h
