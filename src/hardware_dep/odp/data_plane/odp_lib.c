@@ -1023,7 +1023,7 @@ uint8_t odpc_initialize(int argc, char **argv)
             return -1;
         }
 
-        info("interface id %d, ifname %s, drv: %s, pktio:%d, num of rx q=%d \n", i, gconf->appl.if_names[i], info.drv_name, odp_pktio_to_u64(gconf->pktios[i].pktio),gconf->pktios[i].num_rx_thr);
+        printf("interface id %d, ifname %s, drv: %s, pktio:%d, num of rx q=%d \n", i, gconf->appl.if_names[i], info.drv_name, odp_pktio_to_u64(gconf->pktios[i].pktio),gconf->pktios[i].num_rx_thr);
 
         ret = odp_pktio_promisc_mode_set(gconf->pktios[i].pktio, 1);
         if (ret != 0) {
