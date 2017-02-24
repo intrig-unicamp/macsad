@@ -284,9 +284,22 @@ int main(int argc, char* argv[])
 		}
 	}
 
+    uint8_t mac[6] = {0xa0, 0x36, 0x9f, 0x3e, 0x94, 0xea};
+    uint8_t port = 1;
+
+    uint8_t mac2[6] = {0xa0, 0x36, 0x9f, 0x3e, 0x94, 0xe8};
+    uint8_t port2 = 0;
+
+
 	printf("Create and configure controller...\n");
 	c = create_controller_with_init(11111, 3, dhf, init);
+#if 0
+    fill_dmac_table(port, mac);
+    fill_smac_table(port, mac);
 
+    fill_dmac_table(port2, mac2);
+    fill_smac_table(port2, mac2);
+#endif
 	printf("MACSAD controller started...\n");
 	execute_controller(c);
 

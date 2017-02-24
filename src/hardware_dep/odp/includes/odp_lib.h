@@ -76,80 +76,79 @@ struct mbuf_table {
 #define NB_REPLICA 2
 #define SOCKET_DEF 0
 
-/** @def PKT_POOL_SIZE                                                           
- * @brief Size of the shared memory block                                        
- */                   
-#define PKT_POOL_SIZE 8192                                                   
-//#define PKT_POOL_SIZE (512*2048)                   
-/** @def PKT_POOL_BUF_SIZE    
- * @brief Buffer size of the packet pool buffer                                  
- */                                                                              
+/** @def PKT_POOL_SIZE
+ * @brief Size of the shared memory block
+ */
+#define PKT_POOL_SIZE 8192
+//#define PKT_POOL_SIZE (512*2048)
+/** @def PKT_POOL_BUF_SIZE
+ * @brief Buffer size of the packet pool buffer
+ */
 #define PKT_POOL_BUF_SIZE 1856
-/** @def MAX_PKT_BURST                                                           
- * @brief Maximum number of packet in a burst                                    
- */                                                                              
-#define MAX_PKT_BURST 32                                                         
-/** @def MAX_WORKERS                                                             
- * @brief Maximum number of worker threads                                    
- */                                                                          
-#define MAX_WORKERS            32                                                
-/** Maximum number of pktio queues per interface */                              
-#define MAX_QUEUES             32                                                
-/** Maximum number of pktio interfaces */                                        
-#define MAX_PKTIOS             8           
+/** @def MAX_PKT_BURST
+ * @brief Maximum number of packet in a burst
+ */
+#define MAX_PKT_BURST 32
+/** @def MAX_WORKERS
+ * @brief Maximum number of worker threads
+ */
+#define MAX_WORKERS            32
+/** Maximum number of pktio queues per interface */
+#define MAX_QUEUES             32
+/** Maximum number of pktio interfaces */
+#define MAX_PKTIOS             8
 
-/**                                                                              
- * Packet input mode                                                             
- */                                                                             
-typedef enum pktin_mode_t {                                                      
-    DIRECT_RECV,  /* PKT_BURST */                                              
-    PLAIN_QUEUE, /* PKT_QUEUE */                                              
-    SCHED_PARALLEL, /* PKT_SCHED_PARALLEL */                                  
-    SCHED_ATOMIC,/* PKT_SCHED_ATOMIC */                                     
-    SCHED_ORDERED,/* PKT_SCHED_ORDERED */                                      
-} pktin_mode_t;                                                                  
-                                                                                 
-/**                                                                              
- *Packet output modes                                                            
- **/                                                                             
-typedef enum pktout_mode_t {                                                     
-    PKTOUT_DIRECT,                                                               
-    PKTOUT_QUEUE                                                                 
-} pktout_mode_t; 
+/**
+ * Packet input mode
+ */
+typedef enum pktin_mode_t {
+    DIRECT_RECV,  /* PKT_BURST */
+    PLAIN_QUEUE, /* PKT_QUEUE */
+    SCHED_PARALLEL, /* PKT_SCHED_PARALLEL */
+    SCHED_ATOMIC,/* PKT_SCHED_ATOMIC */
+    SCHED_ORDERED,/* PKT_SCHED_ORDERED */
+} pktin_mode_t;
+
+/**
+ *Packet output modes
+ **/
+typedef enum pktout_mode_t {
+    PKTOUT_DIRECT,
+    PKTOUT_QUEUE
+} pktout_mode_t;
 
 static inline int sched_mode(pktin_mode_t in_mode)
-{   
+{
     return (in_mode == SCHED_PARALLEL) ||
            (in_mode == SCHED_ATOMIC)   ||
            (in_mode == SCHED_ORDERED);
 }
 
-/** Get rid of path in filename - only for unix-type paths using '/' */          
+/** Get rid of path in filename - only for unix-type paths using '/' */
 #define NO_PATH(file_name) (strrchr((file_name), '/') ? \
-                        strrchr((file_name), '/') + 1 : (file_name))             
-                                                                                 
-/**                                                                              
- * Parsed command line application arguments                                     
- */                                                                              
-typedef struct appl_args {                                                      
-    int cpu_count;  
-	int mcpu_enable;	
-    int if_count;       /**< Number of interfaces to be used */                  
-    int num_workers;    /**< Number of worker threads */                         
-    char **if_names;    /**< Array of pointers to interface names */             
-    pktin_mode_t in_mode;   /**< Packet input mode */                            
-    pktout_mode_t out_mode; /**< Packet output mode */                           
+                        strrchr((file_name), '/') + 1 : (file_name))
+
+/**
+ * Parsed command line application arguments
+ */
+typedef struct appl_args {
+    int cpu_count;
+	int mcpu_enable;
+    int if_count;       /**< Number of interfaces to be used */
+    int num_workers;    /**< Number of worker threads */
+    char **if_names;    /**< Array of pointers to interface names */
+    pktin_mode_t in_mode;   /**< Packet input mode */
+    pktout_mode_t out_mode; /**< Packet output mode */
 //TODO need to use the in_mode, out_mode and remove this variable
-	int mode;  
-	int time;       /**< Time in seconds to run. */                              
-    int accuracy;       /**< Number of seconds to get and print statistics */    
-    char *if_str;       /**< Storage for interface names */                      
-    int error_check;        /**< Check packet errors */                          
-} appl_args_t;                                                                   
+	int mode;
+	int time;       /**< Time in seconds to run. */
+    int accuracy;       /**< Number of seconds to get and print statistics */
+    char *if_str;       /**< Storage for interface names */
+    int error_check;        /**< Check packet errors */
+} appl_args_t;
 
-
-/** Global barrier to synchronize main and workers */                            
-extern int exit_threads;    /**< Break workers loop if set to 1 */ 
+/** Global barrier to synchronize main and workers */
+extern int exit_threads;    /**< Break workers loop if set to 1 */
 
 typedef struct lcore_state {
 	//ptrs to the containing socket's instance
@@ -162,28 +161,29 @@ struct socket_state {
     lookup_table_t * tables         [NB_TABLES][NB_REPLICA];
     int            * active_replica [NB_TABLES];
     counter_t      * counters       [NB_COUNTERS];
-}; 
+};
 
 struct socket_state state[NB_SOCKETS];
 
-/**                                                                              
- * Statistics                                                                    
- */                                                                              
-typedef union {                                                                  
-    struct {                                                                     
-        /** Number of forwarded packets */                                       
+/**
+ * Statistics
+ */
+typedef union {
+    struct {
+        /** Number of forwarded packets */
+        /** Number of forwarded packets */
         uint64_t packets;
         /** Number of received packets */
         uint64_t rx_packets;
         /** Number of transmitted packets */
-        uint64_t tx_packets;		
-        /** Packets dropped due to receive error */                              
-        uint64_t rx_drops;                                                       
-        /** Packets dropped due to transmit error */                             
-        uint64_t tx_drops;                                                       
-    } s;                                                                         
-                                                                                 
-    uint8_t padding[ODP_CACHE_LINE_SIZE];                                        
+        uint64_t tx_packets;
+        /** Packets dropped due to receive error */
+        uint64_t rx_drops;
+        /** Packets dropped due to transmit error */
+        uint64_t tx_drops;
+    } s;
+
+    uint8_t padding[ODP_CACHE_LINE_SIZE];
 } stats_t ODP_ALIGNED_CACHE;
 
 /**
@@ -195,43 +195,42 @@ typedef struct pkt_buf_t {
 } pkt_buf_t;
 
 typedef struct macs_conf{
-//    char *pktio_dev;    /**< Interface name to use */
-    int mode;       /**< Thread mode */
-    int thr_idx;  
-/** Number of interfaces from which to receive packets */	
-    int num_rx_pktio; 
-//    int num_tx_pktio; 
-                                                                                 
-/* rx_pktio */                                                                   
-    struct {  
-        odp_pktin_queue_t pktin;   /**< Packet input queue */
-        odp_queue_t rx_queue;
-        uint8_t rx_idx;      /**< Rx Port index */
-        int rqueue_idx;         /**< Queue index */
-    } rx_pktios[MAX_PKTIOS];                         
-/* tx_pktio */
-    struct {  
-        odp_pktout_queue_t pktout; /**< Packet output queue */
-        odp_queue_t tx_queue;
-        int tqueue_idx;         /**< Queue index */
-        pkt_buf_t buf;         /**< Packet TX buffer */
-    } tx_pktios[MAX_PKTIOS];                         
+    int mode;       /* TODO: Thread mode (process/thread) */
+    int thr_idx;
+    /** Number of interfaces from which to receive packets */
+    int num_rx_pktio;
+    /** Number of interfaces to which to send packets */
+    int num_tx_pktio;
 
-    stats_t *stats[MAX_PKTIOS];    /**< Interface statistics */
+    /* rx_pktio */
+    struct {
+        odp_pktin_queue_t pktin;   /** Packet input queue */
+        odp_queue_t rx_queue;
+        uint8_t rx_idx;      /** Rx Port index */
+        int rqueue_idx;      /** Queue index */
+    } rx_pktios[MAX_PKTIOS];
+    /* tx_pktio */
+    struct {
+        odp_pktout_queue_t pktout; /** Packet output queue */
+        odp_queue_t tx_queue;
+        uint8_t tx_idx;      /** Tx Port index */
+        int tqueue_idx;         /** Queue index */
+        pkt_buf_t buf;         /** Packet TX buffer */
+    } tx_pktios[MAX_PKTIOS];
+
+    stats_t *stats[MAX_PKTIOS];    /** Interface statistics */
 } macs_conf_t;
 
-/**                                                                              
- * Grouping of all global data                                                   
+/**
+ * Grouping of all global data
  */
 typedef struct mac_global{
 	/** Per thread interface statistics */
 	stats_t stats[MAX_WORKERS][MAX_PKTIOS];
     /** Application (parsed) arguments */
     appl_args_t appl;
-    /** Table of port ethernet addresses */
-//    odph_ethaddr_t port_eth_addr[MAX_PKTIOS];
 	/* pkt pool */
-    odp_pool_t pool; 
+    odp_pool_t pool;
     /** Thread specific arguments */
 	macs_conf_t mconf[MAC_MAX_LCORE];
 	/** ptr to statefull memories */
@@ -261,14 +260,12 @@ mac_global_t *gconf;
 
 uint8_t odpc_initialize(int argc, char **argv);
 
-int odpc_worker_mode_direct(void *arg);                                  
-int odpc_worker_mode_queue(void *arg);                                   
-int odpc_worker_mode_sched(void *arg); 
+int odpc_worker_mode_direct(void *arg);
+int odpc_worker_mode_queue(void *arg);
+int odpc_worker_mode_sched(void *arg);
 
 //TODO where to defien these two
 uint32_t value32;
 uint32_t res32;
-
-
 
 #endif // ODP_LIB_H

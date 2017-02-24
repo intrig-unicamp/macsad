@@ -48,8 +48,10 @@ SRCS-Y += vector.c
 
 LDFLAGS += -L$(ODP_SDK)/lib/
 LDFLAGS += -L$(ODP_SDK)/lib/.libs
-LIBS = -lodp-linux -lodphelper-linux-generic -lpthread
+#LIBS = -lodp-linux -lodphelper -lpthread
+#LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldpdk -ldl -lpcap 
 #LIBS = -lodp-dpdk -lodphelper-linux -lpthread
+LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap 
 
 OBJS = $(SRCS-y:.c=.o)
 
@@ -60,7 +62,7 @@ all: $(MAIN)
 
 $(MAIN):
 #	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 2>/dev/null
-	$(CC) $(CFLAGS) -g $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $(SRCS-y) $(LIBS) 
 
 .c.o:
 	$(CC) $(CFLAGS) -c $<  -o $@

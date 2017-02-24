@@ -227,7 +227,7 @@ static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
 	int port = EXTRACT_EGRESSPORT(pd);
 	int inport = EXTRACT_INGRESSPORT(pd);
 
-	dbg_print_headers(pd);
+//	dbg_print_headers(pd);
 	info("send_packet: initial i/p port=%d and o/p port=%d \n", inport, port);
     reset_headers(pd);// sugar@292
 
@@ -244,6 +244,7 @@ static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
 void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, int thr_idx)
 {
 	struct lcore_state *state_tmp = &gconf->state;
+    //odp_packet_prefetch(*p, 0, 12);
 	pd->pointer = (uint8_t *)odp_packet_data(*p);
 	pd->wrapper = (packet *)p;
     info("Entry packet_received \n ");
@@ -565,19 +566,22 @@ int odpc_worker_mode_direct(void *arg)
         }
 
 		pkts = odp_pktin_recv(pktin, pkt_tbl, MAX_PKT_BURST);
-//	info("	pkt recv %d \n",pkts);
 		if (odp_unlikely(pkts <= 0))
 			continue;
-//	info(" no of pkt recv %d on port %d on thread id %d\n",pkts, idx, mconf->thr_idx);
-
+#if 0
+if(port_in) {pktout = mconf->tx_pktios[0].pktout;
+}else {pktout = mconf->tx_pktios[1].pktout;}
+            sent = odp_pktout_send(pktout, pkt_tbl, pkts);
+            sent = (sent < 0) ? 0 : sent;
+            drops = pkts - sent;
+            if (odp_unlikely(drops)) {
+                /* Drop rejected packets */
+    odp_packet_free_multi(&pkt_tbl[sent], drops);
+}
+#endif
+#if 1
 		for (i = 0; i < pkts; i++) {
 			pkt = pkt_tbl[i];
-#if 0 //All test packets have l2 hdr
-			if (!odp_packet_has_eth(pkt)) {
-				odp_packet_free(pkt);
-				continue;
-			}
-#endif
 			packet_received(&pd, &pkt, port_in, mconf->thr_idx);
 			send_packet (&pd, mconf->thr_idx);
 		}
@@ -621,7 +625,9 @@ int odpc_worker_mode_direct(void *arg)
 			}
 			info("	Finish emptying Tx buffer for port=%d\n",port_out);
         }
+
 			info("	Finish emptying all Tx buffers for thread %d\n",mconf->thr_idx);
+#endif
 	}
 
     /* Make sure that latest stat writes are visible to other threads */

@@ -326,16 +326,19 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
         pktio_param.in_mode = ODP_PKTIN_MODE_QUEUE;
     else if (gconf->appl.in_mode != DIRECT_RECV) /* pktin_mode SCHED_* */
         pktio_param.in_mode = ODP_PKTIN_MODE_SCHED;
-
+    else
+        pktio_param.in_mode = ODP_PKTIN_MODE_DIRECT;
+	
     if (gconf->appl.out_mode != PKTOUT_DIRECT)
         pktio_param.out_mode = ODP_PKTOUT_MODE_QUEUE;
+    else
+        pktio_param.out_mode = ODP_PKTOUT_MODE_DIRECT;
 
     pktio = odp_pktio_open(name, pool, &pktio_param);
     if (pktio == ODP_PKTIO_INVALID) {
         debug("Error: pktio open failed for %s\n", name);
         return -1;
     }
-
     printf("Pktio open success for %" PRIu64 " (%s)\n", \
             odp_pktio_to_u64(pktio), name);
 
@@ -367,8 +370,6 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
         pktin_param.queue_param.sched.group = ODP_SCHED_GROUP_ALL;
     } else {
         num_tx_shared = capa.max_output_queues;
-        mode_tx = ODP_PKTIO_OP_MT_UNSAFE;
-        mode_rx = ODP_PKTIO_OP_MT_UNSAFE;
     }
 
     if (num_rx > (int)capa.max_input_queues) {
@@ -766,7 +767,7 @@ static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
 static void macs_set_worker_afinity(void)
 {
     int if_count, num_workers;
-    int rx_idx, mconf_id, pktio_id;
+    int rx_idx, tx_idx, mconf_id, pktio_id;
     macs_conf_t *mconf;
 
     if_count    = gconf->appl.if_count;
@@ -781,7 +782,7 @@ static void macs_set_worker_afinity(void)
             mconf->rx_pktios[pktio_id].rx_idx = rx_idx;
             mconf->num_rx_pktio++;
             gconf->pktios[rx_idx].num_rx_thr++;
-
+printf("rx_idx %d, num_rx_thr %d\n", rx_idx, gconf->pktios[rx_idx].num_rx_thr);
             mconf_id++;
             if (mconf_id >= num_workers)
                 mconf_id = 0;
@@ -791,16 +792,23 @@ static void macs_set_worker_afinity(void)
 
         for (mconf_id = 0; mconf_id < num_workers; mconf_id++) {
             mconf = &gconf->mconf[mconf_id];
-            pktio_id    = mconf->num_rx_pktio;
-            mconf->rx_pktios[pktio_id].rx_idx = rx_idx;
-            mconf->num_rx_pktio++;
-
-            gconf->pktios[rx_idx].num_rx_thr++;
-
-            rx_idx++;
-            if (rx_idx >= if_count)
-                rx_idx = 0;
-        }
+	    pktio_id = mconf->num_rx_pktio;
+	    mconf->rx_pktios[pktio_id].rx_idx = rx_idx;
+	    for (tx_idx = 0; tx_idx < if_count; tx_idx++){
+		    if(tx_idx != rx_idx){
+			    mconf->tx_pktios[tx_idx].tx_idx = tx_idx;
+	    mconf->num_tx_pktio++;
+	    gconf->pktios[tx_idx].num_tx_thr++;
+printf("=tx_idx %d, num_tx_thr %d\n", tx_idx, gconf->pktios[tx_idx].num_rx_thr);
+		    }
+	    }	
+	    mconf->num_rx_pktio++;
+	    gconf->pktios[rx_idx].num_rx_thr++;
+printf("=rx_idx %d, num_rx_thr %d\n", rx_idx, gconf->pktios[rx_idx].num_rx_thr);
+	    rx_idx++;
+	    if (rx_idx >= if_count)
+		    rx_idx = 0;
+	}
     }
     return;
 }
@@ -815,22 +823,22 @@ static void macs_set_queue_afinity(void)
     int rx_idx, tx_queue, rx_queue;
     macs_conf_t *mconf = NULL;
     num_workers = gconf->appl.num_workers;
-
+  printf("\nQueue binding (indexes)\n-----------------------\n");
     for (mconf_id = 0; mconf_id < num_workers; mconf_id++) {
         mconf = &gconf->mconf[mconf_id];
         int num = mconf->num_rx_pktio;
-
+                printf("worker %i\n", mconf_id);
         /* Receive only from selected ports */
         for (pktio = 0; pktio < num; pktio++) {
             rx_idx   = mconf->rx_pktios[pktio].rx_idx;
             rx_queue = gconf->pktios[rx_idx].next_rx_queue;
 
+            mconf->rx_pktios[pktio].rqueue_idx = rx_queue;
             mconf->rx_pktios[pktio].pktin =
                 gconf->pktios[rx_idx].pktin[rx_queue];
-            mconf->rx_pktios[pktio].rqueue_idx = rx_queue;
             mconf->rx_pktios[pktio].rx_queue =
                 gconf->pktios[rx_idx].rx_q[rx_queue];
-
+ printf("  rx: pktio %i, queue %i\n", rx_idx, rx_queue);
             rx_queue++;
             if (rx_queue >= gconf->pktios[rx_idx].num_rx_queue)
                 rx_queue = 0;
@@ -840,11 +848,12 @@ static void macs_set_queue_afinity(void)
         for (pktio = 0; pktio < (int)gconf->appl.if_count; pktio++) {
             tx_queue = gconf->pktios[pktio].next_tx_queue;
 
+            mconf->tx_pktios[pktio].tqueue_idx = tx_queue;
             mconf->tx_pktios[pktio].pktout =
                 gconf->pktios[pktio].pktout[tx_queue];
-            mconf->tx_pktios[pktio].tqueue_idx = tx_queue;
             mconf->tx_pktios[pktio].tx_queue =
                 gconf->pktios[pktio].tx_q[tx_queue];
+ printf("  tx: pktio %i, queue %i\n", pktio, tx_queue);
 
             tx_queue++;
             if (tx_queue >= gconf->pktios[pktio].num_tx_queue)
@@ -959,7 +968,7 @@ uint8_t odpc_initialize(int argc, char **argv)
             num_workers = MAC_MAX_LCORE;
         }
 
-        num_workers = odp_cpumask_default_worker(&cpumask, num_workers); 
+        num_workers = odp_cpumask_default_worker(&cpumask, num_workers);
         cpu = odp_cpumask_first(&cpumask);
         (void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
         printf("Worker Thread : CPUs %d, 1st CPU %d, Mask %s \n",num_workers, cpu, cpumaskstr);
@@ -1007,12 +1016,16 @@ uint8_t odpc_initialize(int argc, char **argv)
     for (i = 0; i < if_count; ++i)
     {
         const char *dev = gconf->appl.if_names[i];
-        int num_rx = 0;
+	int num_rx, num_tx;
 
+	/* A queue per worker in scheduled mode */
+	num_rx = num_workers;
+	num_tx = num_workers;
         if ((gconf->appl.in_mode == DIRECT_RECV) ||
                 (gconf->appl.in_mode == PLAIN_QUEUE)) {
             /* A queue per assigned worker */
             num_rx = gconf->pktios[i].num_rx_thr;
+            num_tx = gconf->pktios[i].num_tx_thr;
         }
 
         if (create_pktio(dev, i, num_rx, num_workers, gconf->pool))
