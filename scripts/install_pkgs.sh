@@ -13,3 +13,6 @@ sudo apt-get install -y libssl-dev
 sudo apt-get install -y python-yaml
 suod apt-get install -y graphviz
 sudo apt-get install -y python-pip
+
+#For dpdk
+sudo apt-get install -y libpcap-dev
