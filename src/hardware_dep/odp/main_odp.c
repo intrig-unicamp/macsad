@@ -1,7 +1,9 @@
 #include <odp_api.h>
 #include "odp_lib.h"
 #include <odp/api/packet.h>
-#include <odp/helper/odph_api.h>
+#include <odp/helper/linux.h>
+#include <odp/helper/eth.h>
+#include <odp/helper/ip.h>
 
 uint32_t enabled_port_mask = 0;
 struct ether_addr ports_eth_addr[MAX_ETHPORTS];

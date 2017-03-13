@@ -25,4 +25,4 @@ CFLAGS += -D NDEBUG
 CFLAGS += -D NINFO
 CFLAGS += -D NSIGG
 
-CFLAGS += -fno-stack-protector
+#CFLAGS += -fno-stack-protector

@@ -293,7 +293,7 @@ int main(int argc, char* argv[])
 
 	printf("Create and configure controller...\n");
 	c = create_controller_with_init(11111, 3, dhf, init);
-#if 0
+#if 1
     fill_dmac_table(port, mac);
     fill_smac_table(port, mac);
 

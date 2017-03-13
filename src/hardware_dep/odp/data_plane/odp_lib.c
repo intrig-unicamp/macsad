@@ -6,7 +6,6 @@
 #include <unistd.h>
 
 #include "odp_lib.h"
-#include <odp/helper/odph_api.h>
 #include <net/ethernet.h>
 
 struct socket_state state[NB_SOCKETS];
@@ -1078,6 +1077,19 @@ uint8_t odpc_initialize(int argc, char **argv)
     info("count threadmask %d\n ", odp_cpumask_count(&cpumask));
     info("num worksers is %d\n", num_workers);
 
+    /* Start packet receive and transmit */
+    for (i = 0; i < if_count; ++i) {
+        odp_pktio_t pktio;
+
+        pktio = gconf->pktios[i].pktio;
+        ret   = odp_pktio_start(pktio);
+        if (ret) {
+            printf("Error: unable to start %s\n",
+                    gconf->appl.if_names[i]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
     for (i = 0; i < num_workers; ++i) {
         odp_cpumask_t thd_mask;
         odph_odpthread_params_t thr_params;
@@ -1098,19 +1110,6 @@ uint8_t odpc_initialize(int argc, char **argv)
         // Enable this to use one cpu per thread per interface
         if (gconf->appl.cpu_count > 0)
             cpu = maco_get_next_cpu(&cpumask, cpu);
-    }
-
-    /* Start packet receive and transmit */
-    for (i = 0; i < if_count; ++i) {
-        odp_pktio_t pktio;
-
-        pktio = gconf->pktios[i].pktio;
-        ret   = odp_pktio_start(pktio);
-        if (ret) {
-            printf("Error: unable to start %s\n",
-                    gconf->appl.if_names[i]);
-            exit(EXIT_FAILURE);
-        }
     }
 
     /* Master thread waits for other threads to exit */
