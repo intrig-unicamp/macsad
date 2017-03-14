@@ -321,17 +321,8 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 
     odp_pktio_param_init(&pktio_param);
 
-    if (gconf->appl.in_mode == PLAIN_QUEUE)
-        pktio_param.in_mode = ODP_PKTIN_MODE_QUEUE;
-    else if (gconf->appl.in_mode != DIRECT_RECV) /* pktin_mode SCHED_* */
-        pktio_param.in_mode = ODP_PKTIN_MODE_SCHED;
-    else
-        pktio_param.in_mode = ODP_PKTIN_MODE_DIRECT;
-	
-    if (gconf->appl.out_mode != PKTOUT_DIRECT)
-        pktio_param.out_mode = ODP_PKTOUT_MODE_QUEUE;
-    else
-        pktio_param.out_mode = ODP_PKTOUT_MODE_DIRECT;
+    pktio_param.in_mode = ODP_PKTIN_MODE_DIRECT;
+    pktio_param.out_mode = ODP_PKTOUT_MODE_DIRECT;
 
     pktio = odp_pktio_open(name, pool, &pktio_param);
     if (pktio == ODP_PKTIO_INVALID) {
@@ -352,24 +343,7 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
     mode_tx = ODP_PKTIO_OP_MT_UNSAFE;
     mode_rx = ODP_PKTIO_OP_MT_UNSAFE;
 
-    if (sched_mode(in_mode)) {
-        num_tx_shared = 1;
-        mode_tx = ODP_PKTIO_OP_MT;
-        mode_rx = ODP_PKTIO_OP_MT;
-
-        if (gconf->appl.in_mode == SCHED_ATOMIC)
-            sync_mode = ODP_SCHED_SYNC_ATOMIC;
-        else if (gconf->appl.in_mode == SCHED_ORDERED)
-            sync_mode = ODP_SCHED_SYNC_ORDERED;
-        else
-            sync_mode = ODP_SCHED_SYNC_PARALLEL;
-
-        pktin_param.queue_param.sched.prio  = ODP_SCHED_PRIO_DEFAULT;
-        pktin_param.queue_param.sched.sync  = sync_mode;
-        pktin_param.queue_param.sched.group = ODP_SCHED_GROUP_ALL;
-    } else {
-        num_tx_shared = capa.max_output_queues;
-    }
+    num_tx_shared = capa.max_output_queues;
 
     if (num_rx > (int)capa.max_input_queues) {
         printf("Sharing %i input queues between %i workers\n",
@@ -412,13 +386,6 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
             debug("  Error: no pktin queue for %s\n", name);
             return -1;
         }
-    } else {
-        if (odp_pktin_event_queue(pktio,
-                    gconf->pktios[if_idx].rx_q,
-                    num_rx) != num_rx) {
-            debug("Error: pktin event queue query failed %s\n",name);
-            return -1;
-        }
     }
 
     if (gconf->appl.out_mode == PKTOUT_DIRECT) {
@@ -426,13 +393,6 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
                 != num_tx)
         {
             debug("  Error: no pktout queue for %s\n", name);
-            return -1;
-        }
-    } else {
-        if (odp_pktout_event_queue(pktio,
-                    gconf->pktios[if_idx].tx_q,
-                    num_tx) != num_tx) {
-            debug("Error: event queue query failed %s\n", name);
             return -1;
         }
     }
@@ -564,24 +524,6 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
                 }
                 break;
 
-            case 'm':
-                i = atoi(optarg);
-                if (i == 1)
-                    appl_args->in_mode = SCHED_PARALLEL;
-                else if (i == 2)
-                    appl_args->in_mode = SCHED_ATOMIC;
-                else if (i == 3)
-                    appl_args->in_mode = SCHED_ORDERED;
-                else if (i == 4)
-                    appl_args->in_mode = PLAIN_QUEUE;
-                else
-                    appl_args->in_mode = DIRECT_RECV;
-                break;
-            case 'o':
-                i = atoi(optarg);
-                if (i != 0)
-                    appl_args->out_mode = PKTOUT_QUEUE;
-                break;
             case 'h':
                 usage(argv[0]);
                 exit(EXIT_SUCCESS);
@@ -629,20 +571,7 @@ static void print_info(char *progname, appl_args_t *appl_args)
         printf(" %s", appl_args->if_names[i]);
     printf("\n"
             "Mode:            ");
-    if (appl_args->in_mode == DIRECT_RECV)
         printf("PKTIN_DIRECT, ");
-    else if (appl_args->in_mode == PLAIN_QUEUE)
-        printf("PKTIN_QUEUE, ");
-    else if (appl_args->in_mode == SCHED_PARALLEL)
-        printf("PKTIN_SCHED_PARALLEL, ");
-    else if (appl_args->in_mode == SCHED_ATOMIC)
-        printf("PKTIN_SCHED_ATOMIC, ");
-    else if (appl_args->in_mode == SCHED_ORDERED)
-        printf("PKTIN_SCHED_ORDERED, ");
-
-    if (appl_args->out_mode)
-        printf("PKTOUT_QUEUE");
-    else
         printf("PKTOUT_DIRECT");
 
     printf("\n\n");
@@ -873,6 +802,9 @@ static void gconf_init(mac_global_t *gconf)
         for (queue = 0; queue < MAX_QUEUES; queue++)
             gconf->pktios[pktio].rx_q[queue] = ODP_QUEUE_INVALID;
     }
+
+   gconf->appl.in_mode  = DIRECT_RECV;
+   gconf->appl.out_mode = PKTOUT_DIRECT;
 }
 
 //static inline odp_u16sum_t odph_chksum(void *buffer, int len)
@@ -1015,17 +947,11 @@ uint8_t odpc_initialize(int argc, char **argv)
     for (i = 0; i < if_count; ++i)
     {
         const char *dev = gconf->appl.if_names[i];
-	int num_rx, num_tx;
+        int num_rx, num_tx;
 
-	/* A queue per worker in scheduled mode */
-	num_rx = num_workers;
-	num_tx = num_workers;
-        if ((gconf->appl.in_mode == DIRECT_RECV) ||
-                (gconf->appl.in_mode == PLAIN_QUEUE)) {
-            /* A queue per assigned worker */
-            num_rx = gconf->pktios[i].num_rx_thr;
-            num_tx = gconf->pktios[i].num_tx_thr;
-        }
+        /* A queue per assigned worker */
+        num_rx = gconf->pktios[i].num_rx_thr;
+        num_tx = gconf->pktios[i].num_tx_thr;
 
         if (create_pktio(dev, i, num_rx, num_workers, gconf->pool))
             exit(EXIT_FAILURE);
@@ -1047,8 +973,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 
     macs_set_queue_afinity();
 
-    if (gconf->appl.in_mode == DIRECT_RECV ||
-            gconf->appl.in_mode == PLAIN_QUEUE)
+    if (gconf->appl.in_mode == DIRECT_RECV)
         print_port_mapping();
 
     /* Initialize all the tables defined in p4 src */
@@ -1065,12 +990,7 @@ uint8_t odpc_initialize(int argc, char **argv)
 
     stats = gconf->stats;
 
-    if (gconf->appl.in_mode == DIRECT_RECV)
-        thr_run_func = odpc_worker_mode_direct;
-    else if (gconf->appl.in_mode == PLAIN_QUEUE)
-        thr_run_func = odpc_worker_mode_queue;
-    else /* SCHED_PARALLEL / SCHED_ATOMIC / SCHED_ORDERED */
-        thr_run_func = odpc_worker_mode_sched;
+    thr_run_func = odpc_worker_mode_direct;
 
     /* Create worker threads */
     cpu = maco_get_first_cpu(&cpumask);
