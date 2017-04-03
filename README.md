@@ -17,7 +17,7 @@ MACSAD uses ODP for forwarding plane developement. Clone the ODP git project in 
 
 After compiling ODP, it is necessary to set the environment variable `ODP_SDK` as below:
 
-- `export ODP_SDK=\<path_of_ODP
+- `export ODP_SDK=\<path_of_ODP>`
 
 NOTE: It can also be added to the `~/.bashrc` file.
 
