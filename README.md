@@ -22,7 +22,7 @@ Then, clone the ODP git project in any directory of your choice and compile.
 Now we need to make a link of the odp helper to the new folder that we created and set the enviroment variable `ODP_SDK` as below:
 
 - `ln -s </odp/helper> </tools/odp>`
-- `export ODP_SDK=\<path_of_ODP>
+- `export ODP_SDK=\<path_of_ODP>`
 - `export LD_LIBRARY_PATH=$ODP_SDK/lib/.libs:$LD_LIBRARY_PAT`
 
 NOTE: It can also be added to the `~/.bashrc` file.
