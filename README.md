@@ -5,19 +5,25 @@ Follow the steps below to setup and run MACSAD on a Ubuntu 14.0.
 # Part 1
 ---
 ##ODP:
+MACSAD uses ODP for forwarding plane developement. Fist of all, we need to create a directory in the same folder where the MACSAD will be cloned:
 
-MACSAD uses ODP for forwarding plane developement. Clone the ODP git project in any directory of your choice and compile.
+- `mkdir tools`
+- `mkdir tools/odp`
+
+Then, clone the ODP git project in any directory of your choice and compile.
 
 - `git clone https://git.linaro.org/lng/odp.git`
 - `cd odp`
-- `git checkout tags/v1.10.1.0`
 - `./bootstrap`
-- `./configure`
+- './configure --disable-abi-compat --disable-debug-print --disable-debug --disable-shared --disable-helper-debug-print --prefix=<tools/od folderp>'
 - `make`
+- `make install`
 
-After compiling ODP, it is necessary to set the environment variable `ODP_SDK` as below:
+Now we need to make a link of the odp helper to the new folder that we created and set the enviroment variable `ODP_SDK` as below:
 
-- `export ODP_SDK=\<path_of_ODP
+- `ln -s </odp/helper> </tools/odp>`
+- `export ODP_SDK=\<path_of_ODP>
+- `export LD_LIBRARY_PATH=$ODP_SDK/lib/.libs:$LD_LIBRARY_PAT`
 
 NOTE: It can also be added to the `~/.bashrc` file.
 
@@ -28,7 +34,7 @@ Clone the MACSAD project.
 
 - `git clone https://github.com/intrig-unicamp/mac.git`
 - `cd mac`
-- `git checkout v0.2`
+- `export LD_LIBRARY_PATH=$ODP_SDK/lib`
 
 MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
@@ -37,12 +43,13 @@ MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
 ##P4-Hlir:
 
-Install p4-Hlir as below:
-
-_Dependencies:_
+Install P4-Hlir dependencies:
 
 - `sudo apt-get install python-yaml`
 - `sudo apt-get install graphviz`
+
+Install p4-Hlir running the following command:
+
 - `sudo python setup.py install`
 
 NOTE: For any issues refer the README file under p4-hlir directory.
