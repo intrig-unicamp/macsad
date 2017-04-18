@@ -15,7 +15,7 @@ Then, clone the ODP git project in any directory of your choice and compile.
 - `git clone https://git.linaro.org/lng/odp.git`
 - `cd odp`
 - `./bootstrap`
-- ' ./configure --disable-abi-compat --disable-debug-print --disable-debug --disable-shared --disable-helper-debug-print --prefix=<tools/od folderp>'
+- `./configure --disable-abi-compat --disable-debug-print --disable-debug --disable-shared --disable-helper-debug-print --prefix=<tools/od folderp>`
 - `make`
 - `make install`
 
