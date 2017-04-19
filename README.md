@@ -23,7 +23,7 @@ Now we need to make a link of the odp helper to the new folder that we created a
 
 - `ln -s </odp/helper> <tools/odp>`
 - `export ODP_SDK=\<tools/odp>`
-- `export LD_LIBRARY_PATH=$ODP_SDK/lib/.libs:$LD_LIBRARY_PAT`
+- `export LD_LIBRARY_PATH=$ODP_SDK/lib:$LD_LIBRARY_PATH`
 
 NOTE: It can also be added to the `~/.bashrc` file.
 
@@ -38,7 +38,6 @@ Clone the MACSAD project.
 
 - `git clone https://github.com/intrig-unicamp/mac.git`
 - `cd mac`
-- `export LD_LIBRARY_PATH=$ODP_SDK/lib`
 
 MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
