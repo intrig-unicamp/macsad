@@ -1,6 +1,6 @@
 MACSAD
 ==========
-Follow the steps below to setup and run MACSAD on a Ubuntu 14.0.
+Follow the steps below to setup and run MACSAD on a Ubuntu 14.0 and above.
 
 # Part 1
 ---
@@ -32,7 +32,7 @@ NOTE: It can also be added to the `~/.bashrc` file.
 
 Go back to mac folder using the following:
 
-- `cd ../../`
+- `cd ../`
 
 Clone the MACSAD project.
 
