@@ -15,14 +15,14 @@ Then, clone the ODP git repository and compile it.
 - `git clone https://git.linaro.org/lng/odp.git`
 - `cd odp`
 - `./bootstrap`
-- `./configure --disable-abi-compat --disable-debug-print --disable-debug --disable-shared --disable-helper-debug-print --prefix=</tools/odp>`
+- `./configure --disable-abi-compat --prefix=<tools/odp>`
 - `make`
 - `make install`
 
 Now we need to make a link of the odp helper to the new folder that we created and set the enviroment variable `ODP_SDK` as below:
 
-- `ln -s </odp/helper> </tools/odp>`
-- `export ODP_SDK=\</tools/odp>`
+- `ln -s </odp/helper> <tools/odp>`
+- `export ODP_SDK=\<tools/odp>`
 - `export LD_LIBRARY_PATH=$ODP_SDK/lib/.libs:$LD_LIBRARY_PAT`
 
 NOTE: It can also be added to the `~/.bashrc` file.
