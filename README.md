@@ -13,16 +13,17 @@ MACSAD uses ODP for forwarding plane developement. Fist of all, we need to creat
 Then, clone the ODP git repository and compile it.
 
 - `git clone https://github.com/Linaro/odp`
+- `git checkout v1.14.0.0`
 - `cd odp`
 - `./bootstrap`
-- `./configure --disable-abi-compat --prefix=<tools/odp>`
+- `./configure --disable-abi-compat --prefix=../tools/odp`
 - `make`
 - `make install`
 
 Now we need to make a link of the odp helper to the new folder that we created and set the enviroment variable `ODP_SDK` as below:
 
-- `ln -s </odp/helper> <tools/odp>`
-- `export ODP_SDK=\<tools/odp>`
+- `ln -s /helper ../tools/odp`
+- `export ODP_SDK=../tools/odp`
 - `export LD_LIBRARY_PATH=$ODP_SDK/lib:$LD_LIBRARY_PATH`
 
 NOTE: It can also be added to the `~/.bashrc` file.
