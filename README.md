@@ -1,6 +1,6 @@
 MACSAD
 ==========
-Follow the steps below to setup and run MACSAD on a Ubuntu 14.0 and above.
+Follow the steps below to setup and run MACSAD on a Ubuntu 14.0 and later.
 
 # Part 1
 ---
