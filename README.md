@@ -15,20 +15,24 @@ Then, clone the ODP git project in any directory of your choice and compile.
 - `git clone https://git.linaro.org/lng/odp.git`
 - `cd odp`
 - `./bootstrap`
-- `./configure --disable-abi-compat --disable-debug-print --disable-debug --disable-shared --disable-helper-debug-print --prefix=<tools/path_of_ODP>`
+- `./configure --disable-abi-compat --disable-debug-print --disable-debug --disable-shared --disable-helper-debug-print --prefix=</tools/odp>`
 - `make`
 - `make install`
 
 Now we need to make a link of the odp helper to the new folder that we created and set the enviroment variable `ODP_SDK` as below:
 
 - `ln -s </odp/helper> </tools/odp>`
-- `export ODP_SDK=\<path_of_ODP>`
+- `export ODP_SDK=\</tools/odp>`
 - `export LD_LIBRARY_PATH=$ODP_SDK/lib/.libs:$LD_LIBRARY_PAT`
 
 NOTE: It can also be added to the `~/.bashrc` file.
 
 # Part 2
 ---
+
+Go back to mac folder using the following:
+
+- `cd ../`
 
 Clone the MACSAD project.
 
@@ -48,8 +52,9 @@ Install P4-Hlir dependencies:
 - `sudo apt-get install python-yaml`
 - `sudo apt-get install graphviz`
 
-Install p4-Hlir running the following command:
+Go to p4-Hlir folder and install is running the following command:
 
+- `p4-hlir/`
 - `sudo python setup.py install`
 
 NOTE: For any issues refer the README file under p4-hlir directory.
@@ -65,7 +70,7 @@ NOTE: This needs to be done everytime the P4 source file is modified or if any o
 
 2) Create veth interfaces:
 
-- `cd /script`
+- `cd /scripts`
 - `./veth_create.sh`
 
 3) Set the environment variable `LD_LIBRARY_PATH`:
