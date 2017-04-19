@@ -10,7 +10,7 @@ MACSAD uses ODP for forwarding plane developement. Fist of all, we need to creat
 - `mkdir tools`
 - `mkdir tools/odp`
 
-Then, clone the ODP git project in any directory of your choice and compile.
+Then, clone the ODP git repository and compile it.
 
 - `git clone https://git.linaro.org/lng/odp.git`
 - `cd odp`
