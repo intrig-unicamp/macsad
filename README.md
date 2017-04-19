@@ -32,7 +32,7 @@ NOTE: It can also be added to the `~/.bashrc` file.
 
 Go back to mac folder using the following:
 
-- `cd ../`
+- `cd ../../`
 
 Clone the MACSAD project.
 
