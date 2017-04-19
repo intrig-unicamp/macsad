@@ -2,7 +2,7 @@ MACSAD
 ==========
 Follow the steps below to setup and run MACSAD on a Ubuntu 14.0 and later.
 
-In this tutorial are going to install the MACSAD at `/root` folder 
+Note: In this tutorial we are going to install the MACSAD at `/root` folder 
 
 # Part 1
 ---
