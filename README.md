@@ -1,23 +1,32 @@
 MACSAD
 ==========
-Follow the steps below to setup and run MACSAD on a Ubuntu 14.0.
+Follow the steps below to setup and run MACSAD on a Ubuntu 14.0 and later.
+
+Note: In this tutorial we are going to install the MACSAD at `/root` folder. 
 
 # Part 1
 ---
 ##ODP:
+MACSAD uses ODP for forwarding plane developement. Fist of all, we need to create a directory in the same folder where the MACSAD will be cloned:
 
-MACSAD uses ODP for forwarding plane developement. Clone the ODP git project in any directory of your choice and compile.
+- `mkdir tools`
+- `mkdir tools/odp`
 
-- `git clone https://git.linaro.org/lng/odp.git`
+Then, clone the ODP git repository and compile it.
+
+- `git clone https://github.com/Linaro/odp`
 - `cd odp`
-- `git checkout tags/v1.10.1.0`
+- `git checkout v1.14.0.0`
 - `./bootstrap`
-- `./configure`
+- `./configure --disable-abi-compat --prefix=/root/tools/odp`
 - `make`
+- `make install`
 
-After compiling ODP, it is necessary to set the environment variable `ODP_SDK` as below:
+Now we need to make a link of the odp helper to the new folder that we created and set the enviroment variable `ODP_SDK` as below:
 
-- `export ODP_SDK=\<path_of_ODP>`
+- `ln -s /helper /root/tools/odp`
+- `export ODP_SDK=/root/tools/odp`
+- `cd ..`
 
 NOTE: It can also be added to the `~/.bashrc` file.
 
@@ -28,7 +37,6 @@ Clone the MACSAD project.
 
 - `git clone https://github.com/intrig-unicamp/mac.git`
 - `cd mac`
-- `git checkout v0.2`
 
 MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
@@ -37,13 +45,16 @@ MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
 ##P4-Hlir:
 
-Install p4-Hlir as below:
-
-_Dependencies:_
+Install P4-Hlir dependencies:
 
 - `sudo apt-get install python-yaml`
 - `sudo apt-get install graphviz`
+
+Go to p4-Hlir folder and install is running the following command:
+
+- `cd p4-hlir`
 - `sudo python setup.py install`
+- `cd ../..`
 
 NOTE: For any issues refer the README file under p4-hlir directory.
 
@@ -58,12 +69,11 @@ NOTE: This needs to be done everytime the P4 source file is modified or if any o
 
 2) Create veth interfaces:
 
-- `cd /script`
-- `./veth_create.sh`
+- `./scripts/veth_create.sh`
 
 3) Set the environment variable `LD_LIBRARY_PATH`:
 
-- `export LD_LIBRARY_PATH=$ODP_SDK/lib/.libs:$LD_LIBRARY_PATH`
+- `export LD_LIBRARY_PATH=$ODP_SDK/lib:$LD_LIBRARY_PATH`
 
 NOTE: It can also be added to the `~/.bashrc` file.
 
