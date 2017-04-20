@@ -26,16 +26,12 @@ Now we need to make a link of the odp helper to the new folder that we created a
 
 - `ln -s /helper /root/tools/odp`
 - `export ODP_SDK=/root/tools/odp`
-- `export LD_LIBRARY_PATH=$ODP_SDK/lib:$LD_LIBRARY_PATH`
+- `cd ..`
 
 NOTE: It can also be added to the `~/.bashrc` file.
 
 # Part 2
 ---
-
-Go back to mac folder using the following:
-
-- `cd ../`
 
 Clone the MACSAD project.
 
@@ -56,8 +52,9 @@ Install P4-Hlir dependencies:
 
 Go to p4-Hlir folder and install is running the following command:
 
-- `p4-hlir/`
+- `cd p4-hlir`
 - `sudo python setup.py install`
+- `cd ../..`
 
 NOTE: For any issues refer the README file under p4-hlir directory.
 
@@ -72,12 +69,11 @@ NOTE: This needs to be done everytime the P4 source file is modified or if any o
 
 2) Create veth interfaces:
 
-- `cd /scripts`
-- `./veth_create.sh`
+- `./scripts/veth_create.sh`
 
 3) Set the environment variable `LD_LIBRARY_PATH`:
 
-- `export LD_LIBRARY_PATH=$ODP_SDK/lib/.libs:$LD_LIBRARY_PATH`
+- `export LD_LIBRARY_PATH=$ODP_SDK/lib:$LD_LIBRARY_PATH`
 
 NOTE: It can also be added to the `~/.bashrc` file.
 
