@@ -1,8 +1,7 @@
 #include "handlers.h"
 #include "messages.h"
 #include <stdio.h>
-
-
+//#define DBG
 int handle_p4_msg(char* buffer, int length, p4_msg_callback cb)
 {
 	struct p4_header* header;
@@ -14,23 +13,31 @@ int handle_p4_msg(char* buffer, int length, p4_msg_callback cb)
 	header = netconv_p4_header((struct p4_header*)buffer);
 
 	if (header->length>length) return -1;
-	
+
 	switch (header->type)
 	{
 		case P4T_SET_DEFAULT_ACTION:
+#ifdef DBG
 			printf("  :::: SET_DEFAULT_ACTION\n");
+#endif
 			rval = handle_p4_set_default_action( netconv_p4_set_default_action((struct p4_set_default_action*)buffer), &ctrl_m);
+#ifdef DBG
 			printf("    :: rval=%d\n", rval);
+#endif
 			if (rval<0) return rval;
 			cb(&ctrl_m);
 			break;
 		case P4T_ADD_TABLE_ENTRY:
+#ifdef DBG
 			printf("  :::: ADD_TABLE_ENTRY\n");
-                        rval = handle_p4_add_table_entry(netconv_p4_add_table_entry((struct p4_add_table_entry*)buffer), &ctrl_m);
-                        printf("    :: rval=%d\n", rval);
-                        if (rval<0) return rval;
-                        cb(&ctrl_m);
-                        break;
+#endif
+			rval = handle_p4_add_table_entry(netconv_p4_add_table_entry((struct p4_add_table_entry*)buffer), &ctrl_m);
+#ifdef DBG
+			printf("    :: rval=%d\n", rval);
+#endif
+			if (rval<0) return rval;
+			cb(&ctrl_m);
+			break;
 		default:
 			printf("  :::: Message type is not implemented! type=%d\n", header->type);
 			cb(&ctrl_m);
@@ -57,7 +64,7 @@ int handle_p4_set_default_action(struct p4_set_default_action* m, struct p4_ctrl
 
 	if (num_params>P4_MAX_NUMBER_OF_ACTION_PARAMETERS)
 		return -1;	/*Too much arguments*/
-	
+
 	ctrl_m->num_action_params = num_params;
 
 	for (i=0;i<num_params;++i)
@@ -82,7 +89,7 @@ int handle_p4_add_table_entry(struct p4_add_table_entry* m, struct p4_ctrl_msg* 
         ctrl_m->xid = m->header.xid;
         ctrl_m->table_name = m->table_name;
 	num_params = m->read_size;
-	
+
 	if (num_params>P4_MAX_NUMBER_OF_FIELD_MATCHES)
 		return -1; /*Too much field matching rules*/
 

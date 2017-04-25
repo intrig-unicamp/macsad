@@ -28,11 +28,16 @@
 *.x86_64
 *.hex
 mac_ad
+macsad
 
 #proj generated files
 src/*.pyc
 build/
-dpdk_controller
+#src/hardware_dep/shared/ctrl_plane/mac_controller
+mac_controller
+mac_l2_l3_controller
+mac_l3_controller
+mac_l3-full_controller
 
 # Debug files
 *.dSYM/
@@ -46,6 +51,7 @@ dpdk_controller
 ehthumbs.db
 Thumbs.db
 .swp
+core
 
 #Tools generated files
 tags

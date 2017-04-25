@@ -1,37 +1,49 @@
+#!/bin/bash
 
 # set default values for variables if they are not already defined
-#ARCH=${ARCH-odp}
-#P4DPDK_OPTS=${P4DPDK_OPTS--c 0x3 -n 2 -- -P -p 0x3 --config "(0,0,0),(1,0,0)"}
-#P4DPDK_OPTS=${P4DPDK_OPTS--c 3 -n 2 -- -P -p 0x3 --config "(0,0,0),(1,0,0)"}
 MAKE_CMD=${MAKE_CMD-make}
 
-# Compile test controller
+# Compile Controller
 cd src/hardware_dep/shared/ctrl_plane
 make clean
-make mac_controller
+make all
+ERROR_CODE=$?
+if [ "$ERROR_CODE" -ne 0 ]; then
+    echo Controller compilation failed with error code $ERROR_CODE
+    exit 1
+fi
 cd -
 
-echo "odp ctrl make done"
-
-# Restart test controller in background
+# Restart mac controller in background
 sudo killall mac_controller
+sudo killall mac_l2_l3_controller
 sudo killall mac_l3_controller
 sudo killall mac_l3-full_controller
+sudo pkill -f mac_controller
+sudo pkill -f mac_l2_l3_controller
+sudo pkill -f mac_l3_controller
+sudo pkill -f mac_l3-full_controller
 ./src/hardware_dep/shared/ctrl_plane/mac_controller &
+#./src/hardware_dep/shared/ctrl_plane/mac_l2_l3_controller &
+#./src/hardware_dep/shared/ctrl_plane/mac_l3_controller &
+#./src/hardware_dep/shared/ctrl_plane/mac_l3-full_controller &
 
+echo "Controller started... "
 
-echo "odp ctrl start "
-# Complete rebuild starting...
-#rm -rf build
+echo "Creating Datapath Logic from P4 source."
+rm -rf build
+python src/transpiler.py examples/p4_src/l2_switch_test.p4
+#python src/transpiler.py examples/p4_src/l2_l3.p4
+#python src/transpiler.py examples/p4_src/l3_routing_test.p4
+#python src/transpiler.py examples/p4_src/l3_routing-full.p4
+ERROR_CODE=$?
+if [ "$ERROR_CODE" -ne 0 ]; then
+    echo Transpiler failed with error code $ERROR_CODE
+    exit 1
+fi
 
-#python src/compiler.py examples/p4_src/l2_switch_test.p4
 # Compile C sources
-#${MAKE_CMD} -j16
+make clean;${MAKE_CMD} -j16
 
-# Should the program produce any output, it will be put here
-mkdir -p build/output
-
-# Start the program
-#echo "run build/example_odp1"
-#sudo ./build/example_odp1 ${P4DPDK_OPTS}
+sudo rm -rf /tmp/odp*
 

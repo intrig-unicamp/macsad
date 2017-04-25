@@ -1,0 +1,181 @@
+import p4_hlir.hlir.p4 as p4
+from utils.hlir import *
+from utils.misc import addError, addWarning 
+
+def format_state(state):
+    generated_code = ""
+    if isinstance(state, p4.p4_parse_state):
+        #[ return parse_state_${state.name}(pd, buf, tables);
+    elif isinstance(state, p4.p4_parser_exception):
+        print "Parser exceptions are not supported yet."
+    else: #Control function (parsing is finished)
+        #[ {
+        #[   if(verify_packet(pd)) p4_pe_checksum(pd);
+        #[   ${format_p4_node(state)}
+        #[ }
+    return generated_code
+
+def get_key_byte_width(branch_on):
+    """
+    :param branch_on: list of union(p4_field, tuple)
+    :rtype:           int
+    """
+    key_width = 0
+    for switch_ref in branch_on:
+        if type(switch_ref) is p4.p4_field:
+            if not is_vwf(switch_ref): #Variable width field in parser return select statement is not supported
+                key_width += (switch_ref.width+7)/8
+        elif type(switch_ref) is tuple:
+            key_width += max(4, (switch_ref[1] + 7) / 8)
+    return key_width
+
+pe_dict = { "p4_pe_index_out_of_bounds" : None,
+            "p4_pe_out_of_packet" : None,
+            "p4_pe_header_too_long" : None,
+            "p4_pe_header_too_short" : None,
+            "p4_pe_unhandled_select" : None,
+            "p4_pe_checksum" : None,
+            "p4_pe_default" : None }
+
+pe_default = p4.p4_parser_exception(None, None)
+pe_default.name = "p4_pe_default"
+pe_default.return_or_drop = p4.P4_PARSER_DROP
+
+for pe_name, pe in pe_dict.items():
+    pe_dict[pe_name] = pe_default
+for pe_name, pe in hlir.p4_parser_exceptions.items():
+    pe_dict[pe_name] = pe
+
+#[ #include "odp_lib.h"
+#[ #include "actions.h" // apply_table_* and action_code_*
+#[
+#[ extern int verify_packet(packet_descriptor_t* pd);
+#[
+#[ void print_mac(uint8_t* v) { printf("%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX\n", v[0], v[1], v[2], v[3], v[4], v[5]); }
+#[ void print_ip(uint8_t* v) { printf("%d.%d.%d.%d\n",v[0],v[1],v[2],v[3]); }
+#[ 
+
+for pe_name, pe in pe_dict.items():
+    #[ static inline void ${pe_name}(packet_descriptor_t *pd) {
+    if pe.return_or_drop == p4.P4_PARSER_DROP:
+        #[ pd->dropped = 1;
+    else:
+        format_p4_node(pe.return_or_drop)
+    #[ }
+
+for hi_name, hi in hlir.p4_header_instances.items():
+    hi_prefix = hdr_prefix(hi.name)
+    #[ static void
+    #[ extract_header_${hi}(uint8_t* buf, packet_descriptor_t* pd) {
+    #[     pd->headers[${hi_prefix}].pointer = buf;
+    if isinstance(hi.header_type.length, p4.p4_expression):
+        #[     uint32_t hdr_length = ${format_expr(resolve_field_ref(hlir, hi, hi.header_type.length))};
+        #[     pd->headers[${hi_prefix}].length = hdr_length;
+        #[     pd->headers[${hi_prefix}].var_width_field_bitwidth = hdr_length * 8 - ${sum([f[1] if f[1] != p4.P4_AUTO_WIDTH else 0 for f in hi.header_type.layout.items()])};
+        #[     if(hdr_length > ${hi.header_type.max_length}) //TODO: is this the correct place for the check
+        #[         p4_pe_header_too_long(pd);
+    #[ }
+    #[ 
+
+for state_name, parse_state in hlir.p4_parse_states.items():
+    #[ static void parse_state_${state_name}(packet_descriptor_t* pd, uint8_t* buf, lookup_table_t** tables);
+#[
+
+for state_name, parse_state in hlir.p4_parse_states.items():
+    branch_on = parse_state.branch_on
+    if branch_on:
+        #[ static inline void build_key_${state_name}(packet_descriptor_t *pd, uint8_t *buf, uint8_t *key) {
+        for switch_ref in branch_on:
+            if type(switch_ref) is p4.p4_field:
+                field_instance = switch_ref
+                if is_vwf(field_instance):
+                    addError("generating build_key_" + state_name, "Variable width field '" + str(field_instance) + "' in parser '" + state_name + "' return select statement is not supported")
+                else:
+                    byte_width = (field_instance.width + 7) / 8
+                    if byte_width <= 4:
+                        #[ EXTRACT_INT32_BITS(pd, ${fld_id(field_instance)}, *(uint32_t*)key)
+                        #[ key += sizeof(uint32_t);
+                    else:
+                        #[ EXTRACT_BYTEBUF(pd, ${fld_id(field_instance)}, key)
+                        #[ key += ${byte_width};
+            elif type(switch_ref) is tuple:
+                #[     uint8_t* ptr;
+                offset, width = switch_ref
+                # TODO
+                addError("generating parse state %s"%state_name, "current() calls are not supported yet")
+        #[ }
+
+for state_name, parse_state in hlir.p4_parse_states.items():
+    #[ static void parse_state_${state_name}(packet_descriptor_t* pd, uint8_t* buf, lookup_table_t** tables)
+    #[ {
+    #[     uint32_t value32;
+    #[     (void)value32;
+    
+    for call in parse_state.call_sequence:
+        if call[0] == p4.parse_call.extract:
+            hi = call[1] 
+            #[     extract_header_${hi}(buf, pd);
+            #[     buf += pd->headers[${hdr_prefix(hi.name)}].length;
+            for f in hi.fields:
+                if parsed_field(hlir, f):
+                    if f.width <= 32:
+                        #[ EXTRACT_INT32_AUTO(pd, ${fld_id(f)}, value32)
+                        #[ pd->fields.${fld_id(f)} = value32;
+                        #[ pd->fields.attr_${fld_id(f)} = 0;
+        elif call[0] == p4.parse_call.set:
+            dest_field, src = call[1], call[2]
+            if type(src) is int or type(src) is long:
+                hex(src)
+                # TODO
+            elif type(src) is p4.p4_field:
+                src
+                # TODO
+            elif type(src) is tuple:
+                offset, width = src
+                # TODO
+            addError("generating parse state %s"%state_name, "set_metadata during parsing is not supported yet")
+
+    branch_on = parse_state.branch_on
+    if not branch_on:
+        branch_case, next_state = parse_state.branch_to.items()[0]
+        #[ ${format_state(next_state)}
+    else:
+        key_byte_width = get_key_byte_width(branch_on)
+        #[ uint8_t key[${key_byte_width}];
+        #[ build_key_${state_name}(pd, buf, key);
+        has_default_case = False
+        for case_num, case in enumerate(parse_state.branch_to.items()):
+            branch_case, next_state = case
+            mask_name  = "mask_value_%d" % case_num
+            value_name  = "case_value_%d" % case_num
+            if branch_case == p4.P4_DEFAULT:
+                has_default_case = True
+                #[ ${format_state(next_state)}
+                continue
+            if type(branch_case) is int:
+                value = branch_case
+                value_len, l = int_to_big_endian_byte_array(value)
+                #[     uint8_t ${value_name}[${value_len}] = {
+                for c in l:
+                    #[         ${c},
+                #[     };
+                #[     if ( memcmp(key, ${value_name}, ${value_len}) == 0)
+                #[         ${format_state(next_state)}
+            elif type(branch_case) is tuple:
+                value = branch_case[0]
+                mask = branch_case[1]
+                # TODO
+                addError("generating parse state %s"%state_name, "value masking is not supported yet")
+            elif type(branch_case) is p4.p4_parse_value_set:
+                value_set = branch_case
+                # TODO
+                addError("generating parse state %s"%state_name, "value sets are not supported yet")
+                continue
+        if not has_default_case:
+            #[     return NULL;
+    #[ }
+    #[ 
+
+#[ void parse_packet(packet_descriptor_t* pd, lookup_table_t** tables) {
+#[     parse_state_start(pd, pd->pointer, tables);
+#[ }

@@ -5,8 +5,6 @@
 #include <odp/helper/eth.h>
 #include <odp/helper/ip.h>
 
-//extern void p4_handle_packet(packet* p, unsigned portid);
-
 uint32_t enabled_port_mask = 0;
 struct ether_addr ports_eth_addr[MAX_ETHPORTS];
 
@@ -22,8 +20,6 @@ int64_t timer_period = 10 * TIMER_MILLISECOND * 1000; /* default period is 10 se
 
 #define RTE_TEST_RX_DESC_DEFAULT 128
 #define RTE_TEST_TX_DESC_DEFAULT 512
-uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
-uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 #define PKT_MBUF_DATA_SIZE      RTE_MBUF_DEFAULT_BUF_SIZE
 #define NB_PKT_MBUF				8192
@@ -38,7 +34,8 @@ uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 // note: this much space MUST be able to hold all deparsed content
 #define DEPARSE_BUFFER_SIZE		1024
 
-//=============================================================================
+extern int odp_dev_name_to_id (char *if_name);
+//============================================================================
 
 /* Send burst of packets on an output interface */
 static inline int
@@ -100,13 +97,23 @@ return 0;
 static inline void
 dbg_print_headers(packet_descriptor_t* pd)
 {
-    for (int i = 0; i < HEADER_INSTANCE_COUNT; ++i) {
-        printf("    :: header %d (type=%d, len=%d) = ", i, pd->headers[i].type, pd->headers[i].length);
-        for (int j = 0; j < pd->headers[i].length; ++j) {
-            printf("%02x ", ((uint8_t*)(pd->headers[i].pointer))[j]);
-        }
-        printf("\n");
-    }
+	char buf[100];
+	int len = 0;
+//	for (int i = 0; i < HEADER_INSTANCE_COUNT; ++i) {
+	for (int i = 1; i < HEADER_INSTANCE_COUNT; ++i) {
+		info("    :: header %d (type=%d, len=%d) = ", i, pd->headers[i].type, pd->headers[i].length);
+		for (int j = 0; j < pd->headers[i].length; ++j) {
+			if (len < 100) {
+				//	info("%02x ", ((uint8_t*)(pd->headers[i].pointer))[j]);
+				len += sprintf(buf+len, "%02x ", ((uint8_t*)(pd->headers[i].pointer))[j]);
+			}
+		}
+		info ("%s \n", buf);
+	}
+#if 0
+Try printing the hdeader  by specifying the length :   '.*' in the  printf statement
+printf("%.*s",len,buf);
+#endif
 }
 
 static inline unsigned
@@ -142,167 +149,203 @@ static inline uint32_t bitcnt(uint32_t v)
 }
 
 /* send one pkt each time */
-static void odp_send_packet(odp_packet_t *p, uint8_t port)
+static void odp_send_packet(odp_packet_t *p, uint8_t port, int thr_idx)
 {
-	int sent;
+	odp_packet_t pkt = *p;
+    unsigned buf_id;
+	info("Inside odp_send_packet \n");
+	buf_id = gconf->mconf[thr_idx].tx_pktios[port].buf.len;
 
-	sent = odp_pktout_send(gconf->pktios[port].pktout[0], p, 1);
-	if (sent < 0)
-	{
-		printf("pkt sent failed \n");
-		sent = 0;
-	}
+	gconf->mconf[thr_idx].tx_pktios[port].buf.pkt[buf_id] = pkt;
+	gconf->mconf[thr_idx].tx_pktios[port].buf.len++;
 }
 
-#define EXTRACT_EGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/6) & /*mask*/0x7fc) >> /*bitoffset*/2
-#define EXTRACT_INGRESSPORT(p) (*(uint32_t *)(((uint8_t*)(p)->headers[/*header instance id - hopefully it's the very first one*/0].pointer)+/*byteoffset*/0) & /*mask*/0x1ff) >> /*bitoffset*/0
+#define EXTRACT_EGRESSPORT(p) GET_INT32_AUTO(p, field_instance_standard_metadata_egress_port)
 
-static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port)
+#define EXTRACT_INGRESSPORT(p) GET_INT32_AUTO(p, field_instance_standard_metadata_ingress_port)
+
+static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int thr_idx)
 {
 	appl_args_t *appl = &gconf->appl;
 	uint32_t total_ports= appl->if_count;
 	int port;
+	unsigned buf_len;
+	odp_bool_t first = 1;
+	odp_packet_t pkt = *((odp_packet_t *)pd->wrapper);
 
-	printf("Broadcast: ingress port %d, total no of ports %d\n",
-			ingress_port, total_ports);
+	odp_packet_t pkt_cp_tmp;
+	pkt_cp_tmp = odp_packet_copy(*((odp_packet_t *)pd->wrapper), gconf->pool);
+	if (pkt_cp_tmp == ODP_PACKET_INVALID) {
+		debug("Error: Tmp packet copy failed for sending %s \n", __FILE__);
+		return;
+	}
+	info ("pkt cpy passed\n");
 
-	for (port = 0;port < total_ports;port++){
-		if (port != ingress_port){
-			printf("Broadcasting on o/p port id %d\n", port);
-			odp_send_packet((odp_packet_t *)pd->packet, port);
+	for (port = 0; port < total_ports; port++) {
+		if (port == ingress_port)
+			continue;
+		buf_len = gconf->mconf[thr_idx].tx_pktios[port].buf.len;
+		if (first) {
+			gconf->mconf[thr_idx].tx_pktios[port].buf.pkt[buf_len] = pkt_cp_tmp;
+			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
+			//			odp_send_packet((odp_packet_t *)pd->packet, port);
+			first = 0;
+		} else {
+			odp_packet_t pkt_cp;
+
+			pkt_cp = odp_packet_copy(pkt, gconf->pool);
+			if (pkt_cp == ODP_PACKET_INVALID) {
+				debug("Error: packet copy failed fo sending %s \n", __FILE__);
+				continue;
+			}
+			info("Bcast - i/p %d, o/p port id %d\n", ingress_port, port);
+			//	odp_send_packet(&pkt_cp, port);
+			gconf->mconf[thr_idx].tx_pktios[port].buf.pkt[buf_len] = pkt_cp;
 		}
+		gconf->mconf[thr_idx].tx_pktios[port].buf.len++;
+		sigg("[Broadcast] recvd port id - %d, sent port id - %d\n", ingress_port, port);
 	}
 
+	odp_packet_free (pkt);
 	return;
-}
-
-/* Enqueue a single packet, and send burst if queue is filled */
-static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
-{
-	macs_conf_t *mconf;
-	int port = EXTRACT_EGRESSPORT(pd);
-	int inport = EXTRACT_INGRESSPORT(pd);
-
-	mconf = &gconf->mconf[thr_idx];
-
-	printf("  :::: EGRESSING\n");
-	dbg_print_headers(pd);
-	printf("    :: deparsing headers\n");
-	printf("    :: sendPacket called\n");
-	printf("ingress port is %d and egress port is %d \n", inport, port);
-
-	if (port==100) {
-		maco_bcast_packet(pd, inport);
-	} else {
-		/* o/p queue, pkt, no. of pkt to send */
-		odp_send_packet((odp_packet_t *)pd->packet, port);
-	}
-
-	/* TODO write code to properly free the packet */
-//	odp_packet_free ((struct odp_packet_t *)pd->packet);
-
-	return 0;
 }
 
 static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 {
-	packet_desc->headers[header_instance_standard_metadata] =
-		(header_descriptor_t) {
-			.type = header_instance_standard_metadata,
-			.length = header_instance_byte_width[header_instance_standard_metadata],
-			.pointer = calloc(header_instance_byte_width[header_instance_standard_metadata], sizeof(uint8_t))
-		};
-
+    info("Entry init_metadata \n ");
 	int res32; // needs for the macro
-	MODIFY_INT32_INT32(packet_desc, field_instance_standard_metadata_ingress_port, inport); // fix? LAKI
+	MODIFY_INT32_INT32_BITS(packet_desc, field_instance_standard_metadata_ingress_port, inport);
+
+	/* validate ingressport set */
+#if 0 //To test this function
+	res32 = 0;
+	int inp = EXTRACT_INGRESSPORT(packet_desc);
+	info("[initMetadata] Inport %d is set as %d\n",inport, inp);
+#endif
 }
 
-void packet_received(odp_packet_t *p, unsigned portid, int thr_idx)
+static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
 {
-	printf(":::: EXECUTING packet recieved\n");
-	packet_descriptor_t packet_desc;
-	packet_desc.pointer = (uint8_t *)odp_packet_data(*p);
-	packet_desc.packet = (packet *)p;
+	int port = EXTRACT_EGRESSPORT(pd);
+	int inport = EXTRACT_INGRESSPORT(pd);
 
-	init_metadata(&packet_desc, portid);
+//	dbg_print_headers(pd);
+	info("send_packet: initial i/p port=%d and o/p port=%d \n", inport, port);
+    reset_headers(pd);// sugar@292
+
+	if (port==100) {
+		maco_bcast_packet(pd, inport, thr_idx);
+	} else {
+		odp_send_packet((odp_packet_t *)pd->wrapper, port, thr_idx);
+		sigg("[Unicast] recvd port id - %d, sent port id - %d\n", inport, port);
+	}
+
+	return 0;
+}
+
+void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, int thr_idx)
+{
 	struct lcore_state *state_tmp = &gconf->state;
-	handle_packet(&packet_desc, state_tmp->tables);
-//	handle_packet(&packet_desc, &state->tables);
-	send_packet(&packet_desc, thr_idx);
+    //odp_packet_prefetch(*p, 0, 12);
+	pd->pointer = (uint8_t *)odp_packet_data(*p);
+	pd->wrapper = (packet *)p;
+    info("Entry packet_received \n ");
+	init_metadata(pd, portid);
+	handle_packet(pd, state_tmp->tables);
 }
 
-void odp_main_worker (void *arg)
+/**
+ * Switch worker thread
+ * @param arg  Thread arguments of type 'macs_conf_t *'
+ */
+int odpc_worker_mode_direct(void *arg)
 {
-	int pkts, i;
-	int portid;
-	//	struct macs_conf *macs = &mconf_list[0];;
-	int thr;
-	//thread_args_t *thr_args;
-	macs_conf_t *thr_args;
-	odp_pktio_t pktio;
+	macs_conf_t *mconf = arg;
 	odp_pktin_queue_t pktin;
 	odp_pktout_queue_t pktout;
-	int pkts_ok;
 	odp_packet_t pkt_tbl[MAX_PKT_BURST];
-	unsigned long pkt_cnt = 0;
-	unsigned long err_cnt = 0;
-	unsigned long tmp = 0;
-	int if_idx;
+	odp_queue_t tx_queue;
+	packet_descriptor_t pd;
+	odp_packet_t pkt;
+	int pkts, i;
+	int port_in, num_pktio, port_out;
+	int idx = 0;
 
-	printf(":: INSIDE odp_main_worker\n");
-	thr = odp_thread_id();
-	printf("	the thread id is %d\n",thr);
-	thr_args = arg;
+	num_pktio = mconf->num_rx_pktio;
+    pktin     = mconf->rx_pktios[idx].pktin;
+    port_in  = mconf->rx_pktios[idx].rx_idx;
 
-	pktio = odp_pktio_lookup(thr_args->pktio_dev);
-	if_idx = odp_dev_name_to_id (thr_args->pktio_dev);
-
-	if (gconf->pktios[if_idx].pktio == ODP_PKTIO_INVALID) {
-		printf("  [%02i] Error: lookup of pktio %s failed\n",
-				thr, thr_args->pktio_dev);
-		return;
-	}
-	if (pktio == ODP_PKTIO_INVALID) {
-		printf("  [%02i] Error: lookup of pktio for if %s failed\n",
-				thr, thr_args->pktio_dev);
-		return;
-	}
-	printf("  [%02i] looked up pktio:%02" PRIu64 ", burst mode\n",
-			thr, odp_pktio_to_u64(pktio));
-
-	if (odp_pktin_queue(pktio, &gconf->pktios[if_idx].pktin[0], 1) != 1) {
-		printf("  [%02i] Error: no pktin queue\n", thr);
-		return;
-	}
-	if (odp_pktout_queue(pktio, &gconf->pktios[if_idx].pktout[0], 1) != 1) {
-		printf("  [%02i] Error: no pktout queue\n", thr);
-		return;
-	}
-
-	/* Currently Only one interface supported per thread.
-	 * Hence only one pktio[0] */
-	thr_args->pktio[if_idx].pktout = pktout;
+	init_dataplane(&pd, gconf->state.tables);
 
 	/* Loop packets */
-	for (;;) {
-		pkts = odp_pktin_recv(gconf->pktios[if_idx].pktin[0], pkt_tbl, MAX_PKT_BURST);
-		if (pkts > 0) {
-			for (i = 0; i < pkts; i++) {
-				odp_packet_t pkt = pkt_tbl[i];
-				packet_received(&pkt, if_idx, thr_args->thr_idx);
-			}
+    while (!exit_threads) {
+        int sent;
+        unsigned drops;
+        if (num_pktio > 1) {
+            pktin   = mconf->rx_pktios[idx].pktin;
+            port_in = mconf->rx_pktios[idx].rx_idx;
+            idx++;
+            if (idx == num_pktio)
+                idx = 0;
+        }
 
-			/* Print packet counts every once in a while */
-			tmp += pkts_ok;
-			if (odp_unlikely((tmp >= 100000) || /* OR first print:*/
-						((pkt_cnt == 0) && ((tmp-1) < MAX_PKT_BURST)))) {
-				pkt_cnt += tmp;
-				printf("  [%02i] pkt_cnt:%lu\n", thr, pkt_cnt);
-				fflush(NULL);
-				tmp = 0;
-			}
+		pkts = odp_pktin_recv(pktin, pkt_tbl, MAX_PKT_BURST);
+		if (odp_unlikely(pkts <= 0))
+			continue;
+#if 0
+if(port_in) {pktout = mconf->tx_pktios[0].pktout;
+}else {pktout = mconf->tx_pktios[1].pktout;}
+            sent = odp_pktout_send(pktout, pkt_tbl, pkts);
+            sent = (sent < 0) ? 0 : sent;
+            drops = pkts - sent;
+            if (odp_unlikely(drops)) {
+                /* Drop rejected packets */
+    odp_packet_free_multi(&pkt_tbl[sent], drops);
+}
+#endif
+#if 1
+		for (i = 0; i < pkts; i++) {
+			pkt = pkt_tbl[i];
+			packet_received(&pd, &pkt, port_in, mconf->thr_idx);
+			send_packet (&pd, mconf->thr_idx);
 		}
+        /* Empty all thread local tx buffers */
+        for (port_out = 0; port_out < gconf->appl.if_count;
+				port_out++) {
+			info("	Start emptying Tx buffer for port=%d\n",port_out);
+			unsigned tx_pkts;
+            odp_packet_t *tx_pkt_tbl;
+
+            if (port_out == port_in ||
+                mconf->tx_pktios[port_out].buf.len == 0)
+                continue;
+
+            tx_pkts = mconf->tx_pktios[port_out].buf.len;
+            mconf->tx_pktios[port_out].buf.len = 0;
+
+            tx_pkt_tbl = mconf->tx_pktios[port_out].buf.pkt;
+
+            pktout = mconf->tx_pktios[port_out].pktout;
+
+			sent = odp_pktout_send(pktout, tx_pkt_tbl, tx_pkts);
+            sent = (sent < 0) ? 0 : sent;
+            drops = tx_pkts - sent;
+            if (odp_unlikely(drops)) {
+                /* Drop rejected packets */
+	odp_packet_free_multi(&tx_pkt_tbl[sent], drops);
+#if 0
+				unsigned i;
+                for (i = sent; i < tx_pkts; i++)
+                    odp_packet_free(tx_pkt_tbl[i]);
+#endif
+			}
+			info("	Finish emptying Tx buffer for port=%d\n",port_out);
+        }
+
+			info("	Finish emptying all Tx buffers for thread %d\n",mconf->thr_idx);
+#endif
 	}
 
-	return;
+    /* Make sure that latest stat writes are visible to other threads */
+	return 0;
 }

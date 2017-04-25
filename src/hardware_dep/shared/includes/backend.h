@@ -6,6 +6,29 @@
 #include "data_plane_data.h"
 #include "dataplane.h"
 
+#ifdef NDEBUG
+#define debug(args, ...)
+#else
+#define debug(args, ...) fprintf(stderr, "[DEBUG] %s:%d " args "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#endif
+
+#ifdef NINFO
+#define info(args, ...)
+#else
+#define info(args, ...) fprintf(stderr, "[INFO] %s:%d " args "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#endif
+
+#ifdef NSIGG
+#define sigg(args, ...)
+#else
+#define sigg(args, ...) fprintf(stdout, args "\n", ##__VA_ARGS__)
+#endif
+/*
+#define debug_print(fmt, ...) \
+        do { if (DEBUG) fprintf(stderr, "%s:%d:%s(): " fmt, __FILE__, \
+                                __LINE__, __func__, __VA_ARGS__); } while (0)
+*/
+
 typedef struct packet_descriptor_s packet_descriptor_t;
 typedef struct header_descriptor_s header_descriptor_t;
 typedef struct header_reference_s  header_reference_t;
@@ -42,6 +65,11 @@ void remove_header          (packet_descriptor_t* p, header_reference_t h);
 void drop                   (packet_descriptor_t* p);
 void generate_digest        (backend bg, char* name, int receiver, struct type_field_list* digest_field_list);
 void no_op                  ();
+
+//=============================================================================
+// Calculations
+//uint16_t calculate_csum16(const void* buf, uint16_t length);
+//uint32_t packet_length(packet_descriptor_t* pd);
 
 //copy_header
 ////void set_field_to_hash_index(packet* p, field* f, field* flc, int base, int size);/

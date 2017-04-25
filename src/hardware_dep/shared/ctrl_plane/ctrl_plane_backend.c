@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h> 
+#include <netdb.h>
 #include "sock_helpers.h"
 #include "fifo.h"
 #include <sys/select.h>
@@ -18,6 +18,8 @@
 #define P4_BG_QUEUE_SIZE 1024
 
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
+
+//#define DBG
 
 typedef struct mem_cell_st {
 	char* data;
@@ -70,7 +72,7 @@ void backend_processor(void* bg)
 		tv.tv_usec = 0;
 		rfs = master;
 		rv = select(bgt->controller_sock+1, &rfs, 0, 0, &tv);
-		
+
 		if (bgt->shutdown==1) break;
 		if (rv==0) continue; /* timeout */
 
@@ -101,8 +103,9 @@ void input_processor(void *bg)
 		if (mem_cell==0) continue;
 
 		rval = handle_p4_msg( mem_cell->data, mem_cell->length, bgt->cb );
+#ifdef DGB
 		printf("  :::: Handle msg: %d\n", rval);
-
+#endif
 		detouch_mem_cell( bgt, mem_cell );
 	}
 }
@@ -119,7 +122,7 @@ void output_processor(void *bg)
 
 		if (bgt->shutdown==1) break;
                 if (mem_cell==0) continue;
-		
+
                 write_p4_msg(bgt->controller_sock, mem_cell->data, mem_cell->length);
 
                 detouch_mem_cell( bgt, mem_cell );
@@ -200,7 +203,7 @@ backend create_backend(int num_of_threads, int queue_size, char* controller_name
 	        fprintf(stderr,"ERROR, Controller cannot be found, no such host: %s\n", controller_name);
         	return 0;
 	}
-	
+
 	memset((void*) &(bg->controller_addr), 0, sizeof(struct sockaddr_in));
 	bg->controller_addr.sin_family = AF_INET;
 	memcpy( (void*) &(bg->controller_addr.sin_addr), (void*) (server->h_addr), server->h_length);
@@ -217,9 +220,9 @@ void launch_backend(backend bg)
 
         if( connect( bgt->controller_sock, (struct sockaddr *) &(bgt->controller_addr), sizeof(struct sockaddr_in) ) == -1 )
         {
-                fprintf(stdout, "Connecting stream socket\n" );
+//                fprintf(stdout, "Connecting stream socket\n" );
                 return;
-        }  
+        }
 
 	/* !!!!!!!!!!! Launch the client thread connecting to the controller  */
 
@@ -234,8 +237,8 @@ void stop_backend(backend bg)
 {
 	backend_t *bgt = (backend_t*) bg;
 	bgt->shutdown = 1;
-	
-	destroy_threadpool(bgt->tpool);	
+
+	destroy_threadpool(bgt->tpool);
 }
 
 
@@ -259,7 +262,7 @@ void destroy_backend(backend bg)
                 free(tmp);
                 tmp = bgt->unused_head;
         }
-	
+
 	free(bgt->msg_buffer);
 
         pthread_mutex_destroy(&(bgt->memlock));
@@ -308,7 +311,7 @@ void detouch_mem_cell(backend_t* bgt, mem_cell_t* cell)
 		cell->next = bgt->unused_head;
 		cell->prev = 0;
 		bgt->unused_head = cell;
-		if (bgt->used_head==0)		
+		if (bgt->used_head==0)
 			pthread_cond_signal(&(bgt->mem_not_empty));
         pthread_mutex_unlock(&(bgt->memlock));
 }
@@ -334,15 +337,15 @@ digest create_digest(backend bg, char* name)
 	dg = (digest_t*) malloc( sizeof(digest_t) );
 	if (dg==0)
 	{
-                fprintf(stderr, "Out of memory to a new digest message!\n");
+                fprintf(stderr, "No memory for new digest message!\n");
                 return 0;
 	}
-	
+
 	dg->mem_cell = touch_mem_cell(bgt);
 	if (dg->mem_cell == 0)
 	{
 		fprintf(stderr, "Out of memory pool - memcell cannot be assigned to a new digest message!\n");
-		return 0;	
+		return 0;
 	}
 
 	create_p4_header(dg->mem_cell->data, 0, dg->mem_cell->length);
@@ -382,7 +385,7 @@ digest add_digest_field(digest d, void* value, uint32_t length)
 	        fprintf(stderr, "Too long value array! The maximum byte length allowed is %d\n", P4_MAX_FIELD_VALUE_LENGTH);
                 return 0;
 	}
-	
+
 	memcpy( dfield->value, value, MIN(bytelength, P4_MAX_FIELD_VALUE_LENGTH));
 	dfield->length = length;
 	netconv_p4_digest_field(dfield);
@@ -390,4 +393,4 @@ digest add_digest_field(digest d, void* value, uint32_t length)
 	return d;
 }
 
-	
+

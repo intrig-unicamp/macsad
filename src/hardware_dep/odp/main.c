@@ -3,9 +3,9 @@
 int main(int argc, char** argv)
 {
 #ifdef ODP_BK
-    printf("Starting ODP-P4 DataPlane\n");
+    info("Starting MACSAD DataPlane.\n");
     odpc_initialize(argc, argv);
-    printf("Exiting Program.\n");
+    info("Exiting MACSAD Program.\n");
 #endif // ODP_BK
     return 0;
 }

@@ -32,7 +32,7 @@ void remove_header(packet_descriptor_t* p, header_reference_t h)
 }
 #endif
 
-void 
+void
 generate_digest(backend bg, char* name, int receiver, struct type_field_list* digest_field_list)
 {
     digest d = create_digest(bg, name);
@@ -45,6 +45,12 @@ generate_digest(backend bg, char* name, int receiver, struct type_field_list* di
 void no_op()
 {
 }
+
+void resubmit(packet_descriptor_t* p)
+{
+		      // TODO
+}
+
 
 void drop(packet_descriptor_t* p)
 {
