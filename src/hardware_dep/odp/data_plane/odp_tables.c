@@ -127,16 +127,16 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
                 odph_cuckoo_table_destroy(tbl);
             }
             // name, capacity, key_size, value size
-            tbl = odph_cuckoo_table_create(name, 4, t->key_size, t->val_size);
+            tbl = odph_cuckoo_table_create(name, 4, t->key_size, TABLE_VALUE_SIZE);
             if(tbl == NULL) {
                 debug("  ::Table %s creation fail\n", name);
-                debug("  ::key size %d, val_size %d\n",t->key_size, t->val_size);
+                debug("  ::key size %d, val_size %d\n",t->key_size, TABLE_VALUE_SIZE);
                 exit(0);
             }
 
             create_ext_table(t, tbl, socketid);
             //debug("  ::Table %s creation complete\n", name);
-            debug("  ::Table %s, key size %d, val_size %d created \n", name,t->key_size, t->val_size);
+            debug("  ::Table %s, key size %d, val_size %d created \n", name,t->key_size, TABLE_VALUE_SIZE);
             break;
         case LOOKUP_LPM:
             snprintf(name, sizeof(name), "%s_lpm_%d_%d", t->name, socketid, replica_id);
@@ -185,7 +185,7 @@ void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
     int ret = 0;
     extended_table_t* ext = (extended_table_t*)t->table;
     if(t->key_size == 0) return; // don't add lines to keyless tables
-    info(":::: EXECUTING exact add on table %s, keysize %d \n", t->name,t->key_size);
+    info(":::: EXECUTING exact add on table %s, keysize %d, val size %d \n", t->name,t->key_size, t->val_size);
     value = add_index(value, t->val_size, t->counter++);
     ext->content[ext->size] = copy_to_socket(value, t->val_size+sizeof(int), t->socketid);
     ret = odph_cuckoo_table_put_value(ext->odp_table, key, &(ext->size));
@@ -194,6 +194,31 @@ void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
         debug("  ::EXACT table add key failed \n");
         exit(EXIT_FAILURE);
     }
+    info(":::: exact add success on table %s, entryIndex %d \n", t->name,ext->size);
+
+    #if 0
+    int result;
+    printf("size of result %d int %d\n", sizeof(result), sizeof(int));
+    printf("Table %p content %p \n",ext, ext->content);
+    ret = odph_cuckoo_table_get_value(ext->odp_table, key, &result, sizeof(result));
+    printf("Table %p content %p \n",ext, ext->content);
+    //ext = (extended_table_t*)t->table;
+    //printf("o2 Table %p content %p \n",ext, ext->content);
+    if (ret < 0) {
+        debug("  :: EXACT lookup aft4 add fail with ret=%d,result=%d \n", ret, result);
+    }
+    info(":::: exact lookup success:Table %s, entryIndex %d \n", t->name,ext->size);
+    value = ext->content[result];
+    printf("Value: %02x\n", (unsigned char) value[0]);
+    if(NULL != ext->content[result]){
+        value = ext->content[result];
+    printf("ADD-Lookup Value: %02x:%02x:%02x:%02x\n",
+                (unsigned char) value[0],
+                (unsigned char) value[1],
+                (unsigned char) value[3],
+                (unsigned char) value[4]);
+    }
+#endif
 }
 
 void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
@@ -247,14 +272,21 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
     extended_table_t* ext = (extended_table_t*)t->table;
     info(":::: EXECUTING exact lookup on table %s, keysize %d \n", t->name,t->key_size);
     info ("::: exact_lookup -key- %p,key0- %d,key1- %d \n", key, key[0], key[1]);
-    ret = odph_cuckoo_table_get_value(ext->odp_table, key, &result, t->val_size);
+    ret = odph_cuckoo_table_get_value(ext->odp_table, key, &result, TABLE_VALUE_SIZE);
 
     if (ret < 0) {
         debug("  :: EXACT lookup fail with ret=%d,result=%d \n", ret, result);
         return t->default_val;
     }
+    
     info("  :: EXACT lookup success with result=%d \n",result);
-    return ext->content[result];
+    if (NULL == ext->content[result])
+    {
+        printf("ERROR: ResultID: %d, Value is Null \n",result);
+        return t->default_val;
+    }else {
+        return ext->content[result];
+    }
 }
 
 uint8_t* lpm_lookup(lookup_table_t* t, uint8_t* key)
