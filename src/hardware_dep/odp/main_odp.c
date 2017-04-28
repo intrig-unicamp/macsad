@@ -1,7 +1,6 @@
 #include <odp_api.h>
 #include "odp_lib.h"
 #include <odp/api/packet.h>
-#include <odp/helper/linux.h>
 #include <odp/helper/eth.h>
 #include <odp/helper/ip.h>
 

@@ -1,6 +1,6 @@
 MACSAD
 ==========
-Follow the steps below to setup and run MACSAD on a Ubuntu 14.0 and later.
+Follow the steps below to setup and run MACSAD on a Ubuntu 16.04.2 LTS and later.
 
 Note: In this tutorial we are going to install the MACSAD at `/root` folder. 
 
@@ -16,7 +16,6 @@ Then, clone the ODP git repository and compile it.
 
 - `git clone https://github.com/Linaro/odp`
 - `cd odp`
-- `git checkout v1.14.0.0`
 - `./bootstrap`
 - `./configure --disable-abi-compat --prefix=/root/tools/odp`
 - `make`
@@ -24,7 +23,7 @@ Then, clone the ODP git repository and compile it.
 
 Now we need to make a link of the odp helper to the new folder that we created and set the enviroment variable `ODP_SDK` as below:
 
-- `ln -s /helper /root/tools/odp`
+- `ln -s /root/odp/helper /root/tools/odp`
 - `export ODP_SDK=/root/tools/odp`
 - `cd ..`
 
@@ -54,7 +53,7 @@ Go to p4-Hlir folder and install is running the following command:
 
 - `cd p4-hlir`
 - `sudo python setup.py install`
-- `cd ../..`
+- `cd ../`
 
 NOTE: For any issues refer the README file under p4-hlir directory.
 
@@ -62,7 +61,6 @@ NOTE: For any issues refer the README file under p4-hlir directory.
 
 1) The p4 program needs to be translated for the MACSAD switch project. You can do this as below:
 
-- `cd mac`
 - `python src/transpiler.py examples/p4_src/l2_fwd.p4`
 
 NOTE: This needs to be done everytime the P4 source file is modified or if any of the sugered file inside `src/hardware_indep` is changed.

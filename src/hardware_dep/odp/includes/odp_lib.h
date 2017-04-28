@@ -2,7 +2,6 @@
 #define ODP_LIB_H
 
 #include <getopt.h>
-
 #include <stdint.h>
 #include <stdio.h>
 #include "data_plane_data.h"
@@ -15,12 +14,12 @@
 
 // ODP headers
 #include "odp_api.h"
-#include <odp/helper/linux.h>
 #include <odp/helper/eth.h>
 #include <odp/helper/chksum.h>
 #include <odp/helper/ip.h>
 #include <odp/helper/table.h>
 #include <net/ethernet.h>
+#include <include/odp/helper/threads.h>
 
 // Backend-specific aliases
 #include "aliases.h"
