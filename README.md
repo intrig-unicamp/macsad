@@ -16,6 +16,7 @@ Then, clone the ODP git repository and compile it.
 
 - `git clone https://github.com/Linaro/odp`
 - `cd odp`
+- `git checkout v1.14.0.0`
 - `./bootstrap`
 - `./configure --disable-abi-compat --prefix=/root/tools/odp`
 - `make`
