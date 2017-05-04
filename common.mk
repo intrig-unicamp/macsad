@@ -21,8 +21,8 @@ CFLAGS += -std=gnu99
 #To define the backend used: odp/dpdk
 CFLAGS += -D ODP_BK
 
-CFLAGS += -D NDEBUG
-CFLAGS += -D NINFO
-CFLAGS += -D NSIGG
+#CFLAGS += -D NDEBUG
+#CFLAGS += -D NINFO
+#CFLAGS += -D NSIGG
 
 #CFLAGS += -fno-stack-protector

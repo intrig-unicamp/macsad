@@ -44,10 +44,6 @@ parser parse_ipv4 {
   return ingress;
 }
 
-/*
-#define IPV4_LPM_TABLE_SIZE                    16384
-#define REWRITE_MAC_TABLE_SIZE                 32768
-*/
 action on_miss() {
 }
 
@@ -62,8 +58,8 @@ table ipv4_fib_lpm {
     ipv4.dstAddr : lpm;
   }
   actions {
-    on_miss;
     fib_hit_nexthop;
+    on_miss;
   }
   size : 512;
 }
