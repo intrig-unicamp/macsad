@@ -40,8 +40,7 @@ Clone the MACSAD project.
 
 MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
-- `git submodule init`
-- `git submodule update`
+- `git submodule update --init --recursive`
 
 ##P4-Hlir:
 
