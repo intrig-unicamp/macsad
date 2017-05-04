@@ -32,7 +32,7 @@ echo "Controller started... "
 
 echo "Creating Datapath Logic from P4 source."
 rm -rf build
-python src/transpiler.py examples/p4_src/l2_switch_test.p4
+python src/transpiler.py examples/p4_src/l2_fwd.p4
 #python src/transpiler.py examples/p4_src/l2_l3.p4
 #python src/transpiler.py examples/p4_src/l3_routing_test.p4
 #python src/transpiler.py examples/p4_src/l3_routing-full.p4
