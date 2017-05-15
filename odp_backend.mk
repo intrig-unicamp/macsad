@@ -50,8 +50,6 @@ LDFLAGS += -L$(ODP_SDK)/lib/
 #LDFLAGS += -L$(ODP_SDK)/lib/.libs
 LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
 
-
-#LIBS = -lodp-dpdk -lodphelper-linux -lpthread
 LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
 #LIBS =  -l:libodp-dpdk.a -l:libodphelper-linux.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
 
@@ -74,5 +72,9 @@ clean:
 
 depend: $(SRCS)
 	makedepend $^
+
+###Custom Targets
+tags:
+	ctags -R --languages=C,C++ --exclude=.git,scripts,tools 
 
 # DO NOT DELETE THIS LINE

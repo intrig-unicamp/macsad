@@ -37,8 +37,7 @@ build/
 mac_controller
 mac_l2_l3_controller
 mac_l3_controller
-mac_l3-full_controller
-
+mac_l3_nhg_controller
 # Debug files
 *.dSYM/
 

@@ -1,3 +1,5 @@
+SHELL = /bin/sh
+
 ifeq ($(ODP_SDK),)
 $(error "Please define ODP_SDK environment variable")
 endif
