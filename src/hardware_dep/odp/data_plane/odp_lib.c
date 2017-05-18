@@ -224,7 +224,7 @@ create_counters_on_socket(int socketid)
 
 void increase_counter(int counterid, int index)
 {
-    odp_atomic_inc_u32(&gconf->state.counters[counterid]->values[index]);
+    odp_atomic_inc_u32((odp_atomic_u32_t *)&gconf->state.counters[counterid]->values[index]);
 }
 
 uint32_t read_counter(int counterid, int index)
@@ -233,7 +233,7 @@ uint32_t read_counter(int counterid, int index)
     int socketid;
     for(socketid = 0; socketid < NB_SOCKETS; socketid++)
         if(state[socketid].tables[0][0] != NULL)
-            cnt += odp_atomic_load_u32(&state[socketid].counters[counterid]->values[index]);
+            cnt += odp_atomic_load_u32((odp_atomic_u32_t *)&state[socketid].counters[counterid]->values[index]);
     return cnt;
 }
 

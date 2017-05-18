@@ -349,7 +349,7 @@ void odpc_tbl_des (lookup_table_t* t){
 static void create_tables_on_socket (int socketid)
 {
     //only if the table is defined in p4 prog
-    if (table_config == NULL) return;
+    //if (table_config == NULL) return; //always present
     int i;
     for (i=0;i < NB_TABLES; i++) {
         debug("creting table with tableID  %d \n", i);
