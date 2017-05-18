@@ -13,6 +13,7 @@
 #include "sock_helpers.h"
 #include "fifo.h"
 #include <sys/select.h>
+#include "backend.h" //debug stmts
 
 #define P4_BG_MEM_CELL_SIZE 2048
 #define P4_BG_QUEUE_SIZE 1024
@@ -91,7 +92,7 @@ void backend_processor(void* bg)
 void input_processor(void *bg)
 {
 	backend_t* bgt = (backend_t*)bg;
-        mem_cell_t* mem_cell;
+    mem_cell_t* mem_cell;
 	int rval;
 
 	while ( 1 )
@@ -103,9 +104,7 @@ void input_processor(void *bg)
 		if (mem_cell==0) continue;
 
 		rval = handle_p4_msg( mem_cell->data, mem_cell->length, bgt->cb );
-#ifdef DGB
-		printf("  :::: Handle msg: %d\n", rval);
-#endif
+		debug ("  :::: Handle msg: %d\n", rval);
 		detouch_mem_cell( bgt, mem_cell );
 	}
 }

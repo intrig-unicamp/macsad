@@ -24,11 +24,6 @@
 #define sigg(args, ...) fprintf(stdout, args "\n", ##__VA_ARGS__)
 #endif
 
-typedef struct packet_descriptor_s packet_descriptor_t;
-typedef struct header_descriptor_s header_descriptor_t;
-typedef struct header_reference_s  header_reference_t;
-typedef struct field_reference_s   field_reference_t;
-
 //=============================================================================
 // General
 
@@ -38,28 +33,25 @@ int           launch       (void);
 //=============================================================================
 // Table mgmt
 
-typedef struct lookup_table_s lookup_table_t;
+void table_create (lookup_table_t* t, int socketid, int replicaid);
+void table_setdefault (lookup_table_t* t, uint8_t* value);
 
-void        table_create (lookup_table_t* t, int socketid, int replicaid);
+void exact_add (lookup_table_t* t, uint8_t* key, uint8_t* value);
+void lpm_add (lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value);
+void ternary_add (lookup_table_t* t, uint8_t* key, uint8_t* mask, uint8_t* value);
 
-void    table_setdefault (lookup_table_t* t,                              uint8_t* value);
-
-void           exact_add (lookup_table_t* t, uint8_t* key,                uint8_t* value);
-void             lpm_add (lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value);
-void         ternary_add (lookup_table_t* t, uint8_t* key, uint8_t* mask, uint8_t* value);
-
-uint8_t*    exact_lookup (lookup_table_t* t, uint8_t* key);
-uint8_t*      lpm_lookup (lookup_table_t* t, uint8_t* key);
-uint8_t*  ternary_lookup (lookup_table_t* t, uint8_t* key);
+uint8_t* exact_lookup (lookup_table_t* t, uint8_t* key);
+uint8_t* lpm_lookup (lookup_table_t* t, uint8_t* key);
+uint8_t* ternary_lookup (lookup_table_t* t, uint8_t* key);
 
 //=============================================================================
 // Primitive actions
 
-void add_header             (packet_descriptor_t* p, header_reference_t h);
-void remove_header          (packet_descriptor_t* p, header_reference_t h);
-void drop                   (packet_descriptor_t* p);
-void generate_digest        (backend bg, char* name, int receiver, struct type_field_list* digest_field_list);
-void no_op                  ();
+void add_header      (packet_descriptor_t* p, header_reference_t h);
+void remove_header   (packet_descriptor_t* p, header_reference_t h);
+void drop            (packet_descriptor_t* p);
+void generate_digest (backend bg, char* name, int receiver, struct type_field_list* digest_field_list);
+void no_op ();
 
 //=============================================================================
 // Calculations

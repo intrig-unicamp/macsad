@@ -153,10 +153,22 @@ static void odp_send_packet(odp_packet_t *p, uint8_t port, int thr_idx)
 	odp_packet_t pkt = *p;
     unsigned buf_id;
 	info("Inside odp_send_packet \n");
-	buf_id = gconf->mconf[thr_idx].tx_pktios[port].buf.len;
 
-	gconf->mconf[thr_idx].tx_pktios[port].buf.pkt[buf_id] = pkt;
-	gconf->mconf[thr_idx].tx_pktios[port].buf.len++;
+    pkt_buf_t *buf;
+
+    buf = &(gconf->mconf[thr_idx].tx_pktios[port].buf);
+
+    buf_id = buf->len;
+    if (buf_id == MAX_PKT_BURST)
+    {
+        debug("Tx q full(%d)\n", buf_id);
+        odp_packet_free(*p);
+        return;
+    }
+
+    buf->pkt[buf_id] = pkt;
+    buf->len++;
+	return;
 }
 
 #define EXTRACT_EGRESSPORT(p) GET_INT32_AUTO(p, field_instance_standard_metadata_egress_port)
