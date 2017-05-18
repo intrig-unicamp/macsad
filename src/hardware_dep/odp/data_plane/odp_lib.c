@@ -1,10 +1,10 @@
+#include <stdlib.h>
+#include <unistd.h>
 #include "odp_api.h"
 #include "aliases.h"
 #include "backend.h"
 #include "ctrl_plane_backend.h"
 #include "dataplane.h"
-#include <unistd.h>
-
 #include "odp_lib.h"
 #include <net/ethernet.h>
 
@@ -224,7 +224,7 @@ create_counters_on_socket(int socketid)
 
 void increase_counter(int counterid, int index)
 {
-    odp_atomic_inc_u32(&gconf->state.counters[counterid]->values[index]);
+    odp_atomic_inc_u32((odp_atomic_u32_t *)&gconf->state.counters[counterid]->values[index]);
 }
 
 uint32_t read_counter(int counterid, int index)
@@ -233,7 +233,7 @@ uint32_t read_counter(int counterid, int index)
     int socketid;
     for(socketid = 0; socketid < NB_SOCKETS; socketid++)
         if(state[socketid].tables[0][0] != NULL)
-            cnt += odp_atomic_load_u32(&state[socketid].counters[counterid]->values[index]);
+            cnt += odp_atomic_load_u32((odp_atomic_u32_t *)&state[socketid].counters[counterid]->values[index]);
     return cnt;
 }
 
@@ -315,7 +315,7 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
     odp_pktio_op_mode_t mode_rx, mode_tx;
     odp_pktout_queue_param_t pktout_param;
     odp_schedule_sync_t  sync_mode;
-    int num_tx_shared;
+//    int num_tx_shared;
 
     pktin_mode_t in_mode = gconf->appl.in_mode;
 
@@ -343,7 +343,7 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
     mode_tx = ODP_PKTIO_OP_MT_UNSAFE;
     mode_rx = ODP_PKTIO_OP_MT_UNSAFE;
 
-    num_tx_shared = capa.max_output_queues;
+    //num_tx_shared = capa.max_output_queues;
 
     if (num_rx > (int)capa.max_input_queues) {
         printf("Sharing %i input queues between %i workers\n",
@@ -622,11 +622,11 @@ static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
 {
     uint64_t rx_pkts_tot = 0;
     int elapsed = 0;
-    int stats_enabled = 1;
+//    int stats_enabled = 1;
     int loop_forever = (duration == 0);
 
     if (timeout <= 0) {
-        stats_enabled = 0;
+//        stats_enabled = 0;
         timeout = 1;
     }
 
@@ -809,14 +809,14 @@ static void gconf_init(mac_global_t *gconf)
 
 //static inline odp_u16sum_t odph_chksum(void *buffer, int len)
 //return checksum value in host cpu order
-uint16_t calculate_csum16(const void* buf, uint16_t length) {
+uint16_t calculate_csum16(void* buf, uint16_t length) {
     uint16_t value16 = odph_chksum(buf, length);
     return value16;
 }
 
 uint32_t packet_length(packet_descriptor_t* pd) {
     //Returns sum of buffer lengths over all packet segments.
-    return odp_packet_buf_len(pd->wrapper);
+    return odp_packet_buf_len((odp_packet_t) pd->wrapper);
 }
 
 uint8_t odpc_initialize(int argc, char **argv)
@@ -947,11 +947,11 @@ uint8_t odpc_initialize(int argc, char **argv)
     for (i = 0; i < if_count; ++i)
     {
         const char *dev = gconf->appl.if_names[i];
-        int num_rx, num_tx;
+        int num_rx;// num_tx;
 
         /* A queue per assigned worker */
         num_rx = gconf->pktios[i].num_rx_thr;
-        num_tx = gconf->pktios[i].num_tx_thr;
+//        num_tx = gconf->pktios[i].num_tx_thr;
 
         if (create_pktio(dev, i, num_rx, num_workers, gconf->pool))
             exit(EXIT_FAILURE);
@@ -961,7 +961,7 @@ uint8_t odpc_initialize(int argc, char **argv)
             return -1;
         }
 
-        printf("interface id %d, ifname %s, drv: %s, pktio:%d, num of rx q=%d \n", i, gconf->appl.if_names[i], info.drv_name, odp_pktio_to_u64(gconf->pktios[i].pktio),gconf->pktios[i].num_rx_thr);
+        printf("interface id %d, ifname %s, drv: %s, pktio:%lu, num of rx q=%d \n", i, gconf->appl.if_names[i], info.drv_name, odp_pktio_to_u64(gconf->pktios[i].pktio),gconf->pktios[i].num_rx_thr);
 
         ret = odp_pktio_promisc_mode_set(gconf->pktios[i].pktio, 1);
         if (ret != 0) {

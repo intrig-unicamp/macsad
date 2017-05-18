@@ -162,7 +162,7 @@ typedef struct lcore_state {
 struct socket_state {
     // pointers to the instances created on each socket
     lookup_table_t * tables         [NB_TABLES][NB_REPLICA];
-    int            * active_replica [NB_TABLES];
+    int            active_replica [NB_TABLES];
     counter_t      * counters       [NB_COUNTERS];
 };
 

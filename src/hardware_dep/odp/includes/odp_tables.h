@@ -12,9 +12,6 @@ typedef struct extended_table_s {
     uint8_t** content;
 } extended_table_t;
 
-/* need to cretae a array of TABLE_MAX to support multiple tables */
-//extern odph_table_ops_t odph_hash_table_ops;
-
 //=============================================================================
 // Table size limits
 

@@ -44,13 +44,15 @@ SRCS-y += $(CDIR)src/hardware_dep/odp/data_plane/odp_tables.c
 SRCS-y += $(CDIR)src/hardware_dep/odp/data_plane/odp_primitives.c
 SRCS-Y += vector.c
 
-#CC = clang
-
 LDFLAGS += -L$(ODP_SDK)/lib/
 #LDFLAGS += -L$(ODP_SDK)/lib/.libs
 LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
 
+#ODP(socket-mmap, netmap)
 LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
+#ODP(dpdk)
+#LIBS =  -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
+#ODP-DPDK
 #LIBS =  -l:libodp-dpdk.a -l:libodphelper-linux.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
 
 OBJS = $(SRCS-y:.c=.o)
