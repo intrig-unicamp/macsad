@@ -229,12 +229,12 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
     if(t->key_size == 0) return; // don't add lines to keyless tables
 
     key[4] = depth; //adding depth to key[4]
-    uint8_t* value2 = *value;
+    uint8_t* value2 = value;
 
     odph_iplookup_prefix_t prefix;
     for (int i = 0; i < ODPH_IPV4ADDR_LEN; i++)
         if (key[i] > 255)
-            return -1;
+            return; //TODO how to handle return here
 
     prefix.ip = key[0] << 24 | key[1] << 16 | key[2] << 8 | key[3];
     prefix.cidr = key[4];
@@ -278,7 +278,7 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
         debug("  :: EXACT lookup fail with ret=%d,result=%d \n", ret, result);
         return t->default_val;
     }
-    
+
     info("  :: EXACT lookup success with result=%d \n",result);
     if (NULL == ext->content[result])
     {
@@ -301,7 +301,7 @@ uint8_t* lpm_lookup(lookup_table_t* t, uint8_t* key)
     odph_iplookup_prefix_t prefix;
     for (int i = 0; i < ODPH_IPV4ADDR_LEN; i++)
         if (key[i] > 255)
-            return -1;
+            return NULL; //TODO how to handle return here
 
     prefix.ip = key[0] << 24 | key[1] << 16 | key[2] << 8 | key[3];
     //  prefix.cidr = key[4];

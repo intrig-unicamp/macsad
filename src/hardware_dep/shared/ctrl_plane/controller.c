@@ -150,8 +150,8 @@ void destroy_controller(controller c)
 {
 	controller_t* ct = (controller_t*)c;
 	destroy_threadpool(ct->tpool);
-        fifo_destroy( &(ct->input_queue) );
-        fifo_destroy( &(ct->output_queue) );
+    fifo_destroy( &(ct->input_queue) );
+    fifo_destroy( &(ct->output_queue) );
 	close(ct->controller_fd);
 	free(ct);
 }
