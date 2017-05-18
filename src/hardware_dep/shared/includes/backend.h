@@ -23,11 +23,6 @@
 #else
 #define sigg(args, ...) fprintf(stdout, args "\n", ##__VA_ARGS__)
 #endif
-/*
-#define debug_print(fmt, ...) \
-        do { if (DEBUG) fprintf(stderr, "%s:%d:%s(): " fmt, __FILE__, \
-                                __LINE__, __func__, __VA_ARGS__); } while (0)
-*/
 
 typedef struct packet_descriptor_s packet_descriptor_t;
 typedef struct header_descriptor_s header_descriptor_t;
