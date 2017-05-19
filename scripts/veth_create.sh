@@ -28,8 +28,8 @@ for (( i = 0 ; i < ${vethpairs} ; i++ )); do
 	  /sbin/ethtool --offload $intf1 $INTF_OPTION off
 	done
 
-	sudo ip addr add 10.0.0.$(($i*2+1))/24 dev $intf1
-    sudo ip link set dev $intf1 up 
+	ip addr add 10.0.0.$(($i*2+1))/24 dev $intf1
+    ip link set dev $intf1 up 
 #   echo "create success for $intf0 $intf1"
   fi
 done
