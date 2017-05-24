@@ -6,7 +6,7 @@ Note: In this tutorial we are going to install the MACSAD at `/root` folder.
 
 # Part 1
 ---
-##ODP:
+## ODP:
 MACSAD uses ODP for forwarding plane developement. Fist of all, we need to create a directory in the same folder where the MACSAD will be cloned:
 
 - `mkdir tools`
@@ -42,7 +42,7 @@ MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 - `git submodule init`
 - `git submodule update`
 
-##P4-Hlir:
+## P4-Hlir:
 
 Install P4-Hlir dependencies:
 
@@ -57,7 +57,7 @@ Go to p4-Hlir folder and install is running the following command:
 
 NOTE: For any issues refer the README file under p4-hlir directory.
 
-##Initial configurations necessary for MACSAD
+## Initial configurations necessary for MACSAD
 
 1) The p4 program needs to be translated for the MACSAD switch project. You can do this as below:
 
@@ -75,7 +75,7 @@ NOTE: This needs to be done everytime the P4 source file is modified or if any o
 
 NOTE: It can also be added to the `~/.bashrc` file.
 
-##Compile MACSAD
+## Compile MACSAD
 After this MACSAD can be compiled as below:
 
 - `make`
@@ -96,7 +96,7 @@ veth0 - fa:4f:e8:df:b1:5f
 
 We need four terminals to perform this test.
 
-###TERMINAL 1:
+### TERMINAL 1:
 
 Start the minimalistic Controller:
 
@@ -105,7 +105,7 @@ Start the minimalistic Controller:
 - `make mac_controller`
 - `./mac_controller`
 
-###TERMINAL 2:
+### TERMINAL 2:
 
 Start the MACSAD switch with veth interfaces 1 and 2
 
@@ -113,7 +113,7 @@ Start the MACSAD switch with veth interfaces 1 and 2
 
 NOTE: Run with root privilege.
 
-###TERMINAL 3:
+### TERMINAL 3:
 We use scapy to send packet to the switch interface. You can install the scapy package as below:
 
 - `sudo apt-get install scapy`
