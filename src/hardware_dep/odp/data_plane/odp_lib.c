@@ -1,14 +1,18 @@
 #include <stdlib.h>
 #include <unistd.h>
+#include <net/ethernet.h>
+#include <signal.h>
 #include "odp_api.h"
 #include "aliases.h"
 #include "backend.h"
 #include "ctrl_plane_backend.h"
 #include "dataplane.h"
 #include "odp_lib.h"
-#include <net/ethernet.h>
 
 struct socket_state state[NB_SOCKETS];
+/** Global pointer to mac_global */
+mac_global_t *gconf;
+odp_instance_t instance;
 
 //=   shared   ================================================================
 extern void init_control_plane();
@@ -17,6 +21,8 @@ extern uint32_t enabled_port_mask;
 int promiscuous_on = 0; /**< Ports set in promiscuous mode off by default. */
 //TODO
 int numa_on = 0; /**< NUMA is not enabled by default. */
+
+int exit_threads = 0;
 
 #define MAX_LCORE_PARAMS 1024
 uint16_t nb_lcore_params;
@@ -27,12 +33,17 @@ uint16_t nb_lcore_params;
 #define RTE_TEST_RX_DESC_DEFAULT 128
 #define RTE_TEST_TX_DESC_DEFAULT 512
 
-int exit_threads = 0;    /**< Break workers loop if set to 1 */
-
 extern void odp_main_worker (void);
 //=============================================================================
 
 #define UNUSED(x) (void)(x)
+
+static void sig_handler(int signo ODP_UNUSED)
+{
+	debug("\n sig_handler!\n");
+//	printf("\n sig_handler!\n");
+        exit_threads = 1;
+}
 
 //--------
 static int parse_max_pkt_len(const char *pktlen)
@@ -819,10 +830,9 @@ uint32_t packet_length(packet_descriptor_t* pd) {
     return odp_packet_buf_len((odp_packet_t) pd->wrapper);
 }
 
-uint8_t odpc_initialize(int argc, char **argv)
+uint8_t maco_initialize(int argc, char **argv)
 {
     odp_pool_param_t params;
-    odp_instance_t instance;
     odp_cpumask_t cpumask;
     char cpumaskstr[ODP_CPUMASK_STR_SIZE];
     int num_workers, i, j, if_count, ret;
@@ -832,7 +842,7 @@ uint8_t odpc_initialize(int argc, char **argv)
     odp_pktio_info_t info;
     odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
     int (*thr_run_func)(void *);
-
+    
     /* init ODP  before calling anything else */
     if (odp_init_global(&instance, NULL, NULL)) {
         debug("Error: ODP global init failed.\n");
@@ -1010,6 +1020,8 @@ uint8_t odpc_initialize(int argc, char **argv)
         }
     }
 
+    signal(SIGINT, sig_handler);
+
     for (i = 0; i < num_workers; ++i) {
         odp_cpumask_t thd_mask;
         odph_odpthread_params_t thr_params;
@@ -1036,29 +1048,30 @@ uint8_t odpc_initialize(int argc, char **argv)
     for (i = 0; i < num_workers; ++i)
         odph_odpthreads_join(&thread_tbl[i]);
 
-    // TODO
-    //	free(gconf);
-
-    free(gconf->appl.if_names);
-    free(gconf->appl.if_str);
-#if 0
-    if (odpc_lookup_tbls_des()) {
-        info("Lookup table destroy failed.\n");
-    }
-#endif
-    if (odp_pool_destroy(gconf->pool)) {
-        debug("Error: pool destroy\n");
-        exit(EXIT_FAILURE);
-    }
-    if (odp_term_local()) {
-        debug("Error: term local\n");
-        exit(EXIT_FAILURE);
-    }
-    if (odp_term_global(instance)) {
-        debug("Error: term global\n");
-        exit(EXIT_FAILURE);
-    }
-    printf("Exit\n\n");
     return 0;
 }
 
+void maco_terminate()
+{
+#if 0
+	free(gconf->appl.if_names);
+	free(gconf->appl.if_str);
+	if (odpc_lookup_tbls_des()) {
+		info("Lookup table destroy failed.\n");
+	}
+	if (odp_pool_destroy(gconf->pool)) {
+		debug("Error: pool destroy\n");
+		exit(EXIT_FAILURE);
+	}
+	if (odp_term_local()) {
+		debug("Error: term local\n");
+		exit(EXIT_FAILURE);
+	}
+	if (odp_term_global(instance)) {
+		debug("Error: term global\n");
+		exit(EXIT_FAILURE);
+	}
+#endif
+	printf("\nMACSAD Exiting\n\n");
+
+}
