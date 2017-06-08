@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <net/ethernet.h>
 #include <signal.h>
+#include <execinfo.h>
 #include "odp_api.h"
 #include "aliases.h"
 #include "backend.h"
@@ -38,11 +39,41 @@ extern void odp_main_worker (void);
 
 #define UNUSED(x) (void)(x)
 
-static void sig_handler(int signo ODP_UNUSED)
+static void sig_handler(int signo)
 {
-	debug("\n sig_handler!\n");
-//	printf("\n sig_handler!\n");
-        exit_threads = 1;
+	size_t num_stack_frames;
+	const char  *signal_name;
+	void  *bt_array[128];
+
+	switch (signo) {
+		case SIGINT:
+			signal_name = "SIGINT";   break;
+		case SIGILL:
+			signal_name = "SIGILL";   break;
+		case SIGFPE:
+			signal_name = "SIGFPE";   break;
+		case SIGSEGV:
+			signal_name = "SIGSEGV";  break;
+		case SIGTERM:
+			signal_name = "SIGTERM";  break;
+		case SIGBUS:
+			signal_name = "SIGBUS";   break;
+		default:
+			signal_name = "UNKNOWN";  break;
+	}
+
+	if (signo == SIGINT)
+	{
+		exit_threads = 1;
+		printf("Received signal=%u (%s) exiting.", signo, signal_name);
+	}else{
+		num_stack_frames = backtrace(bt_array, 100);
+		printf("2 Received signal=%u (%s) exiting.", signo, signal_name);
+		backtrace_symbols_fd(bt_array, num_stack_frames, fileno(stderr));
+		fflush(NULL);
+		sync();
+		abort();
+	}
 }
 
 //--------
@@ -842,7 +873,18 @@ uint8_t maco_initialize(int argc, char **argv)
     odp_pktio_info_t info;
     odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
     int (*thr_run_func)(void *);
-    
+    struct sigaction signal_action;
+
+    memset(&signal_action, 0, sizeof(signal_action));
+    signal_action.sa_handler = sig_handler;
+    sigfillset(&signal_action.sa_mask);
+    sigaction(SIGILL,  &signal_action, NULL);
+    sigaction(SIGFPE,  &signal_action, NULL);
+    sigaction(SIGSEGV, &signal_action, NULL);
+    sigaction(SIGTERM, &signal_action, NULL);
+    sigaction(SIGBUS,  &signal_action, NULL);
+    sigaction(SIGINT,  &signal_action, NULL);
+
     /* init ODP  before calling anything else */
     if (odp_init_global(&instance, NULL, NULL)) {
         debug("Error: ODP global init failed.\n");
@@ -961,7 +1003,7 @@ uint8_t maco_initialize(int argc, char **argv)
 
         /* A queue per assigned worker */
         num_rx = gconf->pktios[i].num_rx_thr;
-//        num_tx = gconf->pktios[i].num_tx_thr;
+//      num_tx = gconf->pktios[i].num_tx_thr;
 
         if (create_pktio(dev, i, num_rx, num_workers, gconf->pool))
             exit(EXIT_FAILURE);
@@ -1020,8 +1062,6 @@ uint8_t maco_initialize(int argc, char **argv)
         }
     }
 
-    signal(SIGINT, sig_handler);
-
     for (i = 0; i < num_workers; ++i) {
         odp_cpumask_t thd_mask;
         odph_odpthread_params_t thr_params;
@@ -1071,7 +1111,7 @@ void maco_terminate()
 		debug("Error: term global\n");
 		exit(EXIT_FAILURE);
 	}
-#endif
 	printf("\nMACSAD Exiting\n\n");
-
+#endif
+	return;
 }
