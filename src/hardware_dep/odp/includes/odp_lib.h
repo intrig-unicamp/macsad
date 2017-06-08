@@ -32,6 +32,8 @@ extern uint32_t enabled_port_mask;
 extern int promiscuous_on;
 extern int numa_on;
 
+extern int exit_threads;    /**< Break workers loop if set to 1 */
+
 //#define debug 1
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1 // rte_log.h
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1 // rte_log.h
@@ -257,12 +259,15 @@ typedef struct mac_global{
 }mac_global_t;
 
 /** Global pointer to mac_global */
-mac_global_t *gconf;
+extern mac_global_t *gconf;
+
+extern odp_instance_t instance;
 
 #define TABCHANGE_DELAY 50 // microseconds
 
-uint8_t odpc_initialize(int argc, char **argv);
-
+uint8_t maco_initialize(int argc, char **argv);
+void maco_terminate();
+	
 int odpc_worker_mode_direct(void *arg);
 int odpc_worker_mode_queue(void *arg);
 int odpc_worker_mode_sched(void *arg);
