@@ -15,15 +15,15 @@ fi
 cd -
 
 # Restart mac controller in background
-sudo killall mac_controller
-sudo killall mac_l2_l3_controller
-sudo killall mac_l3_controller
-sudo killall mac_l3_nhg_controller
-sudo pkill -f mac_controller
-sudo pkill -f mac_l2_l3_controller
-sudo pkill -f mac_l3_controller
-sudo pkill -f mac_l3_nhg_controller
-#./src/hardware_dep/shared/ctrl_plane/mac_controller &
+killall mac_controller
+killall mac_l2_l3_controller
+killall mac_l3_controller
+killall mac_l3_nhg_controller
+pkill -f mac_controller
+pkill -f mac_l2_l3_controller
+pkill -f mac_l3_controller
+pkill -f mac_l3_nhg_controller
+./src/hardware_dep/shared/ctrl_plane/mac_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l2_l3_controller &
 ./src/hardware_dep/shared/ctrl_plane/mac_l3_controller trace_100000.txt &
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_controller&
@@ -46,5 +46,5 @@ fi
 # Compile C sources
 make clean;${MAKE_CMD} -j16
 
-sudo rm -rf /tmp/odp*
+rm -rf /tmp/odp*
 
