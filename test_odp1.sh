@@ -25,16 +25,17 @@ pkill -f mac_l3_controller
 pkill -f mac_l3_nhg_controller
 ./src/hardware_dep/shared/ctrl_plane/mac_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l2_l3_controller &
-#./src/hardware_dep/shared/ctrl_plane/mac_l3_controller &
+./src/hardware_dep/shared/ctrl_plane/mac_l3_controller trace_100000.txt &
+#./src/hardware_dep/shared/ctrl_plane/mac_l3_controller&
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_nhg_controller &
 
 echo "Controller started... "
 
 echo "Creating Datapath Logic from P4 source."
 rm -rf build
-python src/transpiler.py examples/p4_src/l2_fwd.p4
+#python src/transpiler.py examples/p4_src/l2_fwd.p4
 #python src/transpiler.py examples/p4_src/l2_l3.p4
-#python src/transpiler.py examples/p4_src/l3_routing_test.p4
+python src/transpiler.py examples/p4_src/l3_routing_test.p4
 #python src/transpiler.py examples/p4_src/l3_routing_nhg.p4
 ERROR_CODE=$?
 if [ "$ERROR_CODE" -ne 0 ]; then
