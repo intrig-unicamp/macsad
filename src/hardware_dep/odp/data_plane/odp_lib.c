@@ -466,6 +466,7 @@ static void usage(char *progname)
             "Optional OPTIONS:\n"
             "  -c, --count <number> CPU count.\n"
             //			 "  -m, --multi <0/1> Use Multiple CPU(Boolean).\n"
+            "  -d, --timeout <in ns> Timeout for packet recv.\n"
             "  -m, --mode      Packet input mode\n"
             "                  0: Direct mode: PKTIN_MODE_DIRECT (default)\n"
             "                  1: Scheduler mode with parallel queues: PKTIN_MODE_SCHED + SCHED_SYNC_PARALLEL\n"
@@ -499,6 +500,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
         {"interface", required_argument, NULL, 'i'},
         {"mode", required_argument, NULL, 'm'},
         {"out_mode", required_argument, NULL, 'o'},
+        {"timeout", required_argument, NULL, 'd'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
@@ -511,6 +513,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
     appl_args->time = 0; /* loop forever if time to run is 0 */
     appl_args->accuracy = 15; /* get and print pps stats second */
     appl_args->cpu_count = 0; /* single cpu by default */
+    appl_args->recv_tmo = DEF_RX_PKT_TMO_US; /* default- do not wait*/
 
     opterr = 0; /* do not issue errors on helper options */
 
@@ -563,6 +566,10 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
                         token != NULL; token = strtok(NULL, ","), i++) {
                     appl_args->if_names[i] = token;
                 }
+                break;
+
+            case 'd':
+                appl_args->recv_tmo = odp_pktin_wait_time(atol(optarg));
                 break;
 
             case 'h':

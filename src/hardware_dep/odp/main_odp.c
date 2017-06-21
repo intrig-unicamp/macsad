@@ -300,7 +300,8 @@ int odpc_worker_mode_direct(void *arg)
                 idx = 0;
         }
 
-		pkts = odp_pktin_recv(pktin, pkt_tbl, MAX_PKT_BURST);
+//		pkts = odp_pktin_recv(pktin, pkt_tbl, MAX_PKT_BURST);
+		pkts = odp_pktin_recv_tmo(pktin, pkt_tbl, MAX_PKT_BURST, DEF_RX_PKT_TMO_US);
 		if (odp_unlikely(pkts <= 0))
 			continue;
 #if 0

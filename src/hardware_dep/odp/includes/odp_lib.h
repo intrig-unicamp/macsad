@@ -56,6 +56,7 @@ extern int exit_threads;    /**< Break workers loop if set to 1 */
 
 #define MAX_PKT_BURST     32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
+#define DEF_RX_PKT_TMO_US ODP_PKTIN_NO_WAIT /* default- do not wait */
 
 struct ether_addr ports_eth_addr[MAX_ETHPORTS];
 
@@ -150,6 +151,7 @@ typedef struct appl_args {
     int accuracy;       /**< Number of seconds to get and print statistics */
     char *if_str;       /**< Storage for interface names */
     int error_check;        /**< Check packet errors */
+    uint64_t recv_tmo;        /**< Check packet errors */
 } appl_args_t;
 
 /** Global barrier to synchronize main and workers */
