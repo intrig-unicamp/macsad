@@ -21,6 +21,7 @@ copy_to_socket(uint8_t* src, int length, int socketid) {
     return dst;
 }
 
+#if 0
 /* TODO to be removed later */
 /* inner element structure of hash table
  * To resolve the hash confict:
@@ -59,6 +60,7 @@ typedef struct {
     char rsv[7]; /**< Reserved,for alignment */
     char name[ODPH_TABLE_NAME_LEN]; /**< table name */
 } odph_hash_table_imp;
+#endif
 
 static void print_prefix_info(
         const char *msg, uint32_t ip, uint8_t cidr)
@@ -229,7 +231,8 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
     if(t->key_size == 0) return; // don't add lines to keyless tables
 
     key[4] = depth; //adding depth to key[4]
-    uint8_t* value2 = value;
+    uint8_t* value2=NULL;
+    //uint8_t* value2 = value;
 
     odph_iplookup_prefix_t prefix;
     for (int i = 0; i < ODPH_IPV4ADDR_LEN; i++)
@@ -244,8 +247,12 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
 
     value = add_index(value, t->val_size, t->counter++);
     ext->content[ext->size] = copy_to_socket(value, t->val_size+sizeof(int), t->socketid);
+    value2 = malloc(t->val_size);
+    memcpy(value2, value, t->val_size);
+    printf("addr value2 %p,value2 %p \n", &value2,value2);
+
     print_prefix_info("Add", prefix.ip, prefix.cidr);
-    ret = odph_iplookup_table_put_value(ext->odp_table, &prefix, &(ext->size));
+    ret = odph_iplookup_table_put_value(ext->odp_table, &prefix, &value2);
     ext->size++;
     if (ret == -1) {
         debug("  ::LPM table %s add key failed for indexID=%d\n", t->name, ext->size);
@@ -254,6 +261,18 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
     else {
         debug("  ::LPM table %s add key success for IndexID=%d\n", t->name,ext->size);
     }
+/*
+    uint8_t* result = NULL;
+ printf("B4-Addr result %p,result %p \n", &result,result);
+    ret = odph_iplookup_table_get_value(ext->odp_table, &(prefix.ip), &result, t->val_size);
+ printf("addr value2 %p,value2 %p \n", &value2,value2);
+ printf("After-Addr result %p,result %p \n", &result,result);
+    if (ret < 0) {
+        printf("Failed to find longest prefix with result %p \n", &result);
+        debug("  :: LPM lookup fail \n");
+    }
+    info("  :: LPM lookup success with result=%d\n", result);
+*/
     return;
 }
 
@@ -292,7 +311,8 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 uint8_t* lpm_lookup(lookup_table_t* t, uint8_t* key)
 {
     int ret = 0;
-    int result = 0;
+    //int result = 0;
+    uint8_t *result = NULL;
     if(t->key_size == 0) return t->default_val;
     extended_table_t* ext = (extended_table_t*)t->table;
     info(":::: EXECUTING lpm lookup on table %s, keysize %d \n", t->name, t->key_size);
@@ -308,9 +328,9 @@ uint8_t* lpm_lookup(lookup_table_t* t, uint8_t* key)
 #ifndef NINFO
     print_prefix_info("Lookup", prefix.ip, prefix.cidr);
 #endif
-    ret = odph_iplookup_table_get_value(ext->odp_table, &prefix, &result, t->val_size);
+    ret = odph_iplookup_table_get_value(ext->odp_table, &(prefix.ip), &result, t->val_size);
     if (ret < 0) {
-        printf("Failed to find longest prefix with result %d \n", result);
+        printf("Failed to find longest prefix with result %p \n", &result);
         debug("  :: LPM lookup fail \n");
         return t->default_val;
     }
@@ -323,7 +343,8 @@ uint8_t* lpm_lookup(lookup_table_t* t, uint8_t* key)
        if (ret < 0 || result != 2) {
        printf("Failed to find longest prefix\n");
        */
-    return ext->content[result];
+    //return ext->content[result];
+    return result;
 }
 
 uint8_t* ternary_lookup(lookup_table_t* t, uint8_t* key)

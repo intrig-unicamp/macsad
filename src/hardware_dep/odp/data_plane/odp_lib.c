@@ -245,8 +245,7 @@ int odp_dev_name_to_id (char *if_name) {
 }
 
 #if 0
-    static void
-create_counters_on_socket(int socketid)
+static void create_counters_on_socket(int socketid)
 {
     if(counter_config == NULL) return;
     info("Initializing counters on socket %d\n", socketid);
