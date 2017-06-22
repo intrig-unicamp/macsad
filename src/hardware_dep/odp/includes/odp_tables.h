@@ -27,7 +27,7 @@ typedef struct extended_table_s {
 
 #define TABLE_MAX 256
 
-#define TABLE_SIZE 2 //'capacity' - Max memory usage this table use, in MBytes
+#define TABLE_SIZE 1000000 //Number of elements table may store
 //define different key and value size for different tables.
 #define TABLE_KEY_SIZE 4 //key_size    fixed size of the 'key' in bytes.
 #define TABLE_VALUE_SIZE 4 //value_size  fixed size of the 'value' in bytes.

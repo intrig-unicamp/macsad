@@ -108,8 +108,8 @@ static void create_ext_table(lookup_table_t* t, void* table, int socketid)
     memset(ext, 0, sizeof(extended_table_t));
     ext->odp_table = table;
     ext->size = 0;
-    ext->content = malloc(sizeof(uint8_t*)*TABLE_MAX);
-    memset(ext->content, 0, sizeof(uint8_t*)*TABLE_MAX);
+    ext->content = malloc(sizeof(uint8_t*)*TABLE_SIZE);
+    memset(ext->content, 0, sizeof(uint8_t*)*TABLE_SIZE);
 
     t->table = ext;
 }
@@ -129,16 +129,16 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
                 odph_cuckoo_table_destroy(tbl);
             }
             // name, capacity, key_size, value size
-            tbl = odph_cuckoo_table_create(name, 4, t->key_size, TABLE_VALUE_SIZE);
+            tbl = odph_cuckoo_table_create(name, TABLE_SIZE, t->key_size, TABLE_VALUE_SIZE);
             if(tbl == NULL) {
                 debug("  ::Table %s creation fail\n", name);
-                debug("  ::key size %d, val_size %d\n",t->key_size, TABLE_VALUE_SIZE);
+                debug("  ::Table size %d, key size %d, val_size %d\n", TABLE_SIZE, t->key_size, TABLE_VALUE_SIZE);
                 exit(0);
             }
 
             create_ext_table(t, tbl, socketid);
             //debug("  ::Table %s creation complete\n", name);
-            debug("  ::Table %s, key size %d, val_size %d created \n", name,t->key_size, TABLE_VALUE_SIZE);
+            debug("  ::Table %s, Table size %d, key size %d, val_size %d created \n", name, t->key_size, TABLE_SIZE, TABLE_VALUE_SIZE);
             break;
         case LOOKUP_LPM:
             snprintf(name, sizeof(name), "%s_lpm_%d_%d", t->name, socketid, replica_id);
@@ -241,6 +241,7 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
 
     prefix.ip = key[0] << 24 | key[1] << 16 | key[2] << 8 | key[3];
     prefix.cidr = key[4];
+    //prefix.cidr = 16;
 
     info(":::: EXECUTING lpm add on table %s, depth %d, keysize %d valsize %d, value %p \n", t->name, depth, t->key_size, t->val_size, value);
     info("  :: key:  %d:%d:%d:%d - %d \n",key[0],key[1],key[2],key[3],key[4]);
@@ -311,30 +312,31 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 uint8_t* lpm_lookup(lookup_table_t* t, uint8_t* key)
 {
     int ret = 0;
-    //int result = 0;
     uint8_t *result = NULL;
+    uint32_t lkp_ip = 0;
     if(t->key_size == 0) return t->default_val;
     extended_table_t* ext = (extended_table_t*)t->table;
     info(":::: EXECUTING lpm lookup on table %s, keysize %d \n", t->name, t->key_size);
     debug("  :: key:  %d:%d:%d:%d - %d \n",key[0],key[1],key[2],key[3],key[4]);
 
-    odph_iplookup_prefix_t prefix;
+    //odph_iplookup_prefix_t lkp_ip;
     for (int i = 0; i < ODPH_IPV4ADDR_LEN; i++)
         if (key[i] > 255)
             return NULL; //TODO how to handle return here
 
-    prefix.ip = key[0] << 24 | key[1] << 16 | key[2] << 8 | key[3];
-    //  prefix.cidr = key[4];
+    lkp_ip = key[0] << 24 | key[1] << 16 | key[2] << 8 | key[3];
+    //  lkp_ip.cidr = key[4];
 #ifndef NINFO
-    print_prefix_info("Lookup", prefix.ip, prefix.cidr);
+    print_prefix_info("Lookup", lkp_ip, key[4]);
+    //print_prefix_info("Lookup", lkp_ip, lkp_ip.cidr);
 #endif
-    ret = odph_iplookup_table_get_value(ext->odp_table, &(prefix.ip), &result, t->val_size);
+    ret = odph_iplookup_table_get_value(ext->odp_table, &lkp_ip, &result, t->val_size);
     if (ret < 0) {
         printf("Failed to find longest prefix with result %p \n", &result);
         debug("  :: LPM lookup fail \n");
         return t->default_val;
     }
-    info("  :: LPM lookup success with result=%d\n", result);
+    info("  :: LPM lookup success with result=%d\n", (int)*result);
 
     /*
        print_prefix_info("Lkp", lkp_ip, 32);
