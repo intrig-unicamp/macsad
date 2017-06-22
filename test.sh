@@ -25,7 +25,7 @@ pkill -f mac_l3_controller
 pkill -f mac_l3_nhg_controller
 ./src/hardware_dep/shared/ctrl_plane/mac_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l2_l3_controller &
-#./src/hardware_dep/shared/ctrl_plane/mac_l3_controller trace_100.txt &
+#./src/hardware_dep/shared/ctrl_plane/mac_l3_controller traces/trace_100.txt &
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_controller&
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_nhg_controller &
 
