@@ -53,7 +53,8 @@ LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
 #ODP(dpdk)
 #LIBS =  -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
 #ODP-DPDK
-#LIBS =  -l:libodp-dpdk.a -l:libodphelper-linux.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
+#CFLAGS+=" -I$RTE_SDK/$RTE_TARGET/include"
+#LIBS =  -l:libodp-dpdk.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
 
 OBJS = $(SRCS-y:.c=.o)
 
