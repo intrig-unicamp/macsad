@@ -46,15 +46,17 @@ SRCS-Y += vector.c
 
 LDFLAGS += -L$(ODP_SDK)/lib/
 #LDFLAGS += -L$(ODP_SDK)/lib/.libs
-LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
 
-#ODP(socket-mmap, netmap)
+#01 ODP(socket-mmap, netmap)
 LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
-#ODP(dpdk)
+
+#02 ODP(dpdk)
 #LIBS =  -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
-#ODP-DPDK
-#CFLAGS+=" -I$RTE_SDK/$RTE_TARGET/include"
-#LIBS =  -l:libodp-dpdk.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
+
+#03 ODP-DPDK
+#CFLAGS  += -I "$(RTE_SDK)/$(RTE_TARGET)/include"
+#LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
+#LIBS     = -l:libodp-dpdk.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
 
 OBJS = $(SRCS-y:.c=.o)
 
