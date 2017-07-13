@@ -175,6 +175,7 @@ static void odp_send_packet(odp_packet_t *p, uint8_t port, int thr_idx)
 
 #define EXTRACT_INGRESSPORT(p) GET_INT32_AUTO(p, field_instance_standard_metadata_ingress_port)
 
+//TODO use odp_packet_ref_static() for performance improvement. (ref_static creates readonly copy. After reference creation no pkt manipuation allowed
 static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int thr_idx)
 {
 	appl_args_t *appl = &gconf->appl;
@@ -221,34 +222,30 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 	return;
 }
 
+#if 0
 static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 {
     info("Entry init_metadata \n ");
 	int res32; // needs for the macro
 	MODIFY_INT32_INT32_BITS(packet_desc, field_instance_standard_metadata_ingress_port, inport);
-
-	/* validate ingressport set */
-#if 0 //To test this function
-	res32 = 0;
-	int inp = EXTRACT_INGRESSPORT(packet_desc);
-	info("[initMetadata] Inport %d is set as %d\n",inport, inp);
-#endif
 }
+#endif
 
 static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
 {
 	int port = EXTRACT_EGRESSPORT(pd);
-	int inport = EXTRACT_INGRESSPORT(pd);
+//	int inport = EXTRACT_INGRESSPORT(pd);
+    int inport = odp_packet_input_index(*((odp_packet_t *)pd->wrapper));
 
 //	dbg_print_headers(pd);
-	info("send_packet: initial i/p port=%d and o/p port=%d \n", inport, port);
-    reset_headers(pd);// sugar@292
+	info("send_packet: initial i/p port=%d and o/p port=%d \n", odp_packet_input_index(*((odp_packet_t *)pd->wrapper)), port);
+    reset_headers(pd);
 
 	if (port==100) {
 		maco_bcast_packet(pd, inport, thr_idx);
 	} else {
 		odp_send_packet((odp_packet_t *)pd->wrapper, port, thr_idx);
-		sigg("[Unicast] recvd port id - %d, sent port id - %d\n", inport, port);
+		sigg("[Unicast] recvd port id - %d, sent port id - %d\n", odp_packet_input_index(*((odp_packet_t *)pd->wrapper)), port);
 	}
 
 	return 0;
@@ -261,7 +258,7 @@ void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, 
 	pd->pointer = (uint8_t *)odp_packet_data(*p);
 	pd->wrapper = (packet *)p;
     info("Entry packet_received \n ");
-	init_metadata(pd, portid);
+//	init_metadata(pd, portid);
 	handle_packet(pd, state_tmp->tables);
 }
 
@@ -318,6 +315,7 @@ if(port_in) {pktout = mconf->tx_pktios[0].pktout;
 #if 1
 		for (i = 0; i < pkts; i++) {
 			pkt = pkt_tbl[i];
+            //odp_packet_print((odp_packet_t) pkt);
 			packet_received(&pd, &pkt, port_in, mconf->thr_idx);
 			send_packet (&pd, mconf->thr_idx);
 		}
