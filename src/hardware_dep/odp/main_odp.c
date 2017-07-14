@@ -156,18 +156,17 @@ static void odp_send_packet(odp_packet_t *p, uint8_t port, int thr_idx)
 
     pkt_buf_t *buf;
 
-    buf = &(gconf->mconf[thr_idx].tx_pktios[port].buf);
+	buf = &(gconf->mconf[thr_idx].tx_pktios[port].buf);
 
-    buf_id = buf->len;
-    if (buf_id == MAX_PKT_BURST)
-    {
-        debug("Tx q full(%d)\n", buf_id);
-        odp_packet_free(*p);
-        return;
-    }
-
-    buf->pkt[buf_id] = pkt;
-    buf->len++;
+	buf_id = buf->len;
+	if (buf_id ^ MAX_PKT_BURST)
+	{
+		buf->pkt[buf_id] = pkt;
+		buf->len++;
+		return;
+	}
+	debug("Tx q full(%d)\n", buf_id);
+	odp_packet_free(*p);
 	return;
 }
 
