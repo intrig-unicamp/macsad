@@ -45,12 +45,12 @@ SRCS-y += $(CDIR)src/hardware_dep/odp/data_plane/odp_primitives.c
 SRCS-Y += vector.c
 
 LDFLAGS += -L$(ODP_SDK)/lib/
-#LDFLAGS += -L$(ODP_SDK)/lib/.libs
 
 #01 ODP(socket-mmap, netmap)
 LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
 
 #02 ODP(dpdk)
+#LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
 #LIBS =  -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
 
 #03 ODP-DPDK

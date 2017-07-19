@@ -7,7 +7,9 @@ $(info CC = $(CC))
 
 # Compiler debug level
 CFLAGS += -O3
-#CFLAGS +=  -g -rdynamic -O0
+#CFLAGS +=  -g -O2
+#CFLAGS +=  -g -rdynamic -O2
+#CFLAGS += -fno-omit-frame-pointer
 #CFLAGS +=  -ggdb
 
 #Turn warnings into errors
@@ -27,8 +29,8 @@ endif
 #To define the backend used: odp/dpdk
 CFLAGS += -D ODP_BK
 
-#CFLAGS += -D NDEBUG
-#CFLAGS += -D NINFO
-#CFLAGS += -D NSIGG
+CFLAGS += -D NDEBUG
+CFLAGS += -D NINFO
+CFLAGS += -D NSIGG
 
 #CFLAGS += -fno-stack-protector
