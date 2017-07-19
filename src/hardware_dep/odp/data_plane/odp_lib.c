@@ -23,8 +23,6 @@ int promiscuous_on = 0; /**< Ports set in promiscuous mode off by default. */
 //TODO
 int numa_on = 0; /**< NUMA is not enabled by default. */
 
-int exit_threads = 0;
-
 #define MAX_LCORE_PARAMS 1024
 uint16_t nb_lcore_params;
 
@@ -879,8 +877,9 @@ uint8_t maco_initialize(int argc, char **argv)
     odp_pktio_info_t info;
     odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
     int (*thr_run_func)(void *);
-    struct sigaction signal_action;
 
+//Code for handling signals
+    struct sigaction signal_action;
     memset(&signal_action, 0, sizeof(signal_action));
     signal_action.sa_handler = sig_handler;
     sigfillset(&signal_action.sa_mask);

@@ -32,8 +32,6 @@ extern uint32_t enabled_port_mask;
 extern int promiscuous_on;
 extern int numa_on;
 
-extern int exit_threads;    /**< Break workers loop if set to 1 */
-
 //#define debug 1
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1 // rte_log.h
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1 // rte_log.h
@@ -154,8 +152,7 @@ typedef struct appl_args {
     uint64_t recv_tmo;        /**< Check packet errors */
 } appl_args_t;
 
-/** Global barrier to synchronize main and workers */
-extern int exit_threads;    /**< Break workers loop if set to 1 */
+extern bool exit_threads; 
 
 typedef struct lcore_state {
 	//ptrs to the containing socket's instance
