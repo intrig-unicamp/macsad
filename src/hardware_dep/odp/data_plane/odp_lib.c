@@ -349,6 +349,7 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 {
     odp_pktio_t pktio;
     odp_pktio_capability_t capa;
+	odp_pktio_config_t config;
     odp_pktio_param_t pktio_param;
     odp_pktin_queue_param_t pktin_param;
     odp_pktio_op_mode_t mode_rx, mode_tx;
@@ -375,6 +376,10 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
         debug("Error: capability query failed %s\n", name);
         return -1;
     }
+
+    odp_pktio_config_init(&config);
+    config.parser.layer = ODP_PKTIO_PARSER_LAYER_NONE;
+    odp_pktio_config(pktio, &config);
 
     odp_pktin_queue_param_init(&pktin_param);
     odp_pktout_queue_param_init(&pktout_param);
