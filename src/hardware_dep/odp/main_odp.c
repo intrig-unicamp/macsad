@@ -198,7 +198,8 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 	return;
 }
 
-#if 0
+#if 1
+//TODO Will be commented in future. Before that need to update create_digest function to use inport from ODP api.
 static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 {
     info("Entry init_metadata \n ");
@@ -234,7 +235,7 @@ void packet_received(packet_descriptor_t *pd, odp_packet_t *p, unsigned portid, 
 	pd->pointer = (uint8_t *)odp_packet_data(*p);
 	pd->wrapper = (packet *)p;
 	info("Entry packet_received \n ");
-	//	init_metadata(pd, portid);
+	init_metadata(pd, portid);
 	handle_packet(pd, state_tmp->tables);
 }
 
