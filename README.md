@@ -7,6 +7,15 @@ Note: In this tutorial we are going to install the MACSAD at `/root` folder.
 # Part 1
 ---
 ## ODP:
+
+First we need to install all the dependencies, which should be made using:
+
+- `sudo apt-get install -y automake autoconf libtool libcunit1-dev libssl-dev make python-pip libpcap-dev python-yaml graphviz scapy`
+
+Or using executing the script:
+
+- `./tools/script.sh`
+
 MACSAD uses ODP for forwarding plane developement. Fist of all, we need to create a directory in the same folder where the MACSAD will be cloned:
 
 - `mkdir tools`
@@ -43,11 +52,6 @@ MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 - `git submodule update`
 
 ## P4-Hlir:
-
-Install P4-Hlir dependencies:
-
-- `sudo apt-get install python-yaml`
-- `sudo apt-get install graphviz`
 
 Go to p4-Hlir folder and install is running the following command:
 
@@ -114,11 +118,7 @@ Start the MACSAD switch with veth interfaces 1 and 2
 NOTE: Run with root privilege.
 
 ### TERMINAL 3:
-We use scapy to send packet to the switch interface. You can install the scapy package as below:
-
-- `sudo apt-get install scapy`
-
-First send a packet via veth2:
+We use scapy to send packet to the switch interface. First send a packet via veth2:
 
 NOTE: Run scapy with root privilege.
 
