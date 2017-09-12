@@ -198,6 +198,7 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 	return;
 }
 
+#if 1
 //TODO Will be commented in future. Before that need to update create_digest function to use inport from ODP api.
 static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 {
@@ -205,6 +206,7 @@ static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 	int res32; // needs for the macro
 	MODIFY_INT32_INT32_BITS(packet_desc, field_instance_standard_metadata_ingress_port, inport);
 }
+#endif
 
 static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
 {

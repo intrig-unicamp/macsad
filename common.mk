@@ -26,9 +26,7 @@ else
 CFLAGS += -Wuninitialized
 endif
 
-#To define the backend used: odp/dpdk
-CFLAGS += -D ODP_BK
-
+#Comment the flags to enable different level of debug
 CFLAGS += -D NDEBUG
 CFLAGS += -D NINFO
 CFLAGS += -D NSIGG

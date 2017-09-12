@@ -883,7 +883,9 @@ uint8_t maco_initialize(int argc, char **argv)
     odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
     int (*thr_run_func)(void *);
 
-//Code for handling signals
+/* Code for handling signals.
+   TODO: should we write a func for this
+*/
     struct sigaction signal_action;
     memset(&signal_action, 0, sizeof(signal_action));
     signal_action.sa_handler = sig_handler;

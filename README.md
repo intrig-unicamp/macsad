@@ -41,6 +41,9 @@ MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
 - `git submodule update --init --recursive`
 
+NOTE: You can do this using a single git clone command too.
+- `git clone --recursive https://github.com/intrig-unicamp/mac.git`
+
 ## P4-Hlir:
 
 Install P4-Hlir dependencies:
