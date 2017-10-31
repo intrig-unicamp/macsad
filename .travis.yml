@@ -1,0 +1,10 @@
+
+
+language: c
+
+install: ./scripts/install_pkgs.sh
+
+script:
+	- bundle exec test.sh
+
+
