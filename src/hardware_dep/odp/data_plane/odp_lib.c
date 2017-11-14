@@ -469,6 +469,7 @@ static void usage(char *progname)
             "\n"
             "Optional OPTIONS:\n"
             "  -c, --count <number> CPU count.\n"
+            "  -C, --cpu_mask CPU mask to be set\n"
             //			 "  -m, --multi <0/1> Use Multiple CPU(Boolean).\n"
             "  -d, --timeout <in ns> Timeout for packet recv.\n"
             "  -m, --mode      Packet input mode\n"
@@ -498,9 +499,11 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
     int long_index;
     char *token;
     size_t len;
-    int i;
+    odp_cpumask_t cpumask, cpumask_args, cpumask_and;
+    int i, num_workers;
     static struct option longopts[] = {
         {"count", required_argument, NULL, 'c'},
+        {"cpu_mask", required_argument, NULL, 'C'},
         {"interface", required_argument, NULL, 'i'},
         {"mode", required_argument, NULL, 'm'},
         {"out_mode", required_argument, NULL, 'o'},
@@ -509,7 +512,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
         {NULL, 0, NULL, 0}
     };
 
-    static const char *shortopts = "+c:+i:+m:h";
+    static const char *shortopts = "+c:+C:+i:+m:h";
 
     /* let helper collect its own arguments (e.g. --odph_proc) */
     odph_parse_options(argc, argv, shortopts, longopts);
@@ -530,6 +533,18 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
         switch (opt) {
             case 'c':
                 appl_args->cpu_count = atoi(optarg);
+                break;
+            case 'C':
+                appl_args->cpu_mask = optarg;
+                odp_cpumask_from_str(&cpumask_args, appl_args->cpu_mask);
+                num_workers = odp_cpumask_default_worker(&cpumask, 0);
+                odp_cpumask_and(&cpumask_and, &cpumask_args, &cpumask);
+                if (odp_cpumask_count(&cpumask_and) <
+                                odp_cpumask_count(&cpumask_args)) {
+                        debug("Wrong cpu mask, max cpu's:%d\n",
+                                        num_workers);
+                exit(EXIT_FAILURE);
+                }
                 break;
             case 'i':
                 len = strlen(optarg);
@@ -877,7 +892,7 @@ uint8_t maco_initialize(int argc, char **argv)
     odp_cpumask_t cpumask;
     char cpumaskstr[ODP_CPUMASK_STR_SIZE];
     int num_workers, i, j, if_count, ret;
-    int cpu, affinity;
+    int cpu, ctrl_cpu, affinity;
     stats_t (*stats)[MAX_PKTIOS];
     odp_shm_t shm;
     odp_pktio_info_t info;
@@ -925,14 +940,32 @@ uint8_t maco_initialize(int argc, char **argv)
     parse_args(argc, argv, &gconf->appl);
 
     /* Print both system and application information */
-    print_info(NO_PATH(argv[0]), &gconf->appl);
+	print_info(NO_PATH(argv[0]), &gconf->appl);
 
-    //if (0)
-    if (odp_cpu_count() > 2)
-    {
-        odp_cpumask_zero(&cpumask);
-        /* allocate the 1st available control cpu to main process */
-        if (odp_cpumask_default_control(&cpumask, 1) != 1) {
+	if (gconf->appl.cpu_mask != NULL) {
+		odp_cpumask_from_str(&cpumask, gconf->appl.cpu_mask);
+		ctrl_cpu = odp_cpumask_first(&cpumask);
+		(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
+		printf("Control Thread: CPU %d, Mask %s \n",ctrl_cpu, cpumaskstr);
+
+		if (odph_odpthread_setaffinity(ctrl_cpu) != 0) {
+			debug("Set main process affinify to "
+					"cpu(%d) failed.\n", ctrl_cpu);
+			exit(EXIT_FAILURE);
+		}
+		odp_cpumask_clr(&cpumask, ctrl_cpu);
+
+		num_workers = odp_cpumask_count (&cpumask);
+		num_workers = odp_cpumask_default_worker(&cpumask, num_workers);
+		cpu = odp_cpumask_first(&cpumask);
+		(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
+		printf("Worker Thread : CPUs %d, 1st CPU %d, Mask %s \n",num_workers, cpu, cpumaskstr);
+
+	} else if (odp_cpu_count() > 2)
+	{
+		odp_cpumask_zero(&cpumask);
+		/* allocate the 1st available control cpu to main process */
+		if (odp_cpumask_default_control(&cpumask, 1) != 1) {
             debug("Allocate main process CPU core failed.\n");
             exit(EXIT_FAILURE);
         }
