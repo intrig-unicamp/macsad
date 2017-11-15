@@ -12,6 +12,12 @@
 
 #include "ternary_naive.h"  // TERNARY
 
+static uint32_t crc32(const void *data, uint32_t data_len, uint32_t init_val) {
+    int32_t *data32 = (void*)data;
+    uint32_t result = init_val; 
+    result = _mm_crc32_u32 (result, *data32++);
+    return result;
+}
 //TODO need to verify again. What is the functionality of it? How default_val is used?
 static uint8_t*
 copy_to_socket(uint8_t* src, int length, int socketid) {
@@ -21,46 +27,6 @@ copy_to_socket(uint8_t* src, int length, int socketid) {
     return dst;
 }
 
-#if 0
-/* TODO to be removed later */
-/* inner element structure of hash table
- * To resolve the hash confict:
- * we put the elements with different keys but a same HASH-value
- * into a list
- */
-typedef struct odph_hash_node {
-    /** list structure,for list opt */
-    odph_list_object list_node;
-    /* Flexible Array,memory will be alloced when table has been created
-     * Its length is key_size + value_size,
-     * suppose key_size = m; value_size = n;
-     * its structure is like:
-     * k_byte1 k_byte2...k_byten v_byte1...v_bytem
-     */
-    char content[0];
-} odph_hash_node;
-
-typedef struct {
-    uint32_t magicword; /**< for check */
-    uint32_t key_size; /**< input param when create,in Bytes */
-    uint32_t value_size; /**< input param when create,in Bytes */
-    uint32_t init_cap; /**< input param when create,in Bytes */
-    /** multi-process support,every list has one rw lock */
-    odp_rwlock_t *lock_pool;
-    /** table bucket pool,every hash value has one list
-     * head */
-    odph_list_head *list_head_pool;
-    /** number of the list head in list_head_pool */
-    uint32_t head_num;
-    /** table element pool */
-    odph_hash_node *hash_node_pool;
-    /** number of element in the
-     * hash_node_pool */
-    uint32_t hash_node_num;
-    char rsv[7]; /**< Reserved,for alignment */
-    char name[ODPH_TABLE_NAME_LEN]; /**< table name */
-} odph_hash_table_imp;
-#endif
 
 static void print_prefix_info(
         const char *msg, uint32_t ip, uint8_t cidr)
@@ -168,7 +134,7 @@ static uint8_t* add_index(uint8_t* value, int val_size, int index)
     //	realloc doesn't work in this case ("invalid old size")
     uint8_t* value2 = malloc(val_size+sizeof(int));
     memcpy(value2, value, val_size);
-    *(value2+val_size) = index;
+    *(int*)(value2+val_size) = index;
     return value2;
 }
 
