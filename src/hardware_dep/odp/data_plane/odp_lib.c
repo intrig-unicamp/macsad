@@ -22,8 +22,6 @@ extern uint32_t enabled_port_mask;
 int promiscuous_on = 0; /**< Ports set in promiscuous mode off by default. */
 //TODO
 int numa_on = 0; /**< NUMA is not enabled by default. */
-
-#define MAX_LCORE_PARAMS 1024
 uint16_t nb_lcore_params;
 
 //=   used only here   ========================================================
@@ -269,10 +267,13 @@ void increase_counter(int counterid, int index)
 uint32_t read_counter(int counterid, int index)
 {
     uint32_t cnt = 0;
+#if 0
     int socketid;
     for(socketid = 0; socketid < NB_SOCKETS; socketid++)
         if(state[socketid].tables[0][0] != NULL)
             cnt += odp_atomic_load_u32((odp_atomic_u32_t *)&state[socketid].counters[counterid]->values[index]);
+#endif
+    cnt = odp_atomic_load_u32((odp_atomic_u32_t *)&gconf->state.counters[counterid]->values[index]);
     return cnt;
 }
 

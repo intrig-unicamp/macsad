@@ -12,12 +12,6 @@
 
 #include "ternary_naive.h"  // TERNARY
 
-static uint32_t crc32(const void *data, uint32_t data_len, uint32_t init_val) {
-    int32_t *data32 = (void*)data;
-    uint32_t result = init_val; 
-    result = _mm_crc32_u32 (result, *data32++);
-    return result;
-}
 //TODO need to verify again. What is the functionality of it? How default_val is used?
 static uint8_t*
 copy_to_socket(uint8_t* src, int length, int socketid) {
@@ -46,6 +40,14 @@ static void print_prefix_info(
 // ============================================================================
 // SIMPLE HASH FUNCTION FOR EXACT TABLES
 
+static uint32_t crc32(const void *data, uint32_t data_len, uint32_t init_val) {
+    int32_t *data32 = (void*)data;
+    uint32_t result = init_val;
+    result = _mm_crc32_u32 (result, *data32++);
+    return result;
+}
+
+#if 0
 static uint32_t crc32(const void *data, uint32_t data_len,	uint32_t init_val) {
     const uint8_t* bytes = data;
     uint32_t crc, mask;
@@ -62,6 +64,7 @@ static uint32_t crc32(const void *data, uint32_t data_len,	uint32_t init_val) {
     }
     return ~crc;
 }
+#endif
 
 // ----------------------------------------------------------------------------
 // CREATE

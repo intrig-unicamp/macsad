@@ -1,18 +1,18 @@
 # Copyright 2016 Eotvos Lorand University, Budapest, Hungary
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from utils.misc import addError, addWarning 
+from utils.misc import addError, addWarning
 from utils.codegen import format_expr_16, format_statement_16, statement_buffer_value, format_declaration_16
 
 
@@ -41,7 +41,8 @@ def extract_header_tmp_2(h, w):
 
 def extract_header(h):
     generated_code = ""
-    #[ if((int)((uint8_t*)buf-(uint8_t*)(pd->data))+${h.type.type_ref.byte_width} > pd->wrapper->pkt_len); // packet_too_short // TODO optimize this
+    #[ //if((int)((uint8_t*)buf-(uint8_t*)(pd->pointer))+${h.type.type_ref.byte_width} > pd->wrapper->pkt_len); // packet_too_short // TODO optimize this
+    #[ if((int)((uint8_t*)buf-(uint8_t*)(pd->pointer))+${h.type.type_ref.byte_width} > odp_packet_seg_len(pd->pointer)); // packet_too_short // TODO optimize this
     #[ pd->headers[${h.id}].pointer = buf;
     #[ pd->headers[${h.id}].length = ${h.type.type_ref.byte_width};
     #[ buf += pd->headers[${h.id}].length;
@@ -133,6 +134,5 @@ for s in parser.states:
     #[ }
 
 #[ void parse_packet(packet_descriptor_t* pd, lookup_table_t** tables) {
-#[     parser_state_start(pd, pd->data, tables);
+#[     parser_state_start(pd, pd->pointer, tables);
 #[ }
-

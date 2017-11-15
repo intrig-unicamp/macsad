@@ -52,7 +52,7 @@ uint8_t* ternary_lookup (lookup_table_t* t, uint8_t* key);
 //=============================================================================
 // Calculations
 
-uint16_t calculate_csum16(const void* buf, uint16_t length);
+//uint16_t calculate_csum16(const void* buf, uint16_t length);
 
 uint32_t packet_length(packet_descriptor_t* pd);
 

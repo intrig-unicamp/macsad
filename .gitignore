@@ -1,5 +1,14 @@
 #built using gitignore template from "https://github.com/github/gitignore"
 
+#proj binary
+macsad
+
+#proj generated files
+build/
+src/hardware_dep/shared/ctrl_plane/*_controller
+**/*.pyc 
+src/utils/codegen.py 
+
 # Object files
 *.o
 *.ko
@@ -27,21 +36,13 @@
 *.i*86
 *.x86_64
 *.hex
-mac_ad
-macsad
 
-#proj generated files
-src/*.pyc
-build/
-#src/hardware_dep/shared/ctrl_plane/mac_controller
-mac_controller
-mac_l2_l3_controller
-mac_l3_controller
-mac_l3_nhg_controller
 # Debug files
 *.dSYM/
 
 # OS generated files #
+.swp
+core
 .DS_Store
 .DS_Store?
 ._*
@@ -49,8 +50,6 @@ mac_l3_nhg_controller
 .Trashes
 ehthumbs.db
 Thumbs.db
-.swp
-core
 
 #Tools generated files
 tags
@@ -65,4 +64,3 @@ cscope.out
 *.tar
 *.zip
 
-p4-hlir

@@ -262,9 +262,9 @@ for pe in pipeline_elements:
 #[     int value32;
 #[     EXTRACT_INT32_BITS_PACKET(pd, header_instance_standard_metadata, field_standard_metadata_t_ingress_port, value32)
 #[     debug("### HANDLING PACKET ARRIVING AT PORT %" PRIu32 "...\n", value32);
-//TODO do we need to comment reset headers ??
+#[ //TODO do we need to comment reset headers ??
 #[     reset_headers(pd);
 #[     parse_packet(pd, tables);
-#[     emit_addr = pd->data;
+#[     emit_addr = pd->pointer;
 #[     process_packet(pd, tables);
 #[ }

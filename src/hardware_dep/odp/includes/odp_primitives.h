@@ -48,7 +48,7 @@ typedef struct bitfield_handle_s {
 /******************************************************************************/
 
 #define FIELD_MASK(fd) (fd.fixed_width ? fd.mask : \
-    rte_cpu_to_be_32((0xffffffff << (32 - fd.bitcount)) & (0xffffffff >> fd.bitoffset)))
+    odp_cpu_to_be_32((0xffffffff << (32 - fd.bitcount)) & (0xffffffff >> fd.bitoffset)))
 
 #define FIELD_BYTES(fd) (  fd.bytecount == 1 ? (*(uint8_t*)  fd.byte_addr) : \
                          ( fd.bytecount == 2 ? (*(uint16_t*) fd.byte_addr) : \
@@ -106,9 +106,9 @@ typedef struct bitfield_handle_s {
     if(dst_fd.bytecount == 1) \
         res32 = (FIELD_BYTES(dst_fd) & ~FIELD_MASK(dst_fd)) | ((value32 << (8 - dst_fd.bitcount)) & FIELD_MASK(dst_fd)); \
     else if(dst_fd.bytecount == 2) \
-        res32 = (FIELD_BYTES(dst_fd) & ~FIELD_MASK(dst_fd)) | (rte_cpu_to_be_16(value32 << (16 - dst_fd.bitcount)) & FIELD_MASK(dst_fd)); \
+        res32 = (FIELD_BYTES(dst_fd) & ~FIELD_MASK(dst_fd)) | (odp_cpu_to_be_16(value32 << (16 - dst_fd.bitcount)) & FIELD_MASK(dst_fd)); \
     else \
-        res32 = (FIELD_BYTES(dst_fd) & ~FIELD_MASK(dst_fd)) | (rte_cpu_to_be_32(value32 << (32 - dst_fd.bitcount)) & FIELD_MASK(dst_fd)); \
+        res32 = (FIELD_BYTES(dst_fd) & ~FIELD_MASK(dst_fd)) | (odp_cpu_to_be_32(value32 << (32 - dst_fd.bitcount)) & FIELD_MASK(dst_fd)); \
     memcpy(dst_fd.byte_addr, &res32, dst_fd.bytecount); \
 }
 
@@ -129,7 +129,7 @@ typedef struct bitfield_handle_s {
                                         ((FIELD_BYTES(fd) & BITS_MASK1(fd)) | \
                                         ((FIELD_BYTES(fd) & BITS_MASK2(fd)) >> fd.bitoffset) | \
                                         ((FIELD_BYTES(fd) & BITS_MASK3(fd)) >> (fd.bytecount * 8 - fd.bitwidth)))) :\
-    (rte_be_to_cpu_32(FIELD_MASKED_BYTES(fd)) >> (32 - fd.bitcount)))
+    (odp_be_to_cpu_32(FIELD_MASKED_BYTES(fd)) >> (32 - fd.bitcount)))
 
 /*******************************************************************************
    Extract - statement (unpack value to a destination variable)
@@ -140,9 +140,9 @@ typedef struct bitfield_handle_s {
     if(fd.bytecount == 1) \
         dst =                  FIELD_MASKED_BYTES(fd) >> (8  - fd.bitcount); \
     else if(fd.bytecount == 2) \
-        dst = rte_be_to_cpu_16(FIELD_MASKED_BYTES(fd)) >> (16 - fd.bitcount); \
+        dst = odp_be_to_cpu_16(FIELD_MASKED_BYTES(fd)) >> (16 - fd.bitcount); \
     else \
-        dst = rte_be_to_cpu_32(FIELD_MASKED_BYTES(fd)) >> (32 - fd.bitcount); \
+        dst = odp_be_to_cpu_32(FIELD_MASKED_BYTES(fd)) >> (32 - fd.bitcount); \
 }
 
 // Extracts a field to the given uint32_t variable (no byteorder conversion) [MAX 4 BYTES]

@@ -152,7 +152,7 @@ typedef struct appl_args {
     uint64_t recv_tmo;        /**< Check packet errors */
 } appl_args_t;
 
-extern bool exit_threads; 
+extern bool exit_threads;
 
 typedef struct lcore_state {
 	//ptrs to the containing socket's instance
@@ -164,7 +164,7 @@ struct socket_state {
     // pointers to the instances created on each socket
     lookup_table_t * tables         [NB_TABLES][NB_REPLICA];
     int              active_replica [NB_TABLES];
-    counter_t      * counters       [NB_COUNTERS][RTE_MAX_LCORE];
+    counter_t      * counters       [NB_COUNTERS][MAC_MAX_LCORE];
     // p4_register_t  * registers      [NB_REGISTERS];
 };
 
@@ -272,7 +272,7 @@ struct l2fwd_port_statistics {
 	uint64_t dropped;
 } __rte_cache_aligned;
 
-extern struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
+extern struct l2fwd_port_statistics port_statistics[MAX_PKTIOS];
 
 #define PRINT_OPAQUE_STRUCT(p)  print_mem((p), sizeof(*(p)))
 static void print_mem_hex(void const *vp, size_t n) {

@@ -6,6 +6,7 @@
 #include <odph_iplookuptable.h>
 #include <odph_cuckootable.h>
 
+#if 0
 #include <rte_version.h>    // for conditional compilation
 
 #if RTE_VERSION >= RTE_VERSION_NUM(17,05,0,0)
@@ -13,6 +14,8 @@ typedef uint32_t table_index_t;
 #else
 typedef uint8_t table_index_t;
 #endif
+#endif
+typedef uint32_t table_index_t;
 
 typedef struct extended_table_s {
     void*     odp_table;
