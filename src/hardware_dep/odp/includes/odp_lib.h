@@ -137,6 +137,7 @@ static inline int sched_mode(pktin_mode_t in_mode)
  */
 typedef struct appl_args {
     int cpu_count;
+    const char *cpu_mask;
 	int mcpu_enable;
     int if_count;       /**< Number of interfaces to be used */
     int num_workers;    /**< Number of worker threads */
@@ -152,7 +153,7 @@ typedef struct appl_args {
     uint64_t recv_tmo;        /**< Check packet errors */
 } appl_args_t;
 
-extern bool exit_threads; 
+extern bool exit_threads;
 
 typedef struct lcore_state {
 	//ptrs to the containing socket's instance
