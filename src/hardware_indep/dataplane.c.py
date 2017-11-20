@@ -71,12 +71,11 @@ for table in hlir16.tables:
             add_error("table key calculation", "Unsupported field %s ignored." % f.id)
     if table.match_type == "LPM":
         #Key for iplookup is {IP_add + port}
-        #[ key -= ${table.key_length_bytes-1};
+        #[ key -= ${table.key_length_bytes};
         #[ int c, d;
-        #[ for(c = ${table.key_length_bytes-2}, d = 0; c >= 0; c--, d++) *(reverse_buffer+d) = *(key+c);
-        #[ //key_length-2 reduce the length one extra value
-        #[ for(c = 0; c < ${table.key_length_bytes-1}; c++) *(key+c) = *(reverse_buffer+c);
+        #[ for(c = ${table.key_length_bytes-1}, d = 0; c >= 0; c--, d++) *(reverse_buffer+d) = *(key+c);
         #[ //key_length-1 reduce the length one extra value
+        #[ for(c = 0; c < ${table.key_length_bytes}; c++) *(key+c) = *(reverse_buffer+c);
     #[ }
 
 ################################################################################

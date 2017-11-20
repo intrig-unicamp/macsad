@@ -223,7 +223,7 @@ void init() {
 
 int main(int argc, char* argv[])
 {
-	/*uint8_t ip[4] = {192,168,1,1};
+uint8_t ip[4] = {192,168,1,1};
     uint8_t mac[6] = {0xa0, 0x36, 0x9f, 0x3e, 0x94, 0xea};
 	uint8_t port = 1;
 
@@ -232,7 +232,7 @@ int main(int argc, char* argv[])
 	uint8_t port2 = 0;
 
     uint8_t smac[6] = {0xd0, 0x69, 0x0f, 0xa8, 0x39, 0x90};
-*/
+
 
 	if (argc>1) {
 		if (argc!=2) {
@@ -249,11 +249,11 @@ int main(int argc, char* argv[])
 	printf("Create and configure l3 test controller...\n");
 	//c = create_controller(11111, 3, dhf, init);
 	c = create_controller_with_init(11111, 3, dhf, init);
-	//fill_ipv4_fib_lpm_table(ip, port, mac);
-	//fill_ipv4_fib_lpm_table(ip2, port2, mac2);
+	fill_ipv4_fib_lpm_table(ip, port, mac);
+	fill_ipv4_fib_lpm_table(ip2, port2, mac2);
 
-	//fill_sendout_table(port, smac);
-	//fill_sendout_table(port2, smac);
+	fill_sendout_table(port, smac);
+	fill_sendout_table(port2, smac);
 
 	printf("Launching controller's main loop...\n");
 	execute_controller(c);
