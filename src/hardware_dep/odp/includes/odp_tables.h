@@ -8,7 +8,7 @@
 
 typedef struct extended_table_s {
     void*     odp_table;
-    uint8_t   size;
+    uint32_t   size;
     uint8_t** content;
 } extended_table_t;
 
@@ -27,7 +27,7 @@ typedef struct extended_table_s {
 
 #define TABLE_MAX 256
 
-#define TABLE_SIZE 1000 //Number of elements table may store
+#define TABLE_SIZE 10000 //Number of elements table may store
 //define different key and value size for different tables.
 #define TABLE_KEY_SIZE 4 //key_size    fixed size of the 'key' in bytes.
 #define TABLE_VALUE_SIZE 4 //value_size  fixed size of the 'value' in bytes.
