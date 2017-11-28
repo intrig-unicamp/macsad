@@ -44,7 +44,7 @@ if [ "$ERROR_CODE" -ne 0 ]; then
 fi
 
 # Compile C sources
-make clean;${MAKE_CMD} -j16
+make clean;${MAKE_CMD} -j4
 
 rm -rf /tmp/odp*
 

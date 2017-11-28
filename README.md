@@ -16,7 +16,6 @@ Then, clone the ODP git repository and compile it.
 
 - `git clone https://github.com/Linaro/odp`
 - `cd odp`
-- `git checkout v1.14.0.0`
 - `./bootstrap`
 - `./configure --disable-abi-compat --prefix=/root/tools/odp`
 - `make`
@@ -41,6 +40,9 @@ Clone the MACSAD project.
 MACSAD has added P4-hlir as a submodule. Update the submodules as below:
 
 - `git submodule update --init --recursive`
+
+NOTE: You can do this using a single git clone command too.
+- `git clone --recursive https://github.com/intrig-unicamp/mac.git`
 
 ## P4-Hlir:
 

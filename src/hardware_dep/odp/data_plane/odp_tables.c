@@ -168,7 +168,7 @@ static uint8_t* add_index(uint8_t* value, int val_size, int index)
     //	realloc doesn't work in this case ("invalid old size")
     uint8_t* value2 = malloc(val_size+sizeof(int));
     memcpy(value2, value, val_size);
-    *(value+val_size) = index;
+    *(value2+val_size) = index;
     return value2;
 }
 
