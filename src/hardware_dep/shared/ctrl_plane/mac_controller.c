@@ -5,7 +5,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-#define MAX_MACS 60000
+#define MAX_MACS 600000
 
 controller c;
 
@@ -265,8 +265,12 @@ void init() {
 	{
 		printf("Filling tables smac/dmac PORT: %d MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", portmap[i], macs[i][0],macs[i][1],macs[i][2],macs[i][3],macs[i][4],macs[i][5]);
 		fill_dmac_table(portmap[i], macs[i]);
+		if(0 == (mac_count%1000)){ printf("inside sleep \n");sleep(1);;}
 		fill_smac_table(portmap[i], macs[i]);
+                usleep(10000);
 	}
+
+	printf ("ctrl Total entries sent %d\n",i);
 
 }
 

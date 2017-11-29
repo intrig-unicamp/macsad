@@ -210,14 +210,15 @@ void init() {
 
 	for (i=0;i<=mac_count;++i)
 	{
-	//	printf("Filling tables lpm_table/sendout_table PORT: %d MAC: %02x:%02x:%02x:%02x:%02x:%02x IP: %d.%d.%d.%d\n", portmap[i], macs[i][0],macs[i][1],macs[i][2],macs[i][3],macs[i][4],macs[i][5], ips[i][0],ips[i][1],ips[i][2],ips[i][3]);
+		printf("Filling tables lpm_table/sendout_table PORT: %d MAC: %02x:%02x:%02x:%02x:%02x:%02x IP: %d.%d.%d.%d\n", portmap[i], macs[i][0],macs[i][1],macs[i][2],macs[i][3],macs[i][4],macs[i][5], ips[i][0],ips[i][1],ips[i][2],ips[i][3]);
 		fill_ipv4_fib_lpm_table(ips[i], portmap[i], macs[i]);
 
-        if(0 == (mac_count%1000)){ printf("inside sleep \n");sleep(1);;}
+        	//if(0 == (mac_count%1000)){ printf("inside sleep \n");sleep(1);;}
 		fill_sendout_table(portmap[i], smac);
-        usleep(1000);
+        	usleep(1000);
 	}
-    printf ("ctrl Total entries sent %d\n",i);
+
+    	printf ("ctrl Total entries sent %d\n",i);
 
 }
 
