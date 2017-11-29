@@ -289,17 +289,17 @@ int main(int argc, char* argv[])
 	}
 
 //    uint8_t mac[6] = {0xa0, 0x36, 0x9f, 0x3e, 0x94, 0xea};
-   // uint8_t mac[6] = {0x90, 0xe2, 0xba, 0x27, 0xfd, 0x3d};
-   // uint8_t port = 1;
+    uint8_t mac[6] = {0x90, 0xe2, 0xba, 0x27, 0xfd, 0x3d};
+    uint8_t port = 1;
 
 //   uint8_t mac2[6] = {0xa0, 0x36, 0x9f, 0x3e, 0x94, 0xe8};
-   // uint8_t mac2[6] = {0x90, 0xe2, 0xba, 0x27, 0xfd, 0x3c};
-   // uint8_t port2 = 0;
+    uint8_t mac2[6] = {0x90, 0xe2, 0xba, 0x27, 0xfd, 0x3c};
+    uint8_t port2 = 0;
 
 
 	printf("Create and configure controller...\n");
 	c = create_controller_with_init(11111, 3, dhf, init);
-#if 0
+#if 1
     fill_dmac_table(port, mac);
     fill_smac_table(port, mac);
 
