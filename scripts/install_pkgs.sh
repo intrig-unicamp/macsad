@@ -1,18 +1,15 @@
 #!/bin/bash
 
+sudo apt-get install -y automake autoconf libtool libcunit1-dev sudo
+
 #Install packages necessary for MACSAD and its submodules
-sudo apt-get install -y automake
-sudo apt-get install -y autoconf
-sudo apt-get install -y libtool
-sudo apt-get install -y git
+sudo apt-get install -y make automake autoconf libtool git
 
 # Libraries for OpenSSL for ODP
 sudo apt-get install -y libssl-dev
 
 #For p4-hlir
-sudo apt-get install -y python-yaml
-sudo apt-get install -y graphviz
-sudo apt-get install -y python-pip
+sudo apt-get install -y python-yaml graphviz python-pip
 
 #For dpdk
 sudo apt-get install -y libpcap-dev
@@ -24,9 +21,9 @@ apt install -y gdb exuberant-ctags ethtool vim cscope
 #"killall command not found" 
 #sudo apt-get install -y psmisc
 
-#"sudo command not found"
-#sudo apt install -y sudo 
+#Install scapy:
+#sudo apt install -y scapy
 
-#scapy
+#Scapy implementation for VxLAN and GRE usage:
 #git clone https://github.com/p4lang/scapy-vxlan.git
-#python setup.py install
+#cd scapy-vxlan; python setup.py install
