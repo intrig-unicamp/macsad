@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "controller.h"
 #include "messages.h"
 #include <unistd.h>
