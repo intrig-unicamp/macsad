@@ -1,11 +1,12 @@
 #!/bin/bash
 
-sudo apt-get install -y automake autoconf libtool libcunit1-dev sudo
+#Comment the following line and install sudo, if you do not already have it
+#apt install -y sudo
 
 #Install packages necessary for MACSAD and its submodules
-sudo apt-get install -y make automake autoconf libtool git
+sudo apt-get install -y make automake autoconf libtool git libcunit1-dev
 
-# Libraries for OpenSSL for ODP
+#Libraries for OpenSSL for ODP
 sudo apt-get install -y libssl-dev
 
 #For p4-hlir
