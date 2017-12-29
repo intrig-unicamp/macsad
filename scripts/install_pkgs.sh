@@ -15,6 +15,9 @@ sudo apt-get install -y python-yaml graphviz python-pip
 #For dpdk
 sudo apt-get install -y libpcap-dev
 
+#Various other developement tools
+apt install -y gdb exuberant-ctags ethtool vim cscope
+
 #Misc tools
 #"killall command not found" 
 #sudo apt-get install -y psmisc

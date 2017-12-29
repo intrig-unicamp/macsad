@@ -1,12 +1,7 @@
 MACSAD
 ==========
 
-The Multi-Architecture Compiler System for Abstract Dataplanes (MACSAD) is a P4 
-compiler that uses ODP aiming to archive portability of dataplane applications 
-without compromising the target performance. MACSAD integrates the ODP APIs 
-with P4, defining a programmable dataplane across multiple targets in an unified 
-compiler system. MACSAD has a designed compiler module that generates an 
-Intermediate Representation (IR) for P4 applications.
+The Multi-Architecture Compiler System for Abstract Dataplanes (MACSAD) is a P4 compiler that uses ODP aiming to archive portability of dataplane applications without compromising the target performance. MACSAD integrates the ODP APIs with P4, defining a programmable dataplane across multiple targets in an unified compiler system. MACSAD has a designed compiler module that generates an Intermediate Representation (IR) for P4 applications.
 
 Follow the steps below to setup and run MACSAD on an Ubuntu 16.04.2 LTS and later.
 
@@ -17,7 +12,7 @@ To install MACSAD and it dependencies you can run our script (and skip to Part 3
 - `cd /root/`
 - `./mac/install.sh`
 
-Or you can follow the next steps.
+Or you can follow the next steps. We strongly suggest to run our `install_pkgs.sh`.
 
 # Part 1
 
@@ -119,12 +114,8 @@ Start the MACSAD switch with veth interfaces 1 and 2
 
 ### TERMINAL 3:
 
-Now will use the veth interfaces created in step #5. 
-`veth1` and `veth2` will be part of the switch. 
-We will send packet to `veth0` (which is `veth1`'s pair)  
-and monitor at `veth3` (which is `veth2`'s pair) for 
-packets. Similary we will send packet to `veth3` and 
-expect packets to arrive at `veth0`:
+Now will use the veth interfaces created in step #5. `veth1` and `veth2` will be part of the switch. 
+We will send packet to `veth0` (which is `veth1`'s pair) and monitor at `veth3` (which is `veth2`'s pair) for packets. Similary we will send packet to `veth3` and expect packets to arrive at `veth0`:
 
 - `sudo python run_test.py`
 
@@ -147,14 +138,7 @@ Now send a packet from veth0 to veth3 and verify similarly at terminal 4.
 - `pkt2 = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.2',src='192.168.0.1')`
 - `sendp(pkt2,iface="veth0",count=1);`
 
-The first packet with an unknown destination 
-mac address will be broadcasted by the switch 
-while the source mac address is learned. Now 
-after the two packets were sent, the switch 
-has already learned the mac addresses of veth0 
-and veth3. Now if we send those packets again, 
-switch will forward those packets via 
-corresponding ports instead of broadcasting them.
+The first packet with an unknown destination mac address will be broadcasted by the switch while the source mac address is learned. Now after the two packets were sent, the switch has already learned the mac addresses of veth0 and veth3. Now if we send those packets again, switch will forward those packets via corresponding ports instead of broadcasting them.
 
 Notes:
 
