@@ -167,7 +167,7 @@ struct p4_field_match_lpm {
 
 struct p4_field_match_exact {
 	struct p4_field_match_header header;
-    uint16_t length;
+	uint16_t length;
 	char bitmap[MAX_FIELD_LENGTH];
 };
 

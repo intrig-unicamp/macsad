@@ -2,18 +2,13 @@
 #define DPDK_TABLES_H
 
 #include <table.h>
-#include <odph_hashtable.h>
-#include <odph_iplookuptable.h>
-#include <odph_cuckootable.h>
+#include <odph_api.h>
 
 typedef struct extended_table_s {
     void*     odp_table;
-    uint8_t   size;
+    uint32_t   size;
     uint8_t** content;
 } extended_table_t;
-
-/* need to cretae a array of TABLE_MAX to support multiple tables */
-//extern odph_table_ops_t odph_hash_table_ops;
 
 //=============================================================================
 // Table size limits
@@ -30,10 +25,10 @@ typedef struct extended_table_s {
 
 #define TABLE_MAX 256
 
-#define TABLE_SIZE 2 //'capacity' - Max memory usage this table use, in MBytes
+#define TABLE_SIZE 10000 //Number of elements table may store
 //define different key and value size for different tables.
 #define TABLE_KEY_SIZE 4 //key_size    fixed size of the 'key' in bytes.
-#define TABLE_VALUE_SIZE 16 //value_size  fixed size of the 'value' in bytes.
+#define TABLE_VALUE_SIZE 4 //value_size  fixed size of the 'value' in bytes.
 
 int odpc_lookup_tbls_init();
 int odpc_lookup_tbls_des();

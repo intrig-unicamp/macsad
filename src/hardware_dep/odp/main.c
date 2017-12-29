@@ -2,10 +2,9 @@
 
 int main(int argc, char** argv)
 {
-#ifdef ODP_BK
     info("Starting MACSAD DataPlane.\n");
-    odpc_initialize(argc, argv);
+    maco_initialize(argc, argv);
     info("Exiting MACSAD Program.\n");
-#endif // ODP_BK
+    maco_terminate();
     return 0;
 }

@@ -1,14 +1,19 @@
+#include <stdlib.h>
+#include <unistd.h>
+#include <net/ethernet.h>
+#include <signal.h>
+#include <execinfo.h>
 #include "odp_api.h"
 #include "aliases.h"
 #include "backend.h"
 #include "ctrl_plane_backend.h"
 #include "dataplane.h"
-#include <unistd.h>
-
 #include "odp_lib.h"
-#include <net/ethernet.h>
 
 struct socket_state state[NB_SOCKETS];
+/** Global pointer to mac_global */
+mac_global_t *gconf;
+odp_instance_t instance;
 
 //=   shared   ================================================================
 extern void init_control_plane();
@@ -27,12 +32,47 @@ uint16_t nb_lcore_params;
 #define RTE_TEST_RX_DESC_DEFAULT 128
 #define RTE_TEST_TX_DESC_DEFAULT 512
 
-int exit_threads = 0;    /**< Break workers loop if set to 1 */
-
 extern void odp_main_worker (void);
 //=============================================================================
 
 #define UNUSED(x) (void)(x)
+
+static void sig_handler(int signo)
+{
+	size_t num_stack_frames;
+	const char  *signal_name;
+	void  *bt_array[128];
+
+	switch (signo) {
+		case SIGINT:
+			signal_name = "SIGINT";   break;
+		case SIGILL:
+			signal_name = "SIGILL";   break;
+		case SIGFPE:
+			signal_name = "SIGFPE";   break;
+		case SIGSEGV:
+			signal_name = "SIGSEGV";  break;
+		case SIGTERM:
+			signal_name = "SIGTERM";  break;
+		case SIGBUS:
+			signal_name = "SIGBUS";   break;
+		default:
+			signal_name = "UNKNOWN";  break;
+	}
+
+	if (signo == SIGINT)
+	{
+		exit_threads = 1;
+		printf("Received signal=%u (%s) exiting.", signo, signal_name);
+	}else{
+		num_stack_frames = backtrace(bt_array, 100);
+		printf("2 Received signal=%u (%s) exiting.", signo, signal_name);
+		backtrace_symbols_fd(bt_array, num_stack_frames, fileno(stderr));
+		fflush(NULL);
+		sync();
+		abort();
+	}
+}
 
 //--------
 static int parse_max_pkt_len(const char *pktlen)
@@ -203,8 +243,7 @@ int odp_dev_name_to_id (char *if_name) {
 }
 
 #if 0
-    static void
-create_counters_on_socket(int socketid)
+static void create_counters_on_socket(int socketid)
 {
     if(counter_config == NULL) return;
     info("Initializing counters on socket %d\n", socketid);
@@ -224,7 +263,7 @@ create_counters_on_socket(int socketid)
 
 void increase_counter(int counterid, int index)
 {
-    odp_atomic_inc_u32(&gconf->state.counters[counterid]->values[index]);
+    odp_atomic_inc_u32((odp_atomic_u32_t *)&gconf->state.counters[counterid]->values[index]);
 }
 
 uint32_t read_counter(int counterid, int index)
@@ -233,7 +272,7 @@ uint32_t read_counter(int counterid, int index)
     int socketid;
     for(socketid = 0; socketid < NB_SOCKETS; socketid++)
         if(state[socketid].tables[0][0] != NULL)
-            cnt += odp_atomic_load_u32(&state[socketid].counters[counterid]->values[index]);
+            cnt += odp_atomic_load_u32((odp_atomic_u32_t *)&state[socketid].counters[counterid]->values[index]);
     return cnt;
 }
 
@@ -310,12 +349,13 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 {
     odp_pktio_t pktio;
     odp_pktio_capability_t capa;
+	odp_pktio_config_t config;
     odp_pktio_param_t pktio_param;
     odp_pktin_queue_param_t pktin_param;
     odp_pktio_op_mode_t mode_rx, mode_tx;
     odp_pktout_queue_param_t pktout_param;
     odp_schedule_sync_t  sync_mode;
-    int num_tx_shared;
+//    int num_tx_shared;
 
     pktin_mode_t in_mode = gconf->appl.in_mode;
 
@@ -337,13 +377,17 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
         return -1;
     }
 
+    odp_pktio_config_init(&config);
+    config.parser.layer = ODP_PKTIO_PARSER_LAYER_NONE;
+    odp_pktio_config(pktio, &config);
+
     odp_pktin_queue_param_init(&pktin_param);
     odp_pktout_queue_param_init(&pktout_param);
 
     mode_tx = ODP_PKTIO_OP_MT_UNSAFE;
     mode_rx = ODP_PKTIO_OP_MT_UNSAFE;
 
-    num_tx_shared = capa.max_output_queues;
+    //num_tx_shared = capa.max_output_queues;
 
     if (num_rx > (int)capa.max_input_queues) {
         printf("Sharing %i input queues between %i workers\n",
@@ -424,7 +468,9 @@ static void usage(char *progname)
             "\n"
             "Optional OPTIONS:\n"
             "  -c, --count <number> CPU count.\n"
+            "  -C, --cpu_mask CPU mask to be set\n"
             //			 "  -m, --multi <0/1> Use Multiple CPU(Boolean).\n"
+            "  -d, --timeout <in ns> Timeout for packet recv.\n"
             "  -m, --mode      Packet input mode\n"
             "                  0: Direct mode: PKTIN_MODE_DIRECT (default)\n"
             "                  1: Scheduler mode with parallel queues: PKTIN_MODE_SCHED + SCHED_SYNC_PARALLEL\n"
@@ -452,17 +498,20 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
     int long_index;
     char *token;
     size_t len;
-    int i;
+    odp_cpumask_t cpumask, cpumask_args, cpumask_and;
+    int i, num_workers;
     static struct option longopts[] = {
         {"count", required_argument, NULL, 'c'},
+        {"cpu_mask", required_argument, NULL, 'C'},
         {"interface", required_argument, NULL, 'i'},
         {"mode", required_argument, NULL, 'm'},
         {"out_mode", required_argument, NULL, 'o'},
+        {"timeout", required_argument, NULL, 'd'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
     };
 
-    static const char *shortopts = "+c:+i:+m:h";
+    static const char *shortopts = "+c:+C:+i:+m:h";
 
     /* let helper collect its own arguments (e.g. --odph_proc) */
     odph_parse_options(argc, argv, shortopts, longopts);
@@ -470,6 +519,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
     appl_args->time = 0; /* loop forever if time to run is 0 */
     appl_args->accuracy = 15; /* get and print pps stats second */
     appl_args->cpu_count = 0; /* single cpu by default */
+    appl_args->recv_tmo = DEF_RX_PKT_TMO_US; /* default- do not wait*/
 
     opterr = 0; /* do not issue errors on helper options */
 
@@ -482,6 +532,18 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
         switch (opt) {
             case 'c':
                 appl_args->cpu_count = atoi(optarg);
+                break;
+            case 'C':
+                appl_args->cpu_mask = optarg;
+                odp_cpumask_from_str(&cpumask_args, appl_args->cpu_mask);
+                num_workers = odp_cpumask_default_worker(&cpumask, 0);
+                odp_cpumask_and(&cpumask_and, &cpumask_args, &cpumask);
+                if (odp_cpumask_count(&cpumask_and) <
+                                odp_cpumask_count(&cpumask_args)) {
+                        debug("Wrong cpu mask, max cpu's:%d\n",
+                                        num_workers);
+                exit(EXIT_FAILURE);
+                }
                 break;
             case 'i':
                 len = strlen(optarg);
@@ -522,6 +584,10 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
                         token != NULL; token = strtok(NULL, ","), i++) {
                     appl_args->if_names[i] = token;
                 }
+                break;
+
+            case 'd':
+                appl_args->recv_tmo = odp_pktin_wait_time(atol(optarg));
                 break;
 
             case 'h':
@@ -622,11 +688,11 @@ static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
 {
     uint64_t rx_pkts_tot = 0;
     int elapsed = 0;
-    int stats_enabled = 1;
+//    int stats_enabled = 1;
     int loop_forever = (duration == 0);
 
     if (timeout <= 0) {
-        stats_enabled = 0;
+//        stats_enabled = 0;
         timeout = 1;
     }
 
@@ -809,29 +875,42 @@ static void gconf_init(mac_global_t *gconf)
 
 //static inline odp_u16sum_t odph_chksum(void *buffer, int len)
 //return checksum value in host cpu order
-uint16_t calculate_csum16(const void* buf, uint16_t length) {
+uint16_t calculate_csum16(void* buf, uint16_t length) {
     uint16_t value16 = odph_chksum(buf, length);
     return value16;
 }
 
 uint32_t packet_length(packet_descriptor_t* pd) {
     //Returns sum of buffer lengths over all packet segments.
-    return odp_packet_buf_len(pd->wrapper);
+    return odp_packet_buf_len((odp_packet_t) pd->wrapper);
 }
 
-uint8_t odpc_initialize(int argc, char **argv)
+uint8_t maco_initialize(int argc, char **argv)
 {
     odp_pool_param_t params;
-    odp_instance_t instance;
     odp_cpumask_t cpumask;
     char cpumaskstr[ODP_CPUMASK_STR_SIZE];
     int num_workers, i, j, if_count, ret;
-    int cpu, affinity;
+    int cpu, ctrl_cpu, affinity;
     stats_t (*stats)[MAX_PKTIOS];
     odp_shm_t shm;
     odp_pktio_info_t info;
     odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
     int (*thr_run_func)(void *);
+
+/* Code for handling signals.
+   TODO: should we write a func for this
+*/
+    struct sigaction signal_action;
+    memset(&signal_action, 0, sizeof(signal_action));
+    signal_action.sa_handler = sig_handler;
+    sigfillset(&signal_action.sa_mask);
+    sigaction(SIGILL,  &signal_action, NULL);
+    sigaction(SIGFPE,  &signal_action, NULL);
+    sigaction(SIGSEGV, &signal_action, NULL);
+    sigaction(SIGTERM, &signal_action, NULL);
+    sigaction(SIGBUS,  &signal_action, NULL);
+    sigaction(SIGINT,  &signal_action, NULL);
 
     /* init ODP  before calling anything else */
     if (odp_init_global(&instance, NULL, NULL)) {
@@ -860,14 +939,32 @@ uint8_t odpc_initialize(int argc, char **argv)
     parse_args(argc, argv, &gconf->appl);
 
     /* Print both system and application information */
-    print_info(NO_PATH(argv[0]), &gconf->appl);
+	print_info(NO_PATH(argv[0]), &gconf->appl);
 
-    //if (0)
-    if (odp_cpu_count() > 2)
-    {
-        odp_cpumask_zero(&cpumask);
-        /* allocate the 1st available control cpu to main process */
-        if (odp_cpumask_default_control(&cpumask, 1) != 1) {
+	if (gconf->appl.cpu_mask != NULL) {
+		odp_cpumask_from_str(&cpumask, gconf->appl.cpu_mask);
+		ctrl_cpu = odp_cpumask_first(&cpumask);
+		(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
+		printf("Control Thread: CPU %d, Mask %s \n",ctrl_cpu, cpumaskstr);
+
+		if (odph_odpthread_setaffinity(ctrl_cpu) != 0) {
+			debug("Set main process affinify to "
+					"cpu(%d) failed.\n", ctrl_cpu);
+			exit(EXIT_FAILURE);
+		}
+		odp_cpumask_clr(&cpumask, ctrl_cpu);
+
+		num_workers = odp_cpumask_count (&cpumask);
+		num_workers = odp_cpumask_default_worker(&cpumask, num_workers);
+		cpu = odp_cpumask_first(&cpumask);
+		(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
+		printf("Worker Thread : CPUs %d, 1st CPU %d, Mask %s \n",num_workers, cpu, cpumaskstr);
+
+	} else if (odp_cpu_count() > 2)
+	{
+		odp_cpumask_zero(&cpumask);
+		/* allocate the 1st available control cpu to main process */
+		if (odp_cpumask_default_control(&cpumask, 1) != 1) {
             debug("Allocate main process CPU core failed.\n");
             exit(EXIT_FAILURE);
         }
@@ -947,11 +1044,11 @@ uint8_t odpc_initialize(int argc, char **argv)
     for (i = 0; i < if_count; ++i)
     {
         const char *dev = gconf->appl.if_names[i];
-        int num_rx, num_tx;
+        int num_rx;// num_tx;
 
         /* A queue per assigned worker */
         num_rx = gconf->pktios[i].num_rx_thr;
-        num_tx = gconf->pktios[i].num_tx_thr;
+//      num_tx = gconf->pktios[i].num_tx_thr;
 
         if (create_pktio(dev, i, num_rx, num_workers, gconf->pool))
             exit(EXIT_FAILURE);
@@ -961,7 +1058,7 @@ uint8_t odpc_initialize(int argc, char **argv)
             return -1;
         }
 
-        printf("interface id %d, ifname %s, drv: %s, pktio:%d, num of rx q=%d \n", i, gconf->appl.if_names[i], info.drv_name, odp_pktio_to_u64(gconf->pktios[i].pktio),gconf->pktios[i].num_rx_thr);
+        printf("interface id %d, ifname %s, drv: %s, pktio:%lu, num of rx q=%d \n", i, gconf->appl.if_names[i], info.drv_name, odp_pktio_to_u64(gconf->pktios[i].pktio),gconf->pktios[i].num_rx_thr);
 
         ret = odp_pktio_promisc_mode_set(gconf->pktios[i].pktio, 1);
         if (ret != 0) {
@@ -1036,29 +1133,30 @@ uint8_t odpc_initialize(int argc, char **argv)
     for (i = 0; i < num_workers; ++i)
         odph_odpthreads_join(&thread_tbl[i]);
 
-    // TODO
-    //	free(gconf);
-
-    free(gconf->appl.if_names);
-    free(gconf->appl.if_str);
-#if 0
-    if (odpc_lookup_tbls_des()) {
-        info("Lookup table destroy failed.\n");
-    }
-#endif
-    if (odp_pool_destroy(gconf->pool)) {
-        debug("Error: pool destroy\n");
-        exit(EXIT_FAILURE);
-    }
-    if (odp_term_local()) {
-        debug("Error: term local\n");
-        exit(EXIT_FAILURE);
-    }
-    if (odp_term_global(instance)) {
-        debug("Error: term global\n");
-        exit(EXIT_FAILURE);
-    }
-    printf("Exit\n\n");
     return 0;
 }
 
+void maco_terminate()
+{
+#if 0
+	free(gconf->appl.if_names);
+	free(gconf->appl.if_str);
+	if (odpc_lookup_tbls_des()) {
+		info("Lookup table destroy failed.\n");
+	}
+	if (odp_pool_destroy(gconf->pool)) {
+		debug("Error: pool destroy\n");
+		exit(EXIT_FAILURE);
+	}
+	if (odp_term_local()) {
+		debug("Error: term local\n");
+		exit(EXIT_FAILURE);
+	}
+	if (odp_term_global(instance)) {
+		debug("Error: term global\n");
+		exit(EXIT_FAILURE);
+	}
+	printf("\nMACSAD Exiting\n\n");
+#endif
+	return;
+}

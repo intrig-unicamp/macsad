@@ -54,6 +54,7 @@ extern int numa_on;
 
 #define MAX_PKT_BURST     32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
+#define DEF_RX_PKT_TMO_US ODP_PKTIN_NO_WAIT /* default- do not wait */
 
 struct ether_addr ports_eth_addr[MAX_ETHPORTS];
 
@@ -136,6 +137,7 @@ static inline int sched_mode(pktin_mode_t in_mode)
  */
 typedef struct appl_args {
     int cpu_count;
+    const char *cpu_mask;
 	int mcpu_enable;
     int if_count;       /**< Number of interfaces to be used */
     int num_workers;    /**< Number of worker threads */
@@ -148,10 +150,10 @@ typedef struct appl_args {
     int accuracy;       /**< Number of seconds to get and print statistics */
     char *if_str;       /**< Storage for interface names */
     int error_check;        /**< Check packet errors */
+    uint64_t recv_tmo;        /**< Check packet errors */
 } appl_args_t;
 
-/** Global barrier to synchronize main and workers */
-extern int exit_threads;    /**< Break workers loop if set to 1 */
+extern bool exit_threads;
 
 typedef struct lcore_state {
 	//ptrs to the containing socket's instance
@@ -162,7 +164,7 @@ typedef struct lcore_state {
 struct socket_state {
     // pointers to the instances created on each socket
     lookup_table_t * tables         [NB_TABLES][NB_REPLICA];
-    int            * active_replica [NB_TABLES];
+    int            active_replica [NB_TABLES];
     counter_t      * counters       [NB_COUNTERS];
 };
 
@@ -257,12 +259,15 @@ typedef struct mac_global{
 }mac_global_t;
 
 /** Global pointer to mac_global */
-mac_global_t *gconf;
+extern mac_global_t *gconf;
+
+extern odp_instance_t instance;
 
 #define TABCHANGE_DELAY 50 // microseconds
 
-uint8_t odpc_initialize(int argc, char **argv);
-
+uint8_t maco_initialize(int argc, char **argv);
+void maco_terminate();
+	
 int odpc_worker_mode_direct(void *arg);
 int odpc_worker_mode_queue(void *arg);
 int odpc_worker_mode_sched(void *arg);
