@@ -4,9 +4,7 @@ cd /root/
 mkdir tools
 mkdir tools/odp
 ./mac/install_pkgs.sh
-wget https://github.com/Linaro/odp/archive/v1.16.0.0.tar.gz
-tar xzvf v1.16.0.0.tar.gz
-mv odp-1.16.0.0/ odp/
+git clone -b v1.16.0.0 https://github.com/Linaro/odp
 cd odp
 ./bootstrap
 ./configure --disable-abi-compat --prefix=/root/tools/odp

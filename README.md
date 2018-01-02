@@ -28,9 +28,7 @@ MACSAD uses ODP for forwarding plane developement. Fist of all, we need to creat
 1. Download ODP v1.16.0 and compile it:
 
 - `sudo apt-get install build-essential autoconf automake pkg-config libssl-dev`
-- `wget https://github.com/Linaro/odp/archive/v1.16.0.0.tar.gz`
-- `tar xzvf v1.16.0.0.tar.gz`
-- `mv odp-1.16.0.0/ odp/`
+- `git clone -b v1.16.0.0 https://github.com/Linaro/odp`
 - `cd odp`
 - `./bootstrap`
 - `./configure --disable-abi-compat --prefix=/root/tools/odp`
@@ -45,14 +43,10 @@ MACSAD uses ODP for forwarding plane developement. Fist of all, we need to creat
 
 ## MACSAD installation
 
-1. Clone the MACSAD project.
+1. To run MACSAD we need P4-hlir submodule. At this step we are going to clone the MACSAD project. Update and install P4-hlir submodule:
 
-- `git clone https://github.com/intrig-unicamp/mac.git`
+- `git clone --recursive https://github.com/intrig-unicamp/mac.git`
 - `cd mac`
-
-2. MACSAD has added P4-hlir as a submodule. Download/update and then install it (along with its dependencies):
-
-- `git submodule update --init --recursive`
 - `sudo apt-get install python-yaml graphviz python-setuptools`
 - `cd p4-hlir`
 - `python setup.py install`
@@ -60,13 +54,13 @@ MACSAD uses ODP for forwarding plane developement. Fist of all, we need to creat
 
 For any issues with p4-hlir, please refer to its `README.md` file.
 
-3. The p4 program needs to be translated for the MACSAD switch project. You can do this as below:
+2. The p4 program needs to be translated for the MACSAD switch project. You can do this as below:
 
 - `python src/transpiler.py examples/p4_src/l2_fwd.p4`
 
 NOTE: This needs to be done everytime the P4 source file is modified or if any of the sugered file inside `src/hardware_indep` is changed.
 
-4. Install dependencies, set environment variables and compile MACSAD:
+3. Install dependencies, set environment variables and compile MACSAD:
 
 sudo apt-get install libpcap-dev python-scapy
 
@@ -74,7 +68,7 @@ sudo apt-get install libpcap-dev python-scapy
 - `export LD_LIBRARY_PATH=$ODK_SDK:$LD_LIBRARY_PATH`
 - `make`
 
-5. Set hugepages number and create interfaces for the test:
+4. Set hugepages number and create interfaces for the test:
 
 - `sudo sysctl -w vm.nr_hugepages=512`
 - `./scripts/veth_create.sh`
