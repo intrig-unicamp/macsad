@@ -43,8 +43,9 @@ MACSAD uses ODP for forwarding plane developement. Fist of all, we need to creat
 
 ## MACSAD installation
 
-1. To run MACSAD we need P4-hlir submodule. At this step we are going to clone the MACSAD project. Update and install P4-hlir submodule:
+1. To run MACSAD we need P4-hlir submodule. Thus, At this step, we will clone MACSAD project and update/install the submodule. 
 
+- `sudo apt-get install libpcap-dev python-scapy`
 - `git clone --recursive https://github.com/intrig-unicamp/mac.git`
 - `cd mac`
 - `sudo apt-get install python-yaml graphviz python-setuptools`
@@ -60,11 +61,8 @@ For any issues with p4-hlir, please refer to its `README.md` file.
 
 NOTE: This needs to be done everytime the P4 source file is modified or if any of the sugered file inside `src/hardware_indep` is changed.
 
-3. Install dependencies, set environment variables and compile MACSAD:
+3. Set environment variables and compile MACSAD:
 
-sudo apt-get install libpcap-dev python-scapy
-
-- `sudo apt-get install libpcap-dev python-scapy`
 - `export LD_LIBRARY_PATH=$ODK_SDK:$LD_LIBRARY_PATH`
 - `make`
 
