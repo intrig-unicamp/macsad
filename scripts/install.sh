@@ -3,7 +3,7 @@
 cd /root/
 mkdir tools
 mkdir tools/odp
-./mac/install_pkgs.sh
+./mac/scripts/install_pkgs.sh
 git clone -b v1.16.0.0 https://github.com/Linaro/odp
 cd odp
 ./bootstrap
