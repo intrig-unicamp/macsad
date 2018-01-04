@@ -1,11 +1,12 @@
 #!/bin/bash
 
-sudo apt-get install -y automake autoconf libtool libcunit1-dev sudo
+#Uncomment the following line and install sudo, if you do not already have it
+#apt install -y sudo
 
 #Install packages necessary for MACSAD and its submodules
-sudo apt-get install -y make automake autoconf libtool git
+sudo apt-get install -y make automake autoconf libtool git libcunit1-dev
 
-# Libraries for OpenSSL for ODP
+#Libraries for OpenSSL for ODP
 sudo apt-get install -y libssl-dev
 
 #For p4-hlir
@@ -18,7 +19,8 @@ sudo apt-get install -y libpcap-dev
 apt install -y gdb exuberant-ctags ethtool vim cscope
 
 #Misc tools
-#"killall command not found" 
+#In case an error of "killall command not found",
+#run the following command:
 #sudo apt-get install -y psmisc
 
 #Install scapy:
