@@ -51,7 +51,7 @@ it (along with its dependencies):
 
 4. Install build dependencies, project dependencies and compile MACSAD:
 
-        sudo apt-get install autoconf libtool build-essential pkg-config
+        sudo apt-get install autoconf libtool build-essential pkg-config autoconf-archive
         sudo apt-get install libpcap-dev python-scapy
         ./autogen.sh
         ./configure
