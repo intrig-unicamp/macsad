@@ -22,6 +22,7 @@ MACSAD uses ODP for forwarding plane developement.
 
 2. Set the library and pkg-config info for ODP (make sure you are at the root
 of the ODP build directory before running any of these commands):
+
         echo `pwd`/build/lib | sudo tee /etc/ld.so.conf.d/odp.conf
         sudo ldconfig
         export PKG_CONFIG_PATH=`pwd`/build/lib/pkgconfig
