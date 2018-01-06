@@ -1,4 +1,4 @@
-from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords
+from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords, p4_header_instance
 from p4_hlir.hlir.p4_imperatives import p4_signature_ref
 from utils.misc import addError, addWarning 
 from utils.hlir import *
@@ -395,6 +395,29 @@ def resubmit(fun, call):
 
 def no_op(fun, call):
     return "no_op(); // no_op"
+
+# =============================================================================
+# COPY_HEADER 
+
+def copy_header(fun, call):
+    generated_code = ""
+    args = call[1]
+    i = args[0]
+    #[// copy_header(pd, header_stack_${i.base_name});
+    return generated_code
+
+# =============================================================================
+# ADD_HEADER
+
+def add_header(fun, call):
+    generated_code = ""
+    args = call[1]
+    hdr = args[0]
+
+    if isinstance(hdr, p4_header_instance):
+        hi_prefix = hdr_prefix(hdr.name)
+    #[ add_header(pd, ${hi_prefix});
+    return generated_code
 
 # =============================================================================
 # PUSH
