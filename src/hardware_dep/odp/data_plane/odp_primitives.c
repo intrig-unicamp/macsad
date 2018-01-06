@@ -1,23 +1,25 @@
 #include "backend.h"
 #include "dataplane.h"
 
-#if 0
-void add_header(packet_descriptor_t* p, header_reference_t h)
+//void add_header(packet_descriptor_t* p, uint8_t hdr_prefix)
+void add_header(packet_descriptor_t* p, header_instance_t hdr_prefix)
 {
-    if(p->headers[h.header_instance].pointer == NULL) {
-        uint16_t len = h.bytewidth;
-        char* address = rte_pktmbuf_prepend(p->pointer, len); // if not to the front?
-        p->headers[h.header_instance] =
+    debug("calling add_header \n");
+    if(p->headers[hdr_prefix].pointer == NULL) {
+        uint16_t len = header_instance_byte_width[hdr_prefix];
+        char* address = odp_packet_push_head(p->pointer, len); // TODO if not to the front?
+        p->headers[hdr_prefix] =
             (header_descriptor_t) {
-                .type = h.header_instance,
+                .type = hdr_prefix,
                 .pointer = address,
-                .length = h.bytewidth // max_width?
+                .length = len
             };
     } else {
-        printf("Cannot add a header instance already present in the packet\n");
+        debug("Cannot add a header instance already present in the packet\n");
     }
 }
 
+#if 0
 void remove_header(packet_descriptor_t* p, header_reference_t h)
 {
     header_descriptor_t hd = p->headers[h.header_instance];

@@ -47,7 +47,7 @@ uint8_t* ternary_lookup (lookup_table_t* t, uint8_t* key);
 //=============================================================================
 // Primitive actions
 
-void add_header      (packet_descriptor_t* p, header_reference_t h);
+void add_header      (packet_descriptor_t* p, header_instance_t h);
 void remove_header   (packet_descriptor_t* p, header_reference_t h);
 void drop            (packet_descriptor_t* p);
 void generate_digest (backend bg, char* name, int receiver, struct type_field_list* digest_field_list);
