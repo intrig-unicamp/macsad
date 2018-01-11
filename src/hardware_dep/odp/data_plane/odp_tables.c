@@ -93,12 +93,21 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
     switch(t->type) {
         case LOOKUP_EXACT:
             snprintf(name, sizeof(name), "%s_exact_%d_%d", t->name, socketid, replica_id);
+#ifndef CUCKOO
+            if ((tbl = odph_hash_table_lookup(name)) != NULL){
+                info("  ::table %s already present \n", name);
+                odph_hash_table_destroy(tbl);
+            }
+            // name, capacity, key_size, value size
+            tbl = odph_hash_table_create(name, TABLE_SIZE, t->key_size, TABLE_VALUE_SIZE);
+#else
             if ((tbl = odph_cuckoo_table_lookup(name)) != NULL){
                 info("  ::table %s already present \n", name);
                 odph_cuckoo_table_destroy(tbl);
             }
             // name, capacity, key_size, value size
             tbl = odph_cuckoo_table_create(name, TABLE_SIZE, t->key_size, TABLE_VALUE_SIZE);
+#endif
             if(tbl == NULL) {
                 debug("  ::Table %s creation fail\n", name);
                 debug("  ::Table size %d, key size %d, val_size %d\n", TABLE_SIZE, t->key_size, TABLE_VALUE_SIZE);
@@ -159,7 +168,11 @@ void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
     info(":::: EXECUTING exact add on table %s, keysize %d, val size %d \n", t->name,t->key_size, t->val_size);
     value = add_index(value, t->val_size, t->counter++);
     ext->content[ext->size] = copy_to_socket(value, t->val_size+sizeof(int), t->socketid);
+#ifndef CUCKOO
+    ret = odph_hash_put_value(ext->odp_table, key, &(ext->size));
+#else
     ret = odph_cuckoo_table_put_value(ext->odp_table, key, &(ext->size));
+#endif
     ext->size++;
     if (ret < 0) {
         debug("  ::EXACT table add key failed \n");
@@ -261,8 +274,11 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
     extended_table_t* ext = (extended_table_t*)t->table;
     info(":::: EXECUTING exact lookup on table %s, keysize %d \n", t->name,t->key_size);
     info ("::: exact_lookup -key- %p,key0- %d,key1- %d \n", key, key[0], key[1]);
-    ret = odph_cuckoo_table_get_value(ext->odp_table, key, &result, TABLE_VALUE_SIZE);
-
+#ifndef CUCKOO
+    ret = odph_hash_get_value(ext->odp_table, key, &result, TABLE_VALUE_SIZE);
+#else
+     ret = odph_cuckoo_table_get_value(ext->odp_table, key, &result, TABLE_VALUE_SIZE);
+#endif
     if (ret < 0) {
         debug("  :: EXACT lookup fail with ret=%d,result=%d \n", ret, result);
         return t->default_val;

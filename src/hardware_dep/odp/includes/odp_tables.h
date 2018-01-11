@@ -2,24 +2,11 @@
 #define DPDK_TABLES_H
 
 #include <table.h>
-#include <odph_hashtable.h>
-#include <odph_iplookuptable.h>
-#include <odph_cuckootable.h>
-
-#if 0
-#include <rte_version.h>    // for conditional compilation
-
-#if RTE_VERSION >= RTE_VERSION_NUM(17,05,0,0)
-typedef uint32_t table_index_t;
-#else
-typedef uint8_t table_index_t;
-#endif
-#endif
-typedef uint32_t table_index_t;
+#include <odph_api.h>
 
 typedef struct extended_table_s {
     void*     odp_table;
-    table_index_t  size;
+    uint32_t   size;
     uint8_t** content;
 } extended_table_t;
 
@@ -38,7 +25,7 @@ typedef struct extended_table_s {
 
 #define TABLE_MAX 256
 
-#define TABLE_SIZE 1000 //Number of elements table may store
+#define TABLE_SIZE 10000 //Number of elements table may store
 //define different key and value size for different tables.
 #define TABLE_KEY_SIZE 4 //key_size    fixed size of the 'key' in bytes.
 #define TABLE_VALUE_SIZE 4 //value_size  fixed size of the 'value' in bytes.
