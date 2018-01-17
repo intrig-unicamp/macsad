@@ -1,4 +1,4 @@
-AC_INIT([macsad], [0.1])
+AC_INIT([macsad], [0.2])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_CONFIG_SRCDIR([configure.ac])
@@ -39,7 +39,6 @@ CC_VERSION_PATCH=$(echo $CC_VERSION | cut -d'.' -f3)
 PKGCONFIG_VERSION=$(echo $VERSION | awk -F '.git' '{print $1}')
 AC_SUBST(PKGCONFIG_VERSION)
 
-
 # Default warning setup
 MAC_CFLAGS="$MAC_CFLAGS -W -Wall -Werror"
 
@@ -54,17 +53,7 @@ AC_DEFUN([MAC_CHECK_CFLAG],
 MAC_CHECK_CFLAG([-Wstrict-prototypes])
 MAC_CHECK_CFLAG([-Wmissing-prototypes])
 MAC_CHECK_CFLAG([-Wmissing-declarations])
-MAC_CHECK_CFLAG([-Wold-style-definition])
 MAC_CHECK_CFLAG([-Wpointer-arith])
-MAC_CHECK_CFLAG([-Wcast-align])
-MAC_CHECK_CFLAG([-Wnested-externs])
-MAC_CHECK_CFLAG([-Wcast-qual])
-MAC_CHECK_CFLAG([-Wformat-nonliteral])
-MAC_CHECK_CFLAG([-Wformat-security])
-MAC_CHECK_CFLAG([-Wundef])
-MAC_CHECK_CFLAG([-Wwrite-strings])
-MAC_CHECK_CFLAG([-Wformat-truncation=0])
-MAC_CHECK_CFLAG([-Wformat-overflow=0])
 
 MAC_CFLAGS="$MAC_CFLAGS -std=c99"
 MAC_CXXFLAGS="$MAC_CXXFLAGS -std=c++11"
@@ -72,54 +61,82 @@ MAC_CXXFLAGS="$MAC_CXXFLAGS -std=c++11"
 # Extra flags for example to suppress certain warning types
 MAC_CFLAGS="$MAC_CFLAGS $MAC_CFLAGS_EXTRA"
 
-# Check if compiler supports cmpxchng16 on x86-based architectures
-case "${host}" in
-  i?86? | x86*)
-  if test "${CC}" != "gcc" -o ${CC_VERSION_MAJOR} -ge 5; then
-     MAC_CHECK_CFLAG([-mcx16])
-  fi
-  ;;
-esac
-
 # Default include setup
 CFLAGS="$CFLAGS $ODP_CFLAGS"
 CXXFLAGS="$CXXFLAGS $ODP_CXXFLAGS"
 
 AC_ARG_ENABLE([looom],
     AS_HELP_STRING([--enable-looom], [Enable Loooom agent support in the MACSAD switch]))
-AC_ARG_ENABLE([odp-dpdk],
-    AS_HELP_STRING([--enable-odp-dpdk], [Compile with dpdk optimized reference ODP]))
 AS_IF([test "x$enable_looom" = "xyes"], [
     AC_DEFINE([LOOOM_AGENT], [1], [Define Looom agent support])
 ])
 
+AC_ARG_ENABLE([odpd],
+    AS_HELP_STRING([--enable-odpd], [Compile with dpdk optimized reference ODP]),
+    [AS_CASE(${enableval}, [yes], [], [no], [],
+		    [AC_MSG_ERROR([bad value ${enableval} for --enable-odpd])])],
+	[enable_odpd=no])
+AM_CONDITIONAL([MAC_ODPD], [test x$enable_odpd = xyes])
 
-PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
-PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
-#PKG_CHECK_MODULES([libodp], [libodp-dpdk = 1.15.0.0])
-#PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.15.0.0])
+AC_ARG_ENABLE([odpn],
+    AS_HELP_STRING([--enable-odpn], [Compile with dpdk optimized reference ODP]),
+    [AS_CASE(${enableval}, [yes], [], [no], [],
+		    [AC_MSG_ERROR([bad value ${enableval} for --enable-odpn])])],
+	[enable_odpn=no])
+AM_CONDITIONAL([MAC_ODPN], [test x$enable_odpn = xyes])
+
+AC_ARG_ENABLE([odp-dpdk],
+    AS_HELP_STRING([--enable-odp-dpdk], [Compile with dpdk optimized reference ODP]),
+    [AS_CASE(${enableval}, [yes], [], [no], [],
+		    [AC_MSG_ERROR([bad value ${enableval} for --enable-odp-dpdk])])],
+	[enable_odp_dpdk=no])
+AM_CONDITIONAL([MAC_ODP_DPDK], [test x$enable_odp_dpdk = xyes])
+
+AS_IF([test "x$enable_odp_dpdk" = "xyes"], [
+    echo "macsad(odp_dpdk) is SET"
+#	DPDK_CFLAGS  += -I "$(RTE_SDK)/$(RTE_TARGET)/include"
+#	DPDK_LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
+ 	DPDK_LIBS="-lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap"
+    PKG_CHECK_MODULES([libodp], [libodp-dpdk = 1.15.0.0])
+    PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.15.0.0])
+])
+
+AS_IF([test "x$enable_odpd" = "xyes"], [
+    echo "macsad(odp) is SET"
+#	DPDK_LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
+    DPDK_LIBS="-lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap"
+    PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
+    PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
+])
+
+AS_IF([test "x$enable_odp_dpdk" != "xyes"] && [test "x$enable_odpd" != "xyes"], [
+    echo "macsad(socket_mmap/netmap) is SET"
+    PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
+    PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
+])
+
 AX_PTHREAD(, [AC_MSG_ERROR([pthread support is required])])
 
 AC_CONFIG_FILES([Makefile])
-AC_OUTPUT
 
+# distribute the changed variables among the Makefiles
+AC_SUBST([CFLAGS])
+#AC_SUBST([DPDK_LDFLAGS])
+#AC_SUBST([DPDK_CFLAGS])
+AC_SUBST([MAC_ODPD])
+AC_SUBST([MAC_ODPN])
+AC_SUBST([MAC_ODP_DPDK])
+AC_SUBST([DPDK_LIBS])
+
+AC_OUTPUT
 AC_MSG_RESULT([
     $PACKAGE $VERSION
 
-    ODP Library version:    ${ODP_LIBSO_VERSION}
-    Helper Library version: ${ODPHELPER_LIBSO_VERSION}
-
-    implementation_name:    ${IMPLEMENTATION_NAME}
     host:           ${host}
-    sysconfdir:     ${sysconfdir}
-    libdir:         ${libdir}
-    includedir:     ${includedir}
-
-    cc:         ${CC}
-    cc version:             ${CC_VERSION}
-    cppflags:       ${CPPFLAGS}
+    cc:		        ${CC}
+    cc version:     ${CC_VERSION}
     cflags:         ${CFLAGS}
-    ldflags:        ${LDFLAGS}
-    libs:           ${LIBS}
-    defs:           ${DEFS}
+    odp_libs:       ${libodp_LIBS}
+    helper_libs:    ${libodphelper_LIBS}
+    dpdk_libs:      ${DPDK_LIBS}
 ])
