@@ -124,8 +124,9 @@ for d in delays:
 	# sendp(pkt, iface=port_map[3], verbose=0)
 #    if args.random_dport:
 #        pkt["TCP"].dport = random.randint(1025, 65535)
-	send_socket.send(str(pkt))
 	time.sleep(d / 1000.)
+	send_socket.send(str(pkt))
+
 time.sleep(2)
 iface, pkt = queue.get()
 while pkt:
