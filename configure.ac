@@ -104,7 +104,8 @@ AS_IF([test "x$enable_odp_dpdk" = "xyes"], [
 AS_IF([test "x$enable_odpd" = "xyes"], [
     echo "macsad(odp) is SET"
 #	DPDK_LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
-    DPDK_LIBS="-lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap"
+    DPDK_LIBS="-lrt -lcrypto -ldl -lpcap"
+#    DPDK_LIBS="-lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap"
     PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
     PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
 ])
