@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#Comment the following line and install sudo, if you do not already have it
+#Uncomment the following line and install sudo, if you do not already have it
 #apt install -y sudo
 
 #Install packages necessary for MACSAD and its submodules
@@ -19,7 +19,8 @@ sudo apt-get install -y libpcap-dev
 apt install -y gdb exuberant-ctags ethtool vim cscope
 
 #Misc tools
-#"killall command not found" 
+#In case an error of "killall command not found",
+#run the following command:
 #sudo apt-get install -y psmisc
 
 #Install scapy:

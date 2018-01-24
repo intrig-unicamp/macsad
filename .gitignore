@@ -30,14 +30,15 @@
 mac_ad
 macsad
 
-#proj generated files
+# MACSAD-specific files
 src/*.pyc
 build/
-#src/hardware_dep/shared/ctrl_plane/mac_controller
+ctrl/
 mac_controller
 mac_l2_l3_controller
 mac_l3_controller
 mac_l3_nhg_controller
+
 # Debug files
 *.dSYM/
 
@@ -66,3 +67,57 @@ cscope.out
 *.zip
 
 p4-hlir
+
+# Autotools stuff
+# From: https://github.com/github/gitignore/blob/master/Autotools.gitignore
+
+# http://www.gnu.org/software/automake
+
+Makefile.in
+/ar-lib
+/mdate-sh
+/py-compile
+/test-driver
+/ylwrap
+
+# http://www.gnu.org/software/autoconf
+
+/autom4te.cache
+/autoscan.log
+/autoscan-*.log
+/aclocal.m4
+/compile
+/config.guess
+/config.h.in
+/config.h.in~
+/config.sub
+/configure
+/configure.scan
+/depcomp
+/install-sh
+/missing
+/stamp-h1
+
+# https://www.gnu.org/software/libtool/
+
+/ltmain.sh
+
+# http://www.gnu.org/software/texinfo
+
+/texinfo.tex
+
+# http://www.gnu.org/software/m4/
+
+m4/libtool.m4
+m4/ltoptions.m4
+m4/ltsugar.m4
+m4/ltversion.m4
+m4/lt~obsolete.m4
+autom4te.cache
+
+.deps
+.dirstamp
+config.log
+config.status
+config.h
+Makefile
