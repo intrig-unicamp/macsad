@@ -1,8 +1,10 @@
-# MACSAD
+MACSAD
 
-[Intro: what is MACSAD? why does it exist? how does it work?]
+The Multi-Architecture Compiler System for Abstract Dataplanes (MACSAD) is a P4 compiler that uses ODP aiming to archive portability of dataplane applications without compromising the target performance. MACSAD integrates the ODP APIs with P4, defining a programmable dataplane across multiple targets in an unified compiler system. MACSAD has a designed compiler module that generates an Intermediate Representation (IR) for P4 applications.
 
 To run MACSAD, follow the steps below. We have tested on Ubuntu 16.04.
+
+Note: We suggest to install MACSAD using install.sh (inside scripts folder). This script cover all the necessary installation, running it allow the user to skip to section "Running MACSAD".
 
 ## ODP installation
 
@@ -10,11 +12,11 @@ MACSAD uses ODP for forwarding plane developement.
 
 1. Download ODP v1.16.0, compile and install it:
 
-        sudo apt-get install build-essential autoconf automake pkg-config libssl-dev
+        sudo apt-get install -y build-essential autoconf automake pkg-config libssl-dev
         wget https://github.com/Linaro/odp/archive/v1.16.0.0.tar.gz
         tar xzvf v1.16.0.0.tar.gz
         mv odp-1.16.0.0/ odp/
-        cd odp-1.16.0.0/
+        cd odp
         ./bootstrap
         ./configure --disable-abi-compat --prefix=`pwd`/build
         make
@@ -34,27 +36,26 @@ of the ODP build directory before running any of these commands):
 
 1. Clone the MACSAD project:
 
-        git clone https://github.com/intrig-unicamp/mac.git
+        git clone --recursive https://github.com/intrig-unicamp/mac.git
         cd mac
-
+	
 2. MACSAD has added `P4-hlir` as a submodule. Download/update and then install
 it (along with its dependencies):
 
-        git submodule update --init --recursive
-        sudo apt-get install python-yaml graphviz python-setuptools
+        sudo apt-get install -y python-yaml graphviz python-setuptools
         cd p4-hlir
         python setup.py install --user
 
     For any issues with p4-hlir, please refer to its `README.md` file.
 
 3. Translate the P4 program to MACSAD:
-
+        
+        cd ..
         python src/transpiler.py examples/p4_src/l2_fwd.p4
 
 4. Install build dependencies, project dependencies and compile MACSAD:
 
-        sudo apt-get install autoconf libtool build-essential pkg-config autoconf-archive
-        sudo apt-get install libpcap-dev python-scapy
+        sudo apt-get install -y autoconf libtool build-essential pkg-config autoconf-archive libpcap-dev python-scapy
         ./autogen.sh
         ./configure
         make
@@ -64,7 +65,9 @@ it (along with its dependencies):
         sudo sysctl -w vm.nr_hugepages=512
         sudo ./scripts/veth_create.sh
 
-6. Start the minimalistic controller (required for installing flows in the
+## Running MACSAD
+
+1. Start the minimalistic controller (required for installing flows in the
 switch):
 
         ./ctrl/mac_controller
@@ -73,11 +76,11 @@ switch):
     screen or terminal session.
 
 
-7. Run the MACSAD switch:
+2. Run the MACSAD switch:
 
         sudo ./macsad -i veth1,veth2 -c 0 -m 0 --out_mode 0
 
-8. Now will use the veth interfaces created in step #5. `veth1` and `veth2` will
+3. Now will use the veth interfaces created in step #5. `veth1` and `veth2` will
 be part of the switch. We will send packet to `veth0` (which is `veth1`'s pair)
 and monitor at `veth3` (which is `veth2`'s pair) for packets. Similary we will
 send packet to `veth3` and expect packets to arrive at `veth0`:
@@ -93,92 +96,9 @@ send packet to `veth3` and expect packets to arrive at `veth0`:
         port veth0:   1 [ 100.0% ]
         port veth3:   1 [ 100.0% ]
 
+Optionally we can manually build our packet using scapy, this step is explained on our next section.
 
-
-
-********************
-********************
-OLD Readme:
-----------
-MACSAD
-==========
-
-The Multi-Architecture Compiler System for Abstract Dataplanes (MACSAD) is a P4 compiler that uses ODP aiming to archive portability of dataplane applications without compromising the target performance. MACSAD integrates the ODP APIs with P4, defining a programmable dataplane across multiple targets in an unified compiler system. MACSAD has a designed compiler module that generates an Intermediate Representation (IR) for P4 applications.
-
-Follow the steps below to setup and run MACSAD on an Ubuntu 16.04.2 LTS and later.
-
-Note: In this tutorial we are going to install the MACSAD at `/root` folder. 
-
-To install MACSAD and it dependencies you can run our script (and skip to Part 3):
-
-- `cd /root/`
-- `./mac/install.sh`
-
-Or you can follow the next steps. We strongly suggest to run our `install_pkgs.sh`.
-
-# Part 1
-
----
-
-## ODP installation:
-
-MACSAD uses ODP for forwarding plane developement. Fist of all, we need to create a directory in the same folder where the MACSAD will be cloned:
-
-- `mkdir tools`
-- `mkdir tools/odp`
-
-1. Download ODP v1.16.0 and compile it:
-
-- `sudo apt-get install -y build-essential autoconf automake pkg-config libssl-dev libtool`
-- `git clone -b v1.16.0.0 https://github.com/Linaro/odp`
->>>>>>> upstream/master
-- `cd odp`
-- `./bootstrap`
-- `./configure --disable-abi-compat --prefix=/root/tools/odp`
-- `make`
-- `make install`
-- `ln -s /root/odp/helper /root/tools/odp`        
-- `export ODP_SDK=/root/tools/odp`
-- `cd ..`
-
-# Part 2
----
-
-## MACSAD installation
-
-1. To run MACSAD we need P4-hlir submodule. Thus, At this step, we will clone MACSAD project and update/install the submodule. 
-
-- `sudo apt-get install -y libpcap-dev python-scapy python-yaml graphviz python-setuptools`
-- `git clone --recursive https://github.com/intrig-unicamp/mac.git`
-- `cd mac`
->>>>>>> upstream/master
-- `cd p4-hlir`
-- `python setup.py install`
-- `cd ..`
-
-For any issues with p4-hlir, please refer to its `README.md` file.
-
-2. The p4 program needs to be translated for the MACSAD switch project. You can do this as below:
->>>>>>> upstream/master
-
-- `python src/transpiler.py examples/p4_src/l2_fwd.p4`
-
-NOTE: This needs to be done everytime the P4 source file is modified or if any of the sugered file inside `src/hardware_indep` is changed.
-
-3. Set environment variables and compile MACSAD:
-
-- `export LD_LIBRARY_PATH=$ODK_SDK:$LD_LIBRARY_PATH`
-- `make`
-
-4. Set hugepages number and create interfaces for the test:
-
-- `sudo sysctl -w vm.nr_hugepages=512`
-- `./scripts/veth_create.sh`
-
-# Part 3
----
-
-## Running a simple test
+## MANUALLY BUILD/SEND PACKETS USING SCAPY (OPTIONAL)
 
 We will use veth'x' interfaces with this example. Veth1 and veth2 will be part of the switch. We will send packet to veth0 and monitor at veth3. Similary we will send packet to veth3 and recieve the packets at veth0.
 
@@ -190,58 +110,8 @@ veth3 - a2:5e:37:ac:a1:7f
 
 veth0 - fa:4f:e8:df:b1:5f
 
-We need four terminals to perform this test.
-
-### TERMINAL 1:
-
-Build and start the minimalistic controller (required for installing flows in the switch):
-
-- `cd src/hardware_dep/shared/ctrl_plane`
-- `make mac_controller`
-- `./mac_controller`
-
-The controller will run in the foreground, so feel free to open another screen or terminal session.
-
-### TERMINAL 2:
-
-Start the MACSAD switch with veth interfaces 1 and 2
-
-- `sudo ./macsad -i veth1,veth2 -c 0 -m 0 --out_mode 0`
-
-### TERMINAL 3:
-
-Now will use the veth interfaces created in step #5. `veth1` and `veth2` will be part of the switch. 
-We will send packet to `veth0` (which is `veth1`'s pair) and monitor at `veth3` (which is `veth2`'s pair) for packets. Similary we will send packet to `veth3` and expect packets to arrive at `veth0`:
-
-- `sudo python run_test.py`
-
-You should see output similar to this:
-
-- `$ sudo python run_test.py`
-- `WARNING: No route found for IPv6 destination :: (no default route?)`
-- `Sending 1 packets to  veth3 ...`
-- `DISTRIBUTION:`
-- `port veth0:   1 [ 100.0% ]`
-- `port veth3:   1 [ 100.0% ]`
-- `sendp(pkt1,iface="veth3",count=1);`
-
-You should be able to catch the packet at veth1 using tcpdump/tshark in terminal 4. You can also verify the RX count using ifconfig.
-
-NOTE: The packet processing logs can be seen at TERMINAL 2 as debug output of the switch.
-
-Now send a packet from veth0 to veth3 and verify similarly at terminal 4.
-
-- `pkt2 = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.2',src='192.168.0.1')`
-- `sendp(pkt2,iface="veth0",count=1);`
+	scapy
+	pkt2 = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.2',src='192.168.0.1')`
+	sendp(pkt2,iface="veth0",count=1);`
 
 The first packet with an unknown destination mac address will be broadcasted by the switch while the source mac address is learned. Now after the two packets were sent, the switch has already learned the mac addresses of veth0 and veth3. Now if we send those packets again, switch will forward those packets via corresponding ports instead of broadcasting them.
-
-Notes:
-
-- Update pip, setup tools to latest version  
-
-    "pip install -U pip setuptools"
-
-- Pip error:= "locale.Error: unsupported locale setting"  
-
-   solution :=      "export LC_ALL=C"

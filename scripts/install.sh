@@ -1,24 +1,30 @@
 #!/bin/bash
 
 cd /root/
-mkdir tools
-mkdir tools/odp
 ./mac/scripts/install_pkgs.sh
-git clone -b v1.16.0.0 https://github.com/Linaro/odp
+wget https://github.com/Linaro/odp/archive/v1.16.0.0.tar.gz
+tar xzvf v1.16.0.0.tar.gz
+mv odp-1.16.0.0/ odp/
 cd odp
+rm -rf v1.16.0.0.tar.gz
 ./bootstrap
-./configure --disable-abi-compat --prefix=/root/tools/odp
+./configure --disable-abi-compat --prefix=`pwd`/build
 make
 make install
-ln -s /root/odp/helper /root/tools/odp
-export ODP_SDK=/root/tools/odp
-cd ../mac/
-git submodule update --init --recursive
+echo `pwd`/build/lib | sudo tee /etc/ld.so.conf.d/odp.conf
+sudo ldconfig
+export PKG_CONFIG_PATH=`pwd`/build/lib/pkgconfig
+echo "export PKG_CONFIG_PATH=`pwd`/build/lib/pkgconfig" >> ~/.bashrc
+cd ..
+git clone --recursive https://github.com/intrig-unicamp/mac.git
+cd mac
 cd p4-hlir
-python setup.py install
+python setup.py install --user
 cd ..
 python src/transpiler.py examples/p4_src/l2_fwd.p4
-export LD_LIBRARY_PATH=$ODK_SDK:$LD_LIBRARY_PATH
+./autogen.sh
+./configure
 make
 sudo sysctl -w vm.nr_hugepages=512
-./scripts/veth_create.sh
+sudo ./scripts/veth_create.sh
+
