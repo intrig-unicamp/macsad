@@ -1,4 +1,5 @@
-CDIR := $(dir $(lastword $(MAKEFILE_LIST)))
+#CDIR := $(dir $(lastword $(MAKEFILE_LIST)))
+CDIR := ../
 
 VPATH += $(CDIR)/src/hardware_dep/odp
 VPATH += $(CDIR)/src/hardware_dep/odp/includes
@@ -55,17 +56,17 @@ LDFLAGS += -L$(ODP_SDK)/lib
 
 #01 ODP(socket-mmap, netmap)
 #static
-LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
+#LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
 #shared
-#LIBS = -lodp-linux -lodphelper -lpthread -lrt -lcrypto -lpcap
+LIBS = -lodp-linux -lodphelper -lpthread -lrt -lcrypto -lpcap
 
 #02 ODP(dpdk)
 #LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
 #LIBS =  -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
 
 #03 ODP-DPDK
-CFLAGS  += -I "$(RTE_SDK)/$(RTE_TARGET)/include"
-LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
+#CFLAGS  += -I "$(RTE_SDK)/$(RTE_TARGET)/include"
+#LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
 
 #Need to use shared library to compile with hash table support.
 #shared
