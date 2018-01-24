@@ -62,14 +62,21 @@ MAC_CXXFLAGS="$MAC_CXXFLAGS -std=c++11"
 MAC_CFLAGS="$MAC_CFLAGS $MAC_CFLAGS_EXTRA"
 
 # Default include setup
-CFLAGS="$CFLAGS $ODP_CFLAGS"
-CXXFLAGS="$CXXFLAGS $ODP_CXXFLAGS"
+CFLAGS="$CFLAGS $MAC_CFLAGS"
+CXXFLAGS="$CXXFLAGS $MAC_CXXFLAGS"
 
 AC_ARG_ENABLE([looom],
     AS_HELP_STRING([--enable-looom], [Enable Loooom agent support in the MACSAD switch]))
 AS_IF([test "x$enable_looom" = "xyes"], [
     AC_DEFINE([LOOOM_AGENT], [1], [Define Looom agent support])
 ])
+
+AC_ARG_ENABLE([static],
+    AS_HELP_STRING([--enable-static], [Enable static libs in the MACSAD switch]),
+    [AS_CASE(${enableval}, [yes], [], [no], [],
+		    [AC_MSG_ERROR([bad value ${enableval} for --enable-static])])],
+	[enable_static=no])
+AM_CONDITIONAL([MAC_STATIC], [test x$enable_static = xyes])
 
 AC_ARG_ENABLE([odpd],
     AS_HELP_STRING([--enable-odpd], [Compile with dpdk optimized reference ODP]),
@@ -92,28 +99,45 @@ AC_ARG_ENABLE([odp-dpdk],
 	[enable_odp_dpdk=no])
 AM_CONDITIONAL([MAC_ODP_DPDK], [test x$enable_odp_dpdk = xyes])
 
+AC_DEFUN([MAC_PKG_CHECK_MODULES],
+[AC_REQUIRE([PKG_PROG_PKG_CONFIG])dnl
+_save_PKG_CONFIG=$PKG_CONFIG
+AS_IF([test "x$enable_static" = "xyes"], [
+	PKG_CONFIG="$PKG_CONFIG --static"
+])
+#PKG_CONFIG="$PKG_CONFIG --static"
+PKG_CHECK_MODULES([$1], [$2], [$3], [$4], [$5])
+PKG_CONFIG=$_save_PKG_CONFIG[]dnl
+])
+
 AS_IF([test "x$enable_odp_dpdk" = "xyes"], [
     echo "macsad(odp_dpdk) is SET"
 #	DPDK_CFLAGS  += -I "$(RTE_SDK)/$(RTE_TARGET)/include"
 #	DPDK_LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
  	DPDK_LIBS="-lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap"
-    PKG_CHECK_MODULES([libodp], [libodp-dpdk = 1.15.0.0])
-    PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.15.0.0])
+    #PKG_CHECK_MODULES([libodp], [libodp-dpdk = 1.15.0.0])
+    #PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.15.0.0])
+    MAC_PKG_CHECK_MODULES([libodp], [libodp-dpdk = 1.15.0.0])
+    MAC_PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.15.0.0])
 ])
 
 AS_IF([test "x$enable_odpd" = "xyes"], [
     echo "macsad(odp) is SET"
 #	DPDK_LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
     DPDK_LIBS="-lrt -lcrypto -ldl -lpcap"
-#    DPDK_LIBS="-lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap"
-    PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
-    PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
+#   DPDK_LIBS="-lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap"
+#   PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
+#	PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
+    MAC_PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
+    MAC_PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
 ])
 
 AS_IF([test "x$enable_odp_dpdk" != "xyes"] && [test "x$enable_odpd" != "xyes"], [
     echo "macsad(socket_mmap/netmap) is SET"
-    PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
-    PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
+#   PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
+#	PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
+    MAC_PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
+    MAC_PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
 ])
 
 AX_PTHREAD(, [AC_MSG_ERROR([pthread support is required])])
