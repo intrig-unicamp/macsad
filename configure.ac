@@ -40,7 +40,8 @@ PKGCONFIG_VERSION=$(echo $VERSION | awk -F '.git' '{print $1}')
 AC_SUBST(PKGCONFIG_VERSION)
 
 # Default warning setup
-MAC_CFLAGS="$MAC_CFLAGS -W -Wall -Werror"
+#MAC_CFLAGS="$MAC_CFLAGS -W -Wall -Werror"
+MAC_CFLAGS="$MAC_CFLAGS -W -Wall"
 
 dnl Use -Werror in the checks below since Clang emits a warning instead of
 dnl an error when it encounters an unknown warning option.
@@ -61,9 +62,10 @@ MAC_CXXFLAGS="$MAC_CXXFLAGS -std=c++11"
 # Extra flags for example to suppress certain warning types
 MAC_CFLAGS="$MAC_CFLAGS $MAC_CFLAGS_EXTRA"
 
-# Default include setup
-CFLAGS="$CFLAGS $MAC_CFLAGS"
-CXXFLAGS="$CXXFLAGS $MAC_CXXFLAGS"
+# Default include setup 
+# Need to fix this later.
+CFLAGS="$CFLAGS $ODP_CFLAGS"
+CXXFLAGS="$CXXFLAGS $ODP_CXXFLAGS"
 
 AC_ARG_ENABLE([looom],
     AS_HELP_STRING([--enable-looom], [Enable Loooom agent support in the MACSAD switch]))
