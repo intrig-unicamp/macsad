@@ -109,9 +109,11 @@ send_socket = socket.socket(socket.AF_PACKET, socket.SOCK_RAW,
 		socket.htons(0x03))
 
 if args.first:
+	#pkt = Ether(dst='a0:36:9f:3e:94:ea',src='a0:36:9f:3e:94:e8')/IP(dst='192.168.1.1',src='192.168.0.1')
 	pkt = Ether(dst='a0:36:9f:3e:94:ea',src='a0:36:9f:3e:94:e8')/IPv6(dst='2001:0db8:85a3:08d3:1319:8a2e:0370:7334',src='1319:8a2e:0370:7335:2001:0db8:ffff:08d3')
 	port2send = port_map[1]
 else:
+	#pkt = Ether(dst='a0:36:9f:3e:94:e8',src='a0:36:9f:3e:94:ea')/IP(dst='192.168.0.1',src='192.168.1.1')
 	pkt = Ether(dst='a0:36:9f:3e:94:e8',src='a0:36:9f:3e:94:ea')/IPv6(dst='1319:8a2e:0370:7335:2001:0db8:ffff:08d3',src='2001:0db8:85a3:08d3:1319:8a2e:0370:7334')
 	port2send = port_map[2]
 
@@ -124,8 +126,10 @@ for d in delays:
 	# sendp(pkt, iface=port_map[3], verbose=0)
 #    if args.random_dport:
 #        pkt["TCP"].dport = random.randint(1025, 65535)
+
+	time.sleep(d / 1000.)
 	send_socket.send(str(pkt))
-	time.sleep(d / 100.)
+
 time.sleep(2)
 iface, pkt = queue.get()
 while pkt:

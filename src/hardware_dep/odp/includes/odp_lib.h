@@ -19,7 +19,7 @@
 #include <odp/helper/ip.h>
 #include <odp/helper/table.h>
 #include <net/ethernet.h>
-#include <include/odp/helper/threads.h>
+#include <odp/helper/threads.h>
 
 // Backend-specific aliases
 #include "aliases.h"
