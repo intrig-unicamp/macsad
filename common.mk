@@ -27,8 +27,8 @@ CFLAGS += -Wuninitialized
 endif
 
 #Comment the flags to enable different level of debug
-CFLAGS += -D NDEBUG
-CFLAGS += -D NINFO
-CFLAGS += -D NSIGG
+#CFLAGS += -D NDEBUG
+#CFLAGS += -D NINFO
+#CFLAGS += -D NSIGG
 
 #CFLAGS += -fno-stack-protector

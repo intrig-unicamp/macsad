@@ -4,6 +4,7 @@
 #include <table.h>
 #include <odph_hashtable.h>
 #include <odph_iplookuptable.h>
+#include <odph_iplookuptablev6.h>
 #include <odph_cuckootable.h>
 
 typedef struct extended_table_s {

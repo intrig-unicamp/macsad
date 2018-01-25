@@ -47,7 +47,7 @@ SRCS-Y += vector.c
 LDFLAGS += -L$(ODP_SDK)/lib/
 
 #01 ODP(socket-mmap, netmap)
-LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
+LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap -latomic
 
 #02 ODP(dpdk)
 #LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
