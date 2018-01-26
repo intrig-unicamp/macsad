@@ -1,4 +1,4 @@
-bin_PROGRAMS = macsad ctrl/mac_controller ctrl/mac_l2_l3_controller ctrl/mac_l3_controller ctrl/mac_l3_nhg_controller
+bin_PROGRAMS = macsad ctrl/mac_controller ctrl/mac_l2_l3_controller ctrl/mac_l3_controller ctrl/mac_l3_nhg_controller ctrl/mac_l3_controller_ipv6
 
 macsad_SOURCES = build/src_hardware_indep/dataplane.c \
     build/src_hardware_indep/tables.c \
@@ -44,6 +44,15 @@ ctrl_mac_l3_controller_SOURCES = \
     src/hardware_dep/shared/ctrl_plane/fifo.c \
     src/hardware_dep/shared/ctrl_plane/mac_l3_controller.c
 
+ctrl_mac_l3_controller_ipv6_SOURCES = \
+    src/hardware_dep/shared/ctrl_plane/handlers.c \
+    src/hardware_dep/shared/ctrl_plane/controller.c \
+    src/hardware_dep/shared/ctrl_plane/messages.c \
+    src/hardware_dep/shared/ctrl_plane/sock_helpers.c \
+    src/hardware_dep/shared/ctrl_plane/threadpool.c \
+    src/hardware_dep/shared/ctrl_plane/fifo.c \
+    src/hardware_dep/shared/ctrl_plane/mac_l3_controller_ipv6.c
+
 ctrl_mac_l3_nhg_controller_SOURCES = \
     src/hardware_dep/shared/ctrl_plane/handlers.c \
     src/hardware_dep/shared/ctrl_plane/controller.c \
@@ -54,7 +63,8 @@ ctrl_mac_l3_nhg_controller_SOURCES = \
     src/hardware_dep/shared/ctrl_plane/mac_l3_nhg_controller.c
 
 ODP_CFLAGS = $(libodp_CFLAGS) $(libodphelper_CFLAGS)
-AM_CFLAGS = $(ODP_CFLAGS) $(PTHREAD_CFLAGS) -D NDEBUG -D NINFO -D NSIGG -D CUCKOO
+AM_CFLAGS = $(ODP_CFLAGS) $(PTHREAD_CFLAGS) -D CUCKOO
+#AM_CFLAGS = $(ODP_CFLAGS) $(PTHREAD_CFLAGS) -D NDEBUG -D NINFO -D NSIGG -D CUCKOO
 
 ODP_LIBS = $(libodp_LIBS) $(libodphelper_LIBS)
 LIBS += $(ODP_LIBS)  $(PTHREAD_LIBS) 
