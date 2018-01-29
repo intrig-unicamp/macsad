@@ -12,7 +12,7 @@ typedef struct extended_table_s {
 
 //=============================================================================
 // Table size limits
-#if 0
+#if 0 //To be removed these variables as not used anymore
 #ifdef RTE_ARCH_X86_64
 /* default to 4 million hash entries (approx) */
 #define HASH_ENTRIES		1024*1024*4
