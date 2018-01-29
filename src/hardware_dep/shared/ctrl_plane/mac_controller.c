@@ -287,7 +287,7 @@ int main(int argc, char* argv[])
 			return -1;
 		}
 	}
-    //a0:36:9f:3e:94:e8
+
     uint8_t mac[6] = {0xa0, 0x36, 0x9f, 0x3e, 0x94, 0xe8};
     uint8_t port = 1;
 
