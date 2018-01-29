@@ -52,8 +52,8 @@ for table in hlir.p4_tables.values():
             if match_type is p4.p4_match_type.P4_MATCH_LPM:
                 #[ prefix_length += ${fld_id(match_field)}_prefix_length;
         #[ int c, d;
-        #[ for(c = ${k-1}, d = 0; c >= 0; c--, d++) *(reverse_buffer+d) = *(key+c);
-        #[ for(c = 0; c < ${k}; c++) *(key+c) = *(reverse_buffer+c);
+        #[ //for(c = ${k-1}, d = 0; c >= 0; c--, d++) *(reverse_buffer+d) = *(key+c);
+        #[ //for(c = 0; c < ${k}; c++) *(key+c) = *(reverse_buffer+c);
         #[ lpm_add_promote(TABLE_${table.name}, (uint8_t*)key, prefix_length, (uint8_t*)&action);
     if table_type == "LOOKUP_EXACT":
         for match_field, match_type, match_mask in table.match_fields:

@@ -5,8 +5,14 @@ echo "Script started... "
 MAKE_CMD=${MAKE_CMD-make}
 
 # Compile Controller
+pwd=`pwd`
+echo $pwd
 cd ..
-#cd src/hardware_dep/shared/ctrl_plane
+cd src/hardware_dep/shared/ctrl_plane
+#gcc -Wall -pthread -std=c99  handlers.c controller.c messages.c sock_helpers.c threadpool.c fifo.c mac_l3_controller_ipv6.c -o $pwd/mac_l3_controller_ipv6
+gcc -Wall -pthread -std=c99  handlers.c controller.c messages.c sock_helpers.c threadpool.c fifo.c mac_controller.c -o $pwd/mac_controller
+cd $pwd/..
+echo $(pwd)
 #make clean
 #make all
 #ERROR_CODE=$?
@@ -28,15 +34,16 @@ pkill -f mac_l3_controller
 pkill -f mac_l3_nhg_controller
 pkill -f mac_l3_controller_ipv6
 
-./ctrl/mac_controller &
+#./ctrl/mac_controller &
 
-#./src/hardware_dep/shared/ctrl_plane/mac_controller traces/trace_trPR_100_l2.txt &
+./old_mk/mac_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l2_l3_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_controller traces/trace_trPR_100_l3.txt &
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_controller&
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_nhg_controller &
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_controller_ipv6 &
-#./src/hardware_dep/shared/ctrl_plane/mac_l3_controller_ipv6 traces/ &
+#./src/hardware_dep/shared/ctrl_plane/mac_l3_controller_ipv6 traces/trace_trL3_ipv6_10_random.txt &
+#./old_mk/mac_l3_controller_ipv6 traces/trace_trL3_ipv6_10_random.txt &
 
 echo "Controller started... "
 
@@ -53,7 +60,7 @@ if [ "$ERROR_CODE" -ne 0 ]; then
     exit 1
 fi
 
-cd -
+cd $pwd
 # Compile C sources
 make clean;${MAKE_CMD} -j4
 

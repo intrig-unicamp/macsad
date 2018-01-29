@@ -56,13 +56,16 @@ LDFLAGS += -L$(ODP_SDK)/lib
 
 #01 ODP(socket-mmap, netmap)
 #static
-#LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap -latomic
+LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap -latomic
 #shared
-LIBS = -lodp-linux -lodphelper -lpthread -lrt -lcrypto -lpcap
+#LIBS = -lodp-linux -lodphelper -lpthread -lrt -lcrypto -lpcap -latomic
 
 #02 ODP(dpdk)
 #LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
-#LIBS =  -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
+#static working
+#LIBS = -l:libodp-linux.a -l:libodphelper.a -ldpdk -lpthread -ldl -lpcap -lm -lnuma -lcrypto -ldl -Wl,--whole-archive,-lrte_pmd_af_packet,-lrte_pmd_ark,-lrte_pmd_avp,-lrte_pmd_bnxt,-lrte_pmd_bond,-lrte_pmd_crypto_scheduler,-lrte_pmd_cxgbe,-lrte_pmd_e1000,-lrte_pmd_ena,-lrte_pmd_enic,-lrte_pmd_failsafe,-lrte_pmd_fm10k,-lrte_pmd_i40e,-lrte_pmd_ixgbe,-lrte_pmd_kni,-lrte_pmd_lio,-lrte_pmd_null,-lrte_pmd_null_crypto,-lrte_pmd_octeontx_ssovf,-lrte_pmd_pcap,-lrte_pmd_qede,-lrte_pmd_ring,-lrte_pmd_sfc_efx,-lrte_pmd_skeleton_event,-lrte_pmd_sw_event,-lrte_pmd_tap,-lrte_pmd_thunderx_nicvf,-lrte_pmd_vhost,-lrte_pmd_virtio,-lrte_pmd_vmxnet3_uio,--no-whole-archive -ldpdk -lpthread -ldl -lpcap -lm -lnuma -lpcap -lrt -lpthread -latomic
+#shared
+#LIBS = -lodp-linux -lodphelper -lpthread -ldl -lpcap -lm -lnuma -lcrypto -ldl -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldpdk -lpthread -ldl -lpcap -lm -lnuma -lpcap -lrt -lpthread -latomic
 
 #03 ODP-DPDK
 #CFLAGS  += -I "$(RTE_SDK)/$(RTE_TARGET)/include"
