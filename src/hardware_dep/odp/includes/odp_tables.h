@@ -12,7 +12,7 @@ typedef struct extended_table_s {
 
 //=============================================================================
 // Table size limits
-
+#if 0
 #ifdef RTE_ARCH_X86_64
 /* default to 4 million hash entries (approx) */
 #define HASH_ENTRIES		1024*1024*4
@@ -24,6 +24,7 @@ typedef struct extended_table_s {
 #define LPM6_NUMBER_TBL8S (1 << 16)
 
 #define TABLE_MAX 256
+#endif
 
 #define TABLE_SIZE 10000 //Number of elements table may store
 //define different key and value size for different tables.

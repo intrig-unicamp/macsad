@@ -109,7 +109,7 @@ int read_macs_and_ports_from_file(char *filename) {
 	while (fgets(line, sizeof(line), f)) {
 		line[strlen(line)-1] = '\0';
 		//TODO why %c?
-		if (11 == sscanf(line, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x %x:%x:%x:%x:%x:%x %d",
+		if (23 == sscanf(line, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x %x:%x:%x:%x:%x:%x %d",
 					&values_ip[0], &values_ip[1], &values_ip[2], &values_ip[3], 
 					&values_ip[4], &values_ip[5], &values_ip[6], &values_ip[7], 
 					&values_ip[8], &values_ip[9], &values_ip[10], &values_ip[11], 
@@ -204,11 +204,11 @@ int main(int argc, char* argv[])
 	printf("Create and configure l3 test controller...\n");
 	//c = create_controller(11111, 3, dhf, init);
 	c = create_controller_with_init(11111, 3, dhf, init);
-	fill_ipv6_fib_lpm_table(ip, port, mac);
-	fill_ipv6_fib_lpm_table(ip2, port2, mac2);
+	//fill_ipv6_fib_lpm_table(ip, port, mac);
+	//fill_ipv6_fib_lpm_table(ip2, port2, mac2);
 
-	fill_sendout_table(port, smac);
-	fill_sendout_table(port2, smac);
+	//fill_sendout_table(port, smac);
+	//fill_sendout_table(port2, smac);
 
 	printf("Launching controller's main loop...\n");
 	execute_controller(c);

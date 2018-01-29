@@ -27,9 +27,9 @@ CFLAGS += -Wuninitialized
 endif
 
 #Comment the flags to enable different level of debug
-#CFLAGS += -D NDEBUG
-#CFLAGS += -D NINFO
-#CFLAGS += -D NSIGG
+CFLAGS += -D NDEBUG
+CFLAGS += -D NINFO
+CFLAGS += -D NSIGG
 
 #Comment to add hash table support instead of cuckoo table support
 CFLAGS += -D CUCKOO
