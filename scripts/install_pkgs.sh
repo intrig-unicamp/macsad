@@ -4,10 +4,10 @@
 #apt install -y sudo
 
 #Install packages necessary for MACSAD and its submodules
-sudo apt-get install -y make automake autoconf libtool git libcunit1-dev
+sudo apt-get install -y  autoconf libtool build-essential pkg-config autoconf-archive libpcap-dev python-scapy
 
 #Libraries for OpenSSL for ODP
-sudo apt-get install -y libssl-dev
+sudo apt-get install -y build-essential autoconf automake pkg-config libssl-dev
 
 #For p4-hlir
 sudo apt-get install -y python-yaml graphviz python-pip
@@ -16,7 +16,7 @@ sudo apt-get install -y python-yaml graphviz python-pip
 sudo apt-get install -y libpcap-dev
 
 #Various other developement tools
-apt install -y gdb exuberant-ctags ethtool vim cscope
+sudo apt-get install -y gdb exuberant-ctags ethtool vim cscope
 
 #Misc tools
 #In case an error of "killall command not found",
