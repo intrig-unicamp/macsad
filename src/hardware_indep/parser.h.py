@@ -62,12 +62,6 @@ for hdr in hlir16.header_instances:
 #[ };
 
 
-#[ // Note: -1: is fixed-width field
-#[ static const int header_instance_var_width_field[HEADER_INSTANCE_COUNT] = {
-for hdr in hlir16.header_instances:
-    #[   ${1 if hdr.type.type_ref.is_vw else -1}, // header_instance_${hdr.name}
-#[ };
-
 
 # TODO move to hlir16.py/set_additional_attrs?
 def all_field_instances():
@@ -89,6 +83,13 @@ def all_field_instances():
 for hdr in hlir16.header_instances:
     for fld in hdr.type.type_ref.fields:
         #[   field_instance_${hdr.name}_${fld.name},
+#[ };
+
+#[ // Note: -1: is fixed-width field
+#[ static const int header_instance_var_width_field[HEADER_INSTANCE_COUNT] = {
+for hdr in hlir16.header_instances:
+    field_id_pattern = 'field_instance_{}_{}'
+    #[   ${reduce((lambda x, f: field_id_pattern.format(hdr.name, f.name) if f.is_vw else x), hdr.type.type_ref.fields, -1)}, // header_instance_${hdr.name}
 #[ };
 
 
@@ -180,10 +181,6 @@ for hdr in hlir16.header_types:
     #[   ${1 if hdr.is_metadata else 0}, // ${hdr.name}
 #[ };
 
-#[ static const int header_var_width_field[HEADER_COUNT] = {
-for hdr in hlir16.header_types:
-    #[   ${1 if hdr.is_vw else -1}, // ${hdr.name}
-#[ };
 
 def all_fields():
     return [fld for hdr in hlir16.header_types for fld in hdr.fields]
@@ -235,6 +232,10 @@ for hdr in hlir16.header_types:
         #[   header_${hdr.name}, // field_${hdr.name}_${fld.name}
 #[ };
 
+#[ static const int header_var_width_field[HEADER_COUNT] = {
+for hdr in hlir16.header_types:
+    #[   ${reduce((lambda x, f: f.id if f.is_vw else x), hdr.fields, -1)}, // ${hdr.name}
+#[ };
 
 
 for enum in hlir16.declarations['Type_Enum']:
@@ -246,7 +247,7 @@ for error in hlir16.declarations['Type_Error']:
 #[
 #[ // HW optimization related infos
 #[ // --------------------
-#[ #define OFFLOAD_CHECKSUM ${1 if []!=[x for x in hlir16.sc_annotations if x.name=='Offload'] else 0}
+#[ #define OFFLOAD_CHECKSUM ${1 if []!=[x for x in hlir16.sc_annotations if x.name=='offload'] else 0}
 
 
 #[ #endif // __HEADER_INFO_H__
