@@ -6,7 +6,6 @@ void add_header(packet_descriptor_t* p, header_instance_t hdr_prefix)
     debug("calling add_header \n");
     if(p->headers[hdr_prefix].pointer == NULL) {
         uint16_t len = header_instance_byte_width[hdr_prefix];
-        uint32_t new = odp_packet_headroom (*((odp_packet_t *)(p->wrapper)));
         char* address = odp_packet_push_head(*((odp_packet_t *)(p->wrapper)), len);
        p->headers[hdr_prefix] =
             (header_descriptor_t) {
@@ -27,7 +26,8 @@ void remove_header(packet_descriptor_t* p, header_reference_t hdr_prefix)
     }
     else {
         uint16_t len = header_instance_byte_width[hdr_prefix];
-        char* address =  odp_packet_pull_head(*((odp_packet_t *)(p->wrapper)), len);           p->headers[hdr_prefix] =
+        char* address =  odp_packet_pull_head(*((odp_packet_t *)(p->wrapper)), len);           
+	    p->headers[hdr_prefix] =
            (header_descriptor_t) {
                 .type = hdr_prefix,
                 .pointer = address,
