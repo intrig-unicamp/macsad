@@ -397,13 +397,16 @@ def no_op(fun, call):
     return "no_op(); // no_op"
 
 # =============================================================================
-# COPY_HEADER 
+# COPY_HEADER
 
 def copy_header(fun, call):
     generated_code = ""
     args = call[1]
-    i = args[0]
-    #[// copy_header(pd, header_stack_${i.base_name});
+    hdr = args[0]
+
+    if isinstance(hdr, p4_header_instance):
+        hi_prefix = hdr_prefix(hdr.name)
+    #[ copy_header(pd, ${hi_prefix});
     return generated_code
 
 # =============================================================================
@@ -437,6 +440,19 @@ def pop(fun, call):
     args = call[1]
     i = args[0]
     #[ pop(pd, header_stack_${i.base_name});
+    return generated_code
+
+# =============================================================================
+# REMOVE_HEADER
+
+def remove_header(fun, call):
+    generated_code = ""
+    args = call[1]
+    hdr = args[0]
+
+    if isinstance(hdr, p4_header_instance):
+        hi_prefix = hdr_prefix(hdr.name)
+    #[ remove_header(pd, ${hi_prefix});
     return generated_code
 
 # =============================================================================
