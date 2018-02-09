@@ -402,11 +402,14 @@ def no_op(fun, call):
 def copy_header(fun, call):
     generated_code = ""
     args = call[1]
-    hdr = args[0]
+    dhdr = args[0]
+    shdr = args[1]
 
-    if isinstance(hdr, p4_header_instance):
-        hi_prefix = hdr_prefix(hdr.name)
-    #[ copy_header(pd, ${hi_prefix});
+    if isinstance(dhdr, p4_header_instance):
+        dhi_prefix = hdr_prefix(dhdr.name)
+    if isinstance(shdr, p4_header_instance):
+        shi_prefix = hdr_prefix(shdr.name)
+    #[ copy_header(pd, ${dhi_prefix}, ${shi_prefix});
     return generated_code
 
 # =============================================================================
