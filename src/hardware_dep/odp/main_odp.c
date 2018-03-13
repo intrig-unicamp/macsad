@@ -149,7 +149,8 @@ static void odp_send_packet(odp_packet_t *p, uint8_t port, int thr_idx)
 }
 #endif
 
-#define EXTRACT_EGRESSPORT(p) GET_INT32_AUTO(p, field_instance_standard_metadata_egress_port)
+//#define EXTRACT_EGRESSPORT(p) GET_INT32_AUTO(p, field_instance_standard_metadata_egress_port)
+#define EXTRACT_EGRESSPORT(p)  GET_INT32_AUTO_PACKET(p, header_instance_standard_metadata, field_standard_metadata_t_egress_port)
 
 #define EXTRACT_INGRESSPORT(p) GET_INT32_AUTO(p, field_instance_standard_metadata_ingress_port)
 
@@ -204,7 +205,7 @@ static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 {
     info("Entry init_metadata \n ");
 	int res32; // needs for the macro
-	MODIFY_INT32_INT32_BITS(packet_desc, field_instance_standard_metadata_ingress_port, inport);
+	MODIFY_INT32_INT32_BITS_PACKET(packet_desc, header_instance_standard_metadata, field_instance_standard_metadata_ingress_port, inport);
 }
 #endif
 

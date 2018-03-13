@@ -24,6 +24,11 @@
 #define sigg(args, ...) fprintf(stdout, args "\n", ##__VA_ARGS__)
 #endif
 
+typedef struct packet_descriptor_s packet_descriptor_t;
+typedef struct header_descriptor_s header_descriptor_t;
+typedef struct header_reference_s  header_reference_t;
+typedef struct field_reference_s   field_reference_t;
+
 //=============================================================================
 // General
 
@@ -45,33 +50,44 @@ uint8_t* lpm_lookup (lookup_table_t* t, uint8_t* key);
 uint8_t* ternary_lookup (lookup_table_t* t, uint8_t* key);
 
 //=============================================================================
-// Primitive actions
+// Calculations
 
-void add_header      (packet_descriptor_t* p, header_reference_t h);
-void remove_header   (packet_descriptor_t* p, header_reference_t h);
-void drop            (packet_descriptor_t* p);
-void generate_digest (backend bg, char* name, int receiver, struct type_field_list* digest_field_list);
-void no_op ();
+//uint16_t calculate_csum16(const void* buf, uint16_t length);
+
+uint32_t packet_length(packet_descriptor_t* pd);
 
 //=============================================================================
-// Calculations
-//uint16_t calculate_csum16(const void* buf, uint16_t length);
-//uint32_t packet_length(packet_descriptor_t* pd);
+// Primitive actions
+
+#include "odp_primitives.h" // field manipulation primitives are implemented as macros
+
+void     increase_counter (int id, int index);
+void        read_register (int id, int index, uint8_t* dst);
+void       write_register (int id, int index, uint8_t* src);
+
+void push (packet_descriptor_t* p, header_stack_t h);
+void pop  (packet_descriptor_t* p, header_stack_t h);
+
+void add_header             (packet_descriptor_t* p, header_reference_t h);
+void remove_header          (packet_descriptor_t* p, header_reference_t h);
+void drop                   (packet_descriptor_t* p);
+void generate_digest        (ctrl_plane_backend bg, char* name, int receiver, struct type_field_list* digest_field_list);
+void no_op                  ();
 
 //copy_header
-////void set_field_to_hash_index(packet* p, field* f, field* flc, int base, int size);/
-////void truncate_pkg           (packet* p, unsigned length);
-////void push                   (packet* p, header_idx* hdr_array);
-////void push_n                 (packet* p, header_idx* hdr_array, unsigned count);
-////void pop                    (packet* p, header_idx* hdr_array);
-////void pop_n                  (packet* p, header_idx* hdr_array, unsigned count);
-////count
-////meter
-////resubmit
-////recirculate
-////clone_ingress_pkt_to_ingress
-////clone_egress_pkt_to_ingress
-////clone_ingress_pkt_to_egress
-////clone_egress_pkt_to_egress
+//void set_field_to_hash_index(packet* p, field* f, field* flc, int base, int size);/
+//void truncate_pkg           (packet* p, unsigned length);
+//void push                   (packet* p, header_idx* hdr_array);
+//void push_n                 (packet* p, header_idx* hdr_array, unsigned count);
+//void pop                    (packet* p, header_idx* hdr_array);
+//void pop_n                  (packet* p, header_idx* hdr_array, unsigned count);
+//count
+//meter
+//resubmit
+//recirculate
+//clone_ingress_pkt_to_ingress
+//clone_egress_pkt_to_ingress
+//clone_ingress_pkt_to_egress
+//clone_egress_pkt_to_egress
 
 #endif // __BACKEND_H_
