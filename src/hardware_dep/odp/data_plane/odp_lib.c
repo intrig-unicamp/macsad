@@ -876,10 +876,10 @@ static void gconf_init(mac_global_t *gconf)
 
 //static inline odp_u16sum_t odph_chksum(void *buffer, int len)
 //return checksum value in host cpu order
-uint16_t calculate_csum16(void* buf, uint16_t length) {
+/*uint16_t calculate_csum16(void* buf, uint16_t length) {
     uint16_t value16 = odph_chksum(buf, length);
     return value16;
-}
+}*/
 
 uint32_t packet_length(packet_descriptor_t* pd) {
     //Returns sum of buffer lengths over all packet segments.
@@ -1027,14 +1027,15 @@ uint8_t maco_initialize(int argc, char **argv)
 
     /* create the packet pool */
     odp_pool_param_init(&params);
-    params.pkt.num     = PKT_POOL_SIZE;
-    params.pkt.len     = PKT_POOL_BUF_SIZE;
     params.pkt.seg_len = PKT_POOL_BUF_SIZE;
+    params.pkt.len     = PKT_POOL_BUF_SIZE;
+    params.pkt.num     = PKT_POOL_SIZE;
     params.type        = ODP_POOL_PACKET;
 
     gconf->pool = odp_pool_create("PktsPool", &params);
     if (gconf->pool == ODP_POOL_INVALID) {
         debug("Error: packet pool create failed.\n");
+        printf("Error: packet pool create failed.\n");
         exit(EXIT_FAILURE);
     }
     odp_pool_print(gconf->pool);
