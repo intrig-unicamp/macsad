@@ -8,9 +8,7 @@
 #include "backend.h"
 #include "dataplane.h" // lookup_table_t
 #include "ctrl_plane_backend.h"
-#include "odp_tables.h"
-#include <net/ethernet.h>
-#include "odp_primitives.h"
+#include "odp_vss_extern.h"
 
 // ODP headers
 #include "odp_api.h"
@@ -35,6 +33,7 @@ extern int numa_on;
 //#define debug 1
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1 // rte_log.h
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1 // rte_log.h
+#define RTE_LOGTYPE_P4_FWD RTE_LOGTYPE_USER1 // rte_log.h
 
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
@@ -63,12 +62,13 @@ struct mbuf_table {
 	struct rte_mbuf *m_table[MAX_PKT_BURST];
 };
 
-#define MAX_RX_QUEUE_PER_LCORE 1//16
-#define MAX_TX_QUEUE_PER_PORT 1//RTE_MAX_ETHPORTS
-#define MAX_RX_QUEUE_PER_PORT 1//128
+/* there was 1 1 1 */
+#define MAX_RX_QUEUE_PER_LCORE 16
+#define MAX_TX_QUEUE_PER_PORT RTE_MAX_ETHPORTS
+#define MAX_RX_QUEUE_PER_PORT 128
 
 #define NB_SOCKETS 8
-
+//#define	BAD_PORT	((uint16_t)-1)
 //TODO update this counter variable
 #define NB_COUNTERS 0
 
@@ -164,8 +164,9 @@ typedef struct lcore_state {
 struct socket_state {
     // pointers to the instances created on each socket
     lookup_table_t * tables         [NB_TABLES][NB_REPLICA];
-    int            active_replica [NB_TABLES];
-    counter_t      * counters       [NB_COUNTERS];
+    int              active_replica [NB_TABLES];
+    counter_t      * counters       [NB_COUNTERS][MAC_MAX_LCORE];
+    // p4_register_t  * registers      [NB_REGISTERS];
 };
 
 struct socket_state state[NB_SOCKETS];
@@ -264,6 +265,35 @@ extern mac_global_t *gconf;
 extern odp_instance_t instance;
 
 #define TABCHANGE_DELAY 50 // microseconds
+
+/* Per-port statistics struct */
+struct l2fwd_port_statistics {
+	uint64_t tx;
+	uint64_t rx;
+	uint64_t dropped;
+} __rte_cache_aligned;
+
+extern struct l2fwd_port_statistics port_statistics[MAX_PKTIOS];
+
+#define PRINT_OPAQUE_STRUCT(p)  print_mem((p), sizeof(*(p)))
+static void print_mem_hex(void const *vp, size_t n) {
+    unsigned char const *p = vp;
+    for (size_t i=0; i<n; i++) printf("%02x ", p[i]);
+    putchar('\n');
+};
+static void print_mem_bin(void const * const ptr, size_t const size)
+{
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    int i, j;
+//    for (i=size-1;i>=0;i--) for (j=7;j>=0;j--) {
+    for (i=0;i<size;i++) for (j=0;j<8;j++) {
+        byte = b[i] & (1<<j);
+        byte >>= j;
+        printf("%u", byte);
+    }
+    puts("");
+}
 
 uint8_t maco_initialize(int argc, char **argv);
 void maco_terminate();
