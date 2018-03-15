@@ -45,6 +45,8 @@ add_header(packet_descriptor_t* p, header_reference_t h)
         debug("Cannot add a header instance already present in the packet\n");
 }
 
+
+
 void
 remove_header(packet_descriptor_t* p, header_reference_t h)
 {
@@ -57,7 +59,54 @@ remove_header(packet_descriptor_t* p, header_reference_t h)
 }
 #endif
 
-void 
+void setValid(packet_descriptor_t* p, header_instance_t hdr_prefix)
+{
+    debug("calling setValid function\n");
+    if(p->headers[hdr_prefix].pointer == NULL) {
+        uint16_t len = header_instance_byte_width[hdr_prefix];
+        uint32_t new = odp_packet_headroom (*((odp_packet_t *)(p->wrapper)));
+        char* address = odp_packet_push_head(*((odp_packet_t *)(p->wrapper)), len);  // TODO if not to the front?
+        //printf("################\n");
+        //printf("headroom=%d\n",new);
+        //printf("len=%d\n",len);
+        //printf("address=%p\n",address);
+        //printf("p->pointer=%p\n",p->pointer);
+
+        p->headers[hdr_prefix] =
+            (header_descriptor_t) {
+                .type = hdr_prefix,
+                .pointer = address,
+                .length = len
+            };
+    } else {
+        debug("Cannot add a header instance already present in the packet\n");
+    }
+}
+
+void setInvalid(packet_descriptor_t* p, header_instance_t hdr_prefix)
+{
+    debug("calling setInvalid function \n");
+    //printf("p->headers[hdr_prefix].pointer = %p",p->headers[hdr_prefix].pointer);
+    if(p->headers[hdr_prefix].pointer == NULL) {
+        printf("Cannot remove a header instance not present in the packet\n");
+    }
+    else {
+        //printf("\nRemoving header");
+        uint16_t len = header_instance_byte_width[hdr_prefix];
+        char* address =  odp_packet_pull_head(*((odp_packet_t *)(p->wrapper)), len);       // if not from the front?
+        //printf("\nlen = %d", len);
+        //printf("\np->wrapper = %d",p->wrapper);
+      p->headers[hdr_prefix] =
+           (header_descriptor_t) {
+                .type = hdr_prefix,
+                .pointer = address,
+                .length = len
+            };
+
+}
+}
+
+void
 generate_digest(ctrl_plane_backend bg, char* name, int receiver, struct type_field_list* digest_field_list)
 {
     ctrl_plane_digest d = create_digest(bg, name);
