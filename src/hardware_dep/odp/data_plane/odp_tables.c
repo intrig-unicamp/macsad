@@ -3,6 +3,7 @@
 #include "odp_tables.h"
 #include "odp_api.h"
 #include "stdio.h"
+#include "odph_list_internal.h"
 #include "odp_lib.h"
 
 #include "actions.h"
@@ -221,8 +222,8 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
             return; //TODO how to handle return here
 
     prefix.ip = key[0] << 24 | key[1] << 16 | key[2] << 8 | key[3];
-    prefix.cidr = key[4];
-    //prefix.cidr = 16;
+    //prefix.cidr = key[4];
+    prefix.cidr = 16;
 
     info(":::: EXECUTING lpm add on table %s, depth %d, keysize %d valsize %d, value %p \n", t->name, depth, t->key_size, t->val_size, value);
     info("  :: key:  %d:%d:%d:%d - %d \n",key[0],key[1],key[2],key[3],key[4]);
