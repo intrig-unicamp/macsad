@@ -56,9 +56,9 @@ LDFLAGS += -L$(ODP_SDK)/lib
 
 #01 ODP(socket-mmap, netmap)
 #static
-#LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
+LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
 #shared
-LIBS = -lodp-linux -lodphelper -lpthread -lrt -lcrypto -lpcap
+#LIBS = -lodp-linux -lodphelper -lpthread -lrt -lcrypto -lpcap
 
 #02 ODP(dpdk)
 #LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
