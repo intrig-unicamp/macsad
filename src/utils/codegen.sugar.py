@@ -497,15 +497,12 @@ def gen_format_expr_16(e, format_as_value=True):
         if e.method.node_type == 'Member' and e.method.member == 'setValid':
             h = e.method.expr.header_ref
             # TODO is this the max size?
-            length = (sum([f.size if not f.is_vw else 0 for f in h.type.type_ref.fields])+7)/8
-
-            #[ pd->headers[${h.id}] = (header_descriptor_t) {
-            #[     .type = ${h.id},
-            #[     .length = $length,
-            #[     .pointer = calloc(${h.type.type_ref.byte_width}, sizeof(uint8_t)),
-            #[     /*TODO determine and set this field*/
-            #[     .var_width_field_bitwidth = 0,
-            #[ };
+  
+            #[ setValid(pd,${h.id});
+        elif e.method.node_type == 'Member' and e.method.member == 'setInvalid':
+            h = e.method.expr.header_ref
+            #[     /*INVALID*/
+            #[ setInvalid(pd,${h.id});
         elif e.method.node_type == 'Member' and e.method.member == 'emit':
             arg0 = e.arguments[0].member
             haddr = "pd->headers[header_instance_%s].pointer"%arg0
