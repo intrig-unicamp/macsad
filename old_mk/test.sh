@@ -52,7 +52,9 @@ pkill -f mac_bng_controller_ul
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_controller_ipv6 traces/trace_trL3_ipv6_10_random.txt &
 #./old_mk/mac_l3_controller_ipv6 traces/trace_trL3_ipv6_10_random.txt &
 ./old_mk/mac_bng_controller_dl  traces/trace_trPR_tcp_100_random.txt &
+#/old_mk/mac_bng_controller_dl  traces/trace_trPR_tcp_10000_random.txt &
 #./old_mk/mac_bng_controller_ul  traces/trace_trPR_gre_100_random.txt & 
+#./old_mk/mac_bng_controller_ul  traces/trace_trPR_gre_10000_random.txt & 
 
 echo "Controller started... "
 
