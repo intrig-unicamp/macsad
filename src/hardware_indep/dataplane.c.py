@@ -218,6 +218,10 @@ class types:
 # TODO this is a temporary quick fix for "calculated_field"s
 for m in hlir16.declarations['Method']:
     # TODO Hacking the hack to support offload annotation
+    if m.name in ['mark_to_drop']:#These are already implemented in the DPDK HAL
+         #[ /*MARKTODROP*/
+
+
     if m.name in ['verify_checksum', 'update_checksum', 'verify_checksum_offload', 'update_checksum_offload', 'mark_to_drop']:#These are already implemented in the DPDK HAL
         continue
     # TODO temporary fix for l3-routing-full, this will be computed later on
