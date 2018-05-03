@@ -120,6 +120,14 @@ void no_op()
 {
 }
 
+
+void mark_to_drop(packet_descriptor_t* p, header_instance_t hdr_prefix)
+{
+    debug("calling DROP function... \n");
+    p->dropped = 1;
+    
+}
+
 void resubmit(packet_descriptor_t* p)
 {
     // TODO

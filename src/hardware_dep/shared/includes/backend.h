@@ -5,6 +5,7 @@
 #include "ctrl_plane_backend.h"
 #include "data_plane_data.h"
 #include "dataplane.h"
+#include "stdio.h"
 
 #ifdef NDEBUG
 #define debug(args, ...)

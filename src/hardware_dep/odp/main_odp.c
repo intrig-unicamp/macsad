@@ -212,20 +212,33 @@ static void init_metadata(packet_descriptor_t* packet_desc, uint32_t inport)
 static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
 {
 	int port = EXTRACT_EGRESSPORT(pd);
+	int multiple;
+    odp_packet_t pkt = *((odp_packet_t *)pd->wrapper);
+    if (pd->dropped) {
+    	  multiple = odp_packet_has_ref(pkt) ;
+    	  printf(" IDX.............. %d \n", multiple);
 
-	info("send_packet: initial i/p port=%d and o/p port=%d \n", odp_packet_input_index(*((odp_packet_t *)pd->wrapper)), port);
-	reset_headers(pd);
+    	  odp_packet_free (pkt);
+          debug("  :::: DROPPING\n");
+          printf(" later IDX.............. %d \n", multiple);
+          
+    } else {
+                        
 
-	if (odp_unlikely(port==100)) {
-		int inport = odp_packet_input_index(*((odp_packet_t *)pd->wrapper));
-		maco_bcast_packet(pd, inport, thr_idx);
-	} else {
-		pkt_buf_t *buf = &(gconf->mconf[thr_idx].tx_pktios[port].buf);
-		uint16_t buf_id = buf->len;
-		buf->pkt[buf_id] = *(odp_packet_t *)pd->wrapper;
-		buf->len++;
-		sigg("[Unicast] recvd port id - %d, sent port id - %d\n", odp_packet_input_index(*((odp_packet_t *)pd->wrapper)), port);
-	}
+	   info("send_packet: initial i/p port=%d and o/p port=%d \n", odp_packet_input_index(*((odp_packet_t *)pd->wrapper)), port);
+	   reset_headers(pd);
+
+	   if (odp_unlikely(port==100)) {
+		  int inport = odp_packet_input_index(*((odp_packet_t *)pd->wrapper));
+		  maco_bcast_packet(pd, inport, thr_idx);
+	   } else {
+		  pkt_buf_t *buf = &(gconf->mconf[thr_idx].tx_pktios[port].buf);
+		  uint16_t buf_id = buf->len;
+		  buf->pkt[buf_id] = *(odp_packet_t *)pd->wrapper;
+		  buf->len++;
+		  sigg("[Unicast] recvd port id - %d, sent port id - %d\n", odp_packet_input_index(*((odp_packet_t *)pd->wrapper)), port);
+	   }
+	}   
 	return 0;
 }
 
@@ -308,7 +321,9 @@ int odpc_worker_mode_direct(void *arg)
 			pkt = pkt_tbl[i];
 			//odp_packet_print((odp_packet_t) pkt);
 			packet_received(&pd, &pkt, port_in, thr_idx);
-			send_packet (&pd, thr_idx);
+                          
+            send_packet (&pd, thr_idx);
+            
 		}
 
 		for (portid = 0; portid < gconf->appl.if_count; portid++) {
