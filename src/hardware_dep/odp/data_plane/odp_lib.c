@@ -9,6 +9,8 @@
 #include "ctrl_plane_backend.h"
 #include "dataplane.h"
 #include "odp_lib.h"
+#include "chksum.h"
+
 
 struct socket_state state[NB_SOCKETS];
 /** Global pointer to mac_global */
@@ -879,6 +881,12 @@ static void gconf_init(mac_global_t *gconf)
     uint16_t value16 = odph_chksum(buf, length);
     return value16;
 }*/
+
+uint16_t calculate_csum16(void* buf, uint16_t length) {
+    //uint16_t value16 = odp_chksum_ones_comp16(buf, length);
+    uint16_t value16 = odph_chksum(buf, length);
+    return value16;
+}
 
 uint32_t packet_length(packet_descriptor_t* pd) {
     //Returns sum of buffer lengths over all packet segments.
