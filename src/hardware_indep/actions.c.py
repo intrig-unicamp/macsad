@@ -1,4 +1,4 @@
-from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords
+from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords, p4_header_instance
 from p4_hlir.hlir.p4_imperatives import p4_signature_ref
 from utils.misc import addError, addWarning 
 from utils.hlir import *
@@ -397,6 +397,35 @@ def no_op(fun, call):
     return "no_op(); // no_op"
 
 # =============================================================================
+# COPY_HEADER
+
+def copy_header(fun, call):
+    generated_code = ""
+    args = call[1]
+    dhdr = args[0]
+    shdr = args[1]
+
+    if isinstance(dhdr, p4_header_instance):
+        dhi_prefix = hdr_prefix(dhdr.name)
+    if isinstance(shdr, p4_header_instance):
+        shi_prefix = hdr_prefix(shdr.name)
+    #[ copy_header(pd, ${dhi_prefix}, ${shi_prefix});
+    return generated_code
+
+# =============================================================================
+# ADD_HEADER
+
+def add_header(fun, call):
+    generated_code = ""
+    args = call[1]
+    hdr = args[0]
+
+    if isinstance(hdr, p4_header_instance):
+        hi_prefix = hdr_prefix(hdr.name)
+    #[ add_header(pd, ${hi_prefix});
+    return generated_code
+
+# =============================================================================
 # PUSH
 
 def push(fun, call):
@@ -414,6 +443,19 @@ def pop(fun, call):
     args = call[1]
     i = args[0]
     #[ pop(pd, header_stack_${i.base_name});
+    return generated_code
+
+# =============================================================================
+# REMOVE_HEADER
+
+def remove_header(fun, call):
+    generated_code = ""
+    args = call[1]
+    hdr = args[0]
+
+    if isinstance(hdr, p4_header_instance):
+        hi_prefix = hdr_prefix(hdr.name)
+    #[ remove_header(pd, ${hi_prefix});
     return generated_code
 
 # =============================================================================
