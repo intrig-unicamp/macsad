@@ -47,23 +47,6 @@ void copy_header(packet_descriptor_t* p, header_instance_t dhdr_prefix, header_i
 	}
 	else {
 		dlen = header_instance_byte_width[dhdr_prefix];
-		slen = header_instance_byte_width[shdr_prefix];
-		if (dlen!=slen) {
-			debug("copy_header failed with mismatch hdr lenght\n");
-		}
-		//int result = odp_packet_copy_data(*((odp_packet_t *)(p->wrapper)), 0, 1, len);
-		info("copying %d bytes from hdr_instance %d to %d \n", slen, shdr_prefix, dhdr_prefix);
-		memcpy(p->headers[dhdr_prefix].pointer, p->headers[shdr_prefix].pointer, slen);
-	}
-}
-
-void generate_digest(backend bg, char* name, int receiver, struct type_field_list* digest_field_list)
-{
-	digest d = create_digest(bg, name);
-	int i;
-	for(i = 0; i < digest_field_list->fields_quantity; i++)
-		d = add_digest_field(d, digest_field_list->field_offsets[i], digest_field_list->field_widths[i]);
-	send_digest(bg, d, receiver);
 }
 
 void no_op()

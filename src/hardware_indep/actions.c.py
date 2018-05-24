@@ -459,6 +459,43 @@ def remove_header(fun, call):
     return generated_code
 
 # =============================================================================
+<<<<<<< HEAD
+=======
+
+# MODIFY_FIELD_WITH_HASH_BASED_OFFSET
+
+def modify_field_with_hash_based_offset(fun, call):
+    generated_code = ""
+
+	## TODO make this proper
+    extracted_params = []
+    for p in call[1]:
+        if isinstance(p, int):
+            extracted_params += "0" #[str(p)]
+        elif isinstance(p, p4_field_list):
+            field_list = p
+            extracted_params += ["&fields"]
+        else:
+            addError("generating actions.c", "Unhandled parameter type in generate_digest: " + str(p))
+    fun_params = ["bg"] + ["\""+field_list.name+"\""] + extracted_params
+    #[  struct type_field_list fields;
+    quan = str(len(field_list.fields))
+    #[    fields.fields_quantity = ${quan};
+    #[    fields.field_offsets = malloc(sizeof(uint8_t*)*fields.fields_quantity);
+    #[    fields.field_widths = malloc(sizeof(uint8_t*)*fields.fields_quantity);
+    for i,field in enumerate(field_list.fields):
+        j = str(i)
+        if isinstance(field, p4_field):
+            #[    fields.field_offsets[${j}] = (uint8_t*) field_desc(pd, ${fld_id(field)}).byte_addr;
+            #[    fields.field_widths[${j}]  =            field_desc(pd, ${fld_id(field)}).bitwidth;
+        else:
+            addError("generating actions.c", "Unhandled parameter type in field_list: " + name + ", " + str(field))
+
+    params = ",".join(fun_params)
+    return generated_code
+
+# =============================================================================
+>>>>>>> c165da90de05e7411f6919e2424dae0aa7e38153
 
 for fun in userActions(hlir):
     hasParam = fun.signature

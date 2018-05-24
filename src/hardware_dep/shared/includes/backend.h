@@ -16,7 +16,7 @@
 #ifdef NINFO
 #define info(args, ...)
 #else
-#define info(args, ...) fprintf(stderr, "[INFO] %s:%d " args "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#define info(args, ...); fprintf(stderr, "[INFO] %s:%d " args "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 #endif
 
 #ifdef NSIGG
