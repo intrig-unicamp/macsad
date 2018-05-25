@@ -1,4 +1,4 @@
-from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords, p4_header_instance
+from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords, p4_header_instance, p4_field_list_calculation
 from p4_hlir.hlir.p4_imperatives import p4_signature_ref
 from utils.misc import addError, addWarning 
 from utils.hlir import *
@@ -172,7 +172,11 @@ def modify_field(fun, call):
         l = fun.signature_widths[src.idx]
         # TODO: Mask handling
         if not is_vwf(dst) and dst.width <= 32 and l <= 32:
-            #[ MODIFY_INT32_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${(l+7)/8})
+            if is_field_byte_aligned(dst) and l % 8 == 0: #and dst.instance.metadata:
+                dst_fd = "field_desc(pd, " + fld_id(dst) + ")"
+                #[     MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${l/8});
+            else:
+                #[ MODIFY_INT32_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${(l+7)/8})
         else:
             if is_field_byte_aligned(dst) and l % 8 == 0: #and dst.instance.metadata:
                 dst_fd = "field_desc(pd, " + fld_id(dst) + ")"
@@ -459,43 +463,66 @@ def remove_header(fun, call):
     return generated_code
 
 # =============================================================================
-<<<<<<< HEAD
-=======
 
 # MODIFY_FIELD_WITH_HASH_BASED_OFFSET
 
 def modify_field_with_hash_based_offset(fun, call):
     generated_code = ""
+    args = call[1]
+    met = args[0]
+    h = args[3]
 
 	## TODO make this proper
+    print "h = %s" % (h)
     extracted_params = []
     for p in call[1]:
         if isinstance(p, int):
-            extracted_params += "0" #[str(p)]
-        elif isinstance(p, p4_field_list):
+            extracted_field = p
+        elif isinstance(p, p4_field):
+            instance = str(p.instance)
+            name = str(p.name)
+            field_ = instance+"_"+name
+            field = name
+        elif isinstance(p, p4_field_list_calculation):
+            print "p4_field_list_calculation = %s" % (p)
+            lis = p.input[0]
+            li = lis.fields[0]
+#            l= str(li.instance)+"_"+str(li.name)
+#            print "l = %s" % (l)
+            for k in range (0,len(p.input)):
+                 print "k = %d" % (k)
+#            print "li = %s" % (li)
+            field_l = str(p)
             field_list = p
-            extracted_params += ["&fields"]
+            f = str(p.name)
+            list_ = str(p.input)+"_"+f
+            quan = str(len(p.input))
+            #[  struct type_field_list fields;
+            #[    fields.fields_quantity = ${quan};
+            #[    fields.field_offsets = malloc(sizeof(uint8_t*)*fields.fields_quantity);
+            #[    fields.field_widths = malloc(sizeof(uint8_t*)*fields.fields_quantity);
+#            for i,field in enumerate(field_list.input):
+#                  j = str(i)
+            for k in range (0,len(lis.fields)):
+                j=0
+                li = lis.fields[k]
+                l= str(li.instance)+"_"+str(li.name)
+                print "l = %s" % (l)
+                #[
+                #[    fields.field_offsets[${k}] = (uint8_t*) field_desc(pd, field_instance_${(l)}).byte_addr;
+                #[    fields.field_widths[${k}]  =            field_desc(pd, field_instance_${(l)}).bitwidth;
+                #[
         else:
-            addError("generating actions.c", "Unhandled parameter type in generate_digest: " + str(p))
-    fun_params = ["bg"] + ["\""+field_list.name+"\""] + extracted_params
-    #[  struct type_field_list fields;
-    quan = str(len(field_list.fields))
-    #[    fields.fields_quantity = ${quan};
-    #[    fields.field_offsets = malloc(sizeof(uint8_t*)*fields.fields_quantity);
-    #[    fields.field_widths = malloc(sizeof(uint8_t*)*fields.fields_quantity);
-    for i,field in enumerate(field_list.fields):
-        j = str(i)
-        if isinstance(field, p4_field):
-            #[    fields.field_offsets[${j}] = (uint8_t*) field_desc(pd, ${fld_id(field)}).byte_addr;
-            #[    fields.field_widths[${j}]  =            field_desc(pd, ${fld_id(field)}).bitwidth;
-        else:
-            addError("generating actions.c", "Unhandled parameter type in field_list: " + name + ", " + str(field))
+            addError("generating actions.c", "Unhandled parameter type in modify_field_with_hash_based_offset: " + str(p))
 
-    params = ",".join(fun_params)
+    print("#### The number is a FIELD " + field_ + "###")
+
+#    params = ",".join(fun_params)
+    #[    uint16_t result = modify_field_with_hash_based_offset(field_instance_${field_}, &fields, ${h});
+    #[    MODIFY_INT32_INT32_AUTO(pd, field_instance_${field_}, result);
     return generated_code
 
 # =============================================================================
->>>>>>> c165da90de05e7411f6919e2424dae0aa7e38153
 
 for fun in userActions(hlir):
     hasParam = fun.signature
