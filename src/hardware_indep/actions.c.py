@@ -473,7 +473,6 @@ def modify_field_with_hash_based_offset(fun, call):
     h = args[3]
 
     ## TODO make this proper
-    print "h = %s" % (h)
     extracted_params = []
     for p in call[1]:
         if isinstance(p, int):
