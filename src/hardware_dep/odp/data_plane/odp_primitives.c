@@ -62,11 +62,8 @@ uint16_t modify_field_with_hash_based_offset(int result, struct type_field_list*
 	int i;
 	for(i = 0; i < field->fields_quantity; i++)
 		hash = hash + calculate_csum16(field->field_offsets[i], field->field_widths[i]);
-	printf("\n\n\n\n O hash é: %d \n\n\n\n", hash);
-    printf("\n\n\n\n\n###### O size: %d ###### \n\n\n\n\n", size);
     info("applying hash \n");
     result = hash % size;
-	printf("\n\n\n\n\n###### O resultado é: %d ###### \n\n\n\n\n", result);
     return result;
 }
 

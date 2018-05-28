@@ -174,16 +174,16 @@ def modify_field(fun, call):
         if not is_vwf(dst) and dst.width <= 32 and l <= 32:
             if is_field_byte_aligned(dst) and l % 8 == 0: #and dst.instance.metadata:
                 dst_fd = "field_desc(pd, " + fld_id(dst) + ")"
-                #[     MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${l/8});
+                #[ MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${l/8});
             else:
                 #[ MODIFY_INT32_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${(l+7)/8})
         else:
             if is_field_byte_aligned(dst) and l % 8 == 0: #and dst.instance.metadata:
                 dst_fd = "field_desc(pd, " + fld_id(dst) + ")"
                 #[ if(${l/8} < ${dst_fd}.bytewidth) {
-                #[     MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${l/8});                
+                #[ MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${l/8});                
                 #[ } else {
-                #[     MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p} + (${l/8} - ${dst_fd}.bytewidth), ${dst_fd}.bytewidth)
+                #[ MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p} + (${l/8} - ${dst_fd}.bytewidth), ${dst_fd}.bytewidth)
                 #[ }
             else:
                 if is_vwf(dst):
@@ -472,7 +472,7 @@ def modify_field_with_hash_based_offset(fun, call):
     met = args[0]
     h = args[3]
 
-	## TODO make this proper
+    ## TODO make this proper
     print "h = %s" % (h)
     extracted_params = []
     for p in call[1]:
@@ -482,32 +482,17 @@ def modify_field_with_hash_based_offset(fun, call):
             instance = str(p.instance)
             name = str(p.name)
             field_ = instance+"_"+name
-            field = name
         elif isinstance(p, p4_field_list_calculation):
-            print "p4_field_list_calculation = %s" % (p)
             lis = p.input[0]
-            li = lis.fields[0]
-#            l= str(li.instance)+"_"+str(li.name)
-#            print "l = %s" % (l)
-            for k in range (0,len(p.input)):
-                 print "k = %d" % (k)
-#            print "li = %s" % (li)
-            field_l = str(p)
-            field_list = p
             f = str(p.name)
-            list_ = str(p.input)+"_"+f
             quan = str(len(p.input))
             #[  struct type_field_list fields;
             #[    fields.fields_quantity = ${quan};
             #[    fields.field_offsets = malloc(sizeof(uint8_t*)*fields.fields_quantity);
             #[    fields.field_widths = malloc(sizeof(uint8_t*)*fields.fields_quantity);
-#            for i,field in enumerate(field_list.input):
-#                  j = str(i)
             for k in range (0,len(lis.fields)):
-                j=0
                 li = lis.fields[k]
-                l= str(li.instance)+"_"+str(li.name)
-                print "l = %s" % (l)
+                l = str(li.instance)+"_"+str(li.name)
                 #[
                 #[    fields.field_offsets[${k}] = (uint8_t*) field_desc(pd, field_instance_${(l)}).byte_addr;
                 #[    fields.field_widths[${k}]  =            field_desc(pd, field_instance_${(l)}).bitwidth;
@@ -515,9 +500,7 @@ def modify_field_with_hash_based_offset(fun, call):
         else:
             addError("generating actions.c", "Unhandled parameter type in modify_field_with_hash_based_offset: " + str(p))
 
-    print("#### The number is a FIELD " + field_ + "###")
 
-#    params = ",".join(fun_params)
     #[    uint16_t result = modify_field_with_hash_based_offset(field_instance_${field_}, &fields, ${h});
     #[    MODIFY_INT32_INT32_AUTO(pd, field_instance_${field_}, result);
     return generated_code

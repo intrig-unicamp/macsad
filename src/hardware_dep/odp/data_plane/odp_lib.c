@@ -9,7 +9,6 @@
 #include "ctrl_plane_backend.h"
 #include "dataplane.h"
 #include "odp_lib.h"
-#include "chksum.h"
 
 
 struct socket_state state[NB_SOCKETS];
