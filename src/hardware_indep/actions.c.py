@@ -1,4 +1,5 @@
-from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords, p4_header_instance, p4_field_list_calculation
+from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords, p4_header_instance
+from p4_hlir.hlir import p4_field_list_calculation
 from p4_hlir.hlir.p4_imperatives import p4_signature_ref
 from utils.misc import addError, addWarning 
 from utils.hlir import *
