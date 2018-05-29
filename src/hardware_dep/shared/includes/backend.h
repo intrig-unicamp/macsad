@@ -1,6 +1,7 @@
 #ifndef __BACKEND_H_
 #define __BACKEND_H_
 
+#include <stdio.h>
 #include "aliases.h"
 #include "ctrl_plane_backend.h"
 #include "data_plane_data.h"
@@ -47,8 +48,9 @@ uint8_t* ternary_lookup (lookup_table_t* t, uint8_t* key);
 //=============================================================================
 // Primitive actions
 
-void add_header      (packet_descriptor_t* p, header_reference_t h);
-void remove_header   (packet_descriptor_t* p, header_reference_t h);
+void add_header      (packet_descriptor_t* p, header_instance_t h);
+void remove_header   (packet_descriptor_t* p, header_instance_t h);
+void copy_header     (packet_descriptor_t* p, header_instance_t dh, header_instance_t sh);
 void drop            (packet_descriptor_t* p);
 void generate_digest (backend bg, char* name, int receiver, struct type_field_list* digest_field_list);
 void no_op ();
@@ -58,7 +60,6 @@ void no_op ();
 //uint16_t calculate_csum16(const void* buf, uint16_t length);
 //uint32_t packet_length(packet_descriptor_t* pd);
 
-//copy_header
 ////void set_field_to_hash_index(packet* p, field* f, field* flc, int base, int size);/
 ////void truncate_pkg           (packet* p, unsigned length);
 ////void push                   (packet* p, header_idx* hdr_array);

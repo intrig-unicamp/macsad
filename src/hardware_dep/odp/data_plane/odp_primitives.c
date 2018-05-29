@@ -1,45 +1,79 @@
 #include "backend.h"
 #include "dataplane.h"
 
-#if 0
-void add_header(packet_descriptor_t* p, header_reference_t h)
+void add_header(packet_descriptor_t* p, header_instance_t hdr_prefix)
 {
-    if(p->headers[h.header_instance].pointer == NULL) {
-        uint16_t len = h.bytewidth;
-        char* address = rte_pktmbuf_prepend(p->pointer, len); // if not to the front?
-        p->headers[h.header_instance] =
-            (header_descriptor_t) {
-                .type = h.header_instance,
-                .pointer = address,
-                .length = h.bytewidth // max_width?
-            };
-    } else {
-        printf("Cannot add a header instance already present in the packet\n");
-    }
+	debug("calling add_header \n");
+	if(p->headers[hdr_prefix].pointer == NULL) {
+		uint16_t len = header_instance_byte_width[hdr_prefix];
+		char* address = odp_packet_push_head(*((odp_packet_t *)(p->wrapper)), len);
+		p->headers[hdr_prefix] =
+			(header_descriptor_t) {
+				.type = hdr_prefix,
+				.pointer = address,
+				.length = len
+			};
+	} else {
+		debug("Cannot add a header instance already present in the packet\n");
+	}
 }
 
-void remove_header(packet_descriptor_t* p, header_reference_t h)
+void remove_header(packet_descriptor_t* p, header_instance_t hdr_prefix)
 {
-    header_descriptor_t hd = p->headers[h.header_instance];
-    if(hd.pointer != NULL) {
-        uint16_t len = (uint16_t)hd.length;
-        rte_pktmbuf_adj(p->pointer, len);  // if not from the front?
-        p->headers[h.header_instance].length = 0;
-        p->headers[h.header_instance].pointer = NULL;
-    } else {
-        printf("Cannot remove a header instance not present in the packet\n");
-    }
-}
-#endif
+	debug("calling remove_header \n");
+	if(p->headers[hdr_prefix].pointer == NULL) {
+		printf("Cannot remove a header instance not present in the packet\n");
+	}
+	else {
+		uint16_t len = header_instance_byte_width[hdr_prefix];
+		char* address =  odp_packet_pull_head(*((odp_packet_t *)(p->wrapper)), len);
+		p->headers[hdr_prefix] =
+			(header_descriptor_t) {
+				.type = hdr_prefix,
+				.pointer = address,
+				.length = len
+			};
 
-void
-generate_digest(backend bg, char* name, int receiver, struct type_field_list* digest_field_list)
+	}
+}
+
+void copy_header(packet_descriptor_t* p, header_instance_t dhdr_prefix, header_instance_t shdr_prefix)
 {
-    digest d = create_digest(bg, name);
-    int i;
-    for(i = 0; i < digest_field_list->fields_quantity; i++)
-        d = add_digest_field(d, digest_field_list->field_offsets[i], digest_field_list->field_widths[i]);
-    send_digest(bg, d, receiver);
+	uint16_t dlen = 0, slen = 0;
+	debug("calling copy_header \n");
+
+	if((p->headers[dhdr_prefix].pointer == NULL) || (p->headers[dhdr_prefix].pointer == NULL)) {
+		printf("copy_header failed with invalid hdr instance\n");
+	}
+	else {
+		dlen = header_instance_byte_width[dhdr_prefix];
+		slen = header_instance_byte_width[shdr_prefix];
+		if (dlen!=slen) {
+			debug("copy_header failed with mismatch hdr lenght\n");
+		}
+		//int result = odp_packet_copy_data(*((odp_packet_t *)(p->wrapper)), 0, 1, len);
+		info("copying %d bytes from hdr_instance %d to %d \n", slen, shdr_prefix, dhdr_prefix);
+		memcpy(p->headers[dhdr_prefix].pointer, p->headers[shdr_prefix].pointer, slen);
+	}
+}
+
+uint16_t modify_field_with_hash_based_offset(int result, struct type_field_list* field, int size){
+    uint16_t hash = 0;
+	int i;
+	for(i = 0; i < field->fields_quantity; i++)
+		hash = hash + calculate_csum16(field->field_offsets[i], field->field_widths[i]);
+    info("applying hash \n");
+    result = hash % size;
+    return result;
+}
+
+void generate_digest(backend bg, char* name, int receiver, struct type_field_list* digest_field_list)
+{
+	digest d = create_digest(bg, name);
+	int i;
+	for(i = 0; i < digest_field_list->fields_quantity; i++)
+		d = add_digest_field(d, digest_field_list->field_offsets[i], digest_field_list->field_widths[i]);
+	send_digest(bg, d, receiver);
 }
 
 void no_op()
@@ -48,11 +82,11 @@ void no_op()
 
 void resubmit(packet_descriptor_t* p)
 {
-		      // TODO
+	// TODO
 }
 
 
 void drop(packet_descriptor_t* p)
 {
-    // TODO
+	// TODO
 }

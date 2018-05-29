@@ -1,4 +1,5 @@
-from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords
+from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords, p4_header_instance
+from p4_hlir.hlir import p4_field_list_calculation
 from p4_hlir.hlir.p4_imperatives import p4_signature_ref
 from utils.misc import addError, addWarning 
 from utils.hlir import *
@@ -172,14 +173,18 @@ def modify_field(fun, call):
         l = fun.signature_widths[src.idx]
         # TODO: Mask handling
         if not is_vwf(dst) and dst.width <= 32 and l <= 32:
-            #[ MODIFY_INT32_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${(l+7)/8})
+            if is_field_byte_aligned(dst) and l % 8 == 0: #and dst.instance.metadata:
+                dst_fd = "field_desc(pd, " + fld_id(dst) + ")"
+                #[ MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${l/8});
+            else:
+                #[ MODIFY_INT32_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${(l+7)/8})
         else:
             if is_field_byte_aligned(dst) and l % 8 == 0: #and dst.instance.metadata:
                 dst_fd = "field_desc(pd, " + fld_id(dst) + ")"
                 #[ if(${l/8} < ${dst_fd}.bytewidth) {
-                #[     MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${l/8});                
+                #[ MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${l/8});                
                 #[ } else {
-                #[     MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p} + (${l/8} - ${dst_fd}.bytewidth), ${dst_fd}.bytewidth)
+                #[ MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p} + (${l/8} - ${dst_fd}.bytewidth), ${dst_fd}.bytewidth)
                 #[ }
             else:
                 if is_vwf(dst):
@@ -397,6 +402,35 @@ def no_op(fun, call):
     return "no_op(); // no_op"
 
 # =============================================================================
+# COPY_HEADER
+
+def copy_header(fun, call):
+    generated_code = ""
+    args = call[1]
+    dhdr = args[0]
+    shdr = args[1]
+
+    if isinstance(dhdr, p4_header_instance):
+        dhi_prefix = hdr_prefix(dhdr.name)
+    if isinstance(shdr, p4_header_instance):
+        shi_prefix = hdr_prefix(shdr.name)
+    #[ copy_header(pd, ${dhi_prefix}, ${shi_prefix});
+    return generated_code
+
+# =============================================================================
+# ADD_HEADER
+
+def add_header(fun, call):
+    generated_code = ""
+    args = call[1]
+    hdr = args[0]
+
+    if isinstance(hdr, p4_header_instance):
+        hi_prefix = hdr_prefix(hdr.name)
+    #[ add_header(pd, ${hi_prefix});
+    return generated_code
+
+# =============================================================================
 # PUSH
 
 def push(fun, call):
@@ -414,6 +448,61 @@ def pop(fun, call):
     args = call[1]
     i = args[0]
     #[ pop(pd, header_stack_${i.base_name});
+    return generated_code
+
+# =============================================================================
+# REMOVE_HEADER
+
+def remove_header(fun, call):
+    generated_code = ""
+    args = call[1]
+    hdr = args[0]
+
+    if isinstance(hdr, p4_header_instance):
+        hi_prefix = hdr_prefix(hdr.name)
+    #[ remove_header(pd, ${hi_prefix});
+    return generated_code
+
+# =============================================================================
+
+# MODIFY_FIELD_WITH_HASH_BASED_OFFSET
+
+def modify_field_with_hash_based_offset(fun, call):
+    generated_code = ""
+    args = call[1]
+    met = args[0]
+    h = args[3]
+
+    ## TODO make this proper
+    extracted_params = []
+    for p in call[1]:
+        if isinstance(p, int):
+            extracted_field = p
+        elif isinstance(p, p4_field):
+            instance = str(p.instance)
+            name = str(p.name)
+            field_ = instance+"_"+name
+        elif isinstance(p, p4_field_list_calculation):
+            lis = p.input[0]
+            f = str(p.name)
+            quan = str(len(p.input))
+            #[  struct type_field_list fields;
+            #[    fields.fields_quantity = ${quan};
+            #[    fields.field_offsets = malloc(sizeof(uint8_t*)*fields.fields_quantity);
+            #[    fields.field_widths = malloc(sizeof(uint8_t*)*fields.fields_quantity);
+            for k in range (0,len(lis.fields)):
+                li = lis.fields[k]
+                l = str(li.instance)+"_"+str(li.name)
+                #[
+                #[    fields.field_offsets[${k}] = (uint8_t*) field_desc(pd, field_instance_${(l)}).byte_addr;
+                #[    fields.field_widths[${k}]  =            field_desc(pd, field_instance_${(l)}).bitwidth;
+                #[
+        else:
+            addError("generating actions.c", "Unhandled parameter type in modify_field_with_hash_based_offset: " + str(p))
+
+
+    #[    uint16_t result = modify_field_with_hash_based_offset(field_instance_${field_}, &fields, ${h});
+    #[    MODIFY_INT32_INT32_AUTO(pd, field_instance_${field_}, result);
     return generated_code
 
 # =============================================================================
