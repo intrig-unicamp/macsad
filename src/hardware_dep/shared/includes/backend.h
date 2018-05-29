@@ -1,7 +1,6 @@
 #ifndef __BACKEND_H_
 #define __BACKEND_H_
 
-#include <stdio.h>
 #include "aliases.h"
 #include "ctrl_plane_backend.h"
 #include "data_plane_data.h"
@@ -16,7 +15,7 @@
 #ifdef NINFO
 #define info(args, ...)
 #else
-#define info(args, ...); fprintf(stderr, "[INFO] %s:%d " args "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#define info(args, ...) fprintf(stderr, "[INFO] %s:%d " args "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 #endif
 
 #ifdef NSIGG
