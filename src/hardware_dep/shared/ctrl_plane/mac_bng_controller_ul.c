@@ -21,6 +21,8 @@ int read_macs_and_ports_from_file(char *filename) {
 	int values_ip[4];
 	int values_ip2[4];
 	int i;
+	int tcp;
+	int port;
 
 	f = fopen(filename, "r");
 	if (f == NULL) return -1;
@@ -28,11 +30,12 @@ int read_macs_and_ports_from_file(char *filename) {
 	while (fgets(line, sizeof(line), f)) {
 		line[strlen(line)-1] = '\0';
 		//TODO why %c?
-		if (14 == sscanf(line, "%x:%x:%x:%x:%x:%x %d.%d.%d.%d %d.%d.%d.%d",
+		if (16 == sscanf(line, "%x:%x:%x:%x:%x:%x %d.%d.%d.%d %d.%d.%d.%d %d %d %d %d",
 					&values[0], &values[1], &values[2],
 					&values[3], &values[4], &values[5],
 					&values_ip[0], &values_ip[1], &values_ip[2], &values_ip[3],
-					&values_ip2[0], &values_ip2[1], &values_ip2[2], &values_ip2[3]
+					&values_ip2[0], &values_ip2[1], &values_ip2[2], &values_ip2[3],
+                                        &tcp, &port
                 ) )
 		{
 			if (mac_count==MAX_MACS-1)
@@ -49,7 +52,7 @@ int read_macs_and_ports_from_file(char *filename) {
 			for( i = 0; i < 4; ++i )
 				ipd[mac_count][i] = (uint8_t) values_ip2[i];
 
-		} else {
+                }else {
 			printf("Wrong format error in line %d : %s\n", mac_count+2, line);
 			fclose(f);
 			return -1;

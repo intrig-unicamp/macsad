@@ -12,8 +12,8 @@ cd src/hardware_dep/shared/ctrl_plane
 #gcc -Wall -pthread -std=c99  handlers.c controller.c messages.c sock_helpers.c threadpool.c fifo.c mac_l3_controller_ipv6.c -o $pwd/mac_l3_controller_ipv6
 #gcc -Wall -pthread -std=c99  handlers.c controller.c messages.c sock_helpers.c threadpool.c fifo.c mac_controller.c -o $pwd/mac_controller
 #gcc -Wall -pthread -std=c99  handlers.c controller.c messages.c sock_helpers.c threadpool.c fifo.c mac_bng_controller_ul.c -o $pwd/mac_bng_controller_ul
-#gcc -Wall -pthread -std=c99  handlers.c controller.c messages.c sock_helpers.c threadpool.c fifo.c mac_bng_controller_dl.c -o $pwd/mac_bng_controller_dl
-gcc -Wall -pthread -std=c99  handlers.c controller.c messages.c sock_helpers.c threadpool.c fifo.c nat_controller_up.c -o $pwd/nat_controller_ul
+gcc -Wall -pthread -std=c99  handlers.c controller.c messages.c sock_helpers.c threadpool.c fifo.c mac_bng_controller_dl.c -o $pwd/mac_bng_controller_dl
+#gcc -Wall -pthread -std=c99  handlers.c controller.c messages.c sock_helpers.c threadpool.c fifo.c nat_controller_up.c -o $pwd/nat_controller_ul
 cd $pwd/..
 echo $(pwd)
 #make clean
@@ -56,9 +56,13 @@ pkill -f nat_controller_ul
 #./src/hardware_dep/shared/ctrl_plane/mac_l3_controller_ipv6 traces/trace_trL3_ipv6_10_random.txt &
 #./old_mk/mac_l3_controller_ipv6 traces/trace_trL3_ipv6_10_random.txt &
 #./old_mk/mac_bng_controller_dl  traces/trace_trPR_tcp_100_random.txt &
-./old_mk/nat_controller_ul &
+./old_mk/mac_bng_controller_dl  traces/trace_trPR_bng_dl_100_random2.txt &
+#./old_mk/nat_controller_ul &
 
-#/old_mk/mac_bng_controller_dl  traces/trace_trPR_tcp_10000_random.txt &
+#./old_mk/mac_bng_controller_dl  traces/trace_trPR_tcp_10000_random.txt &
+#./old_mk/mac_bng_controller_dl &
+#./old_mk/mac_bng_controller_ul traces/trace_trPR_bng_ul100_random.txt& 
+#./old_mk/mac_bng_controller_ul  traces/trace_trPR_gre_100_random.txt & 
 #./old_mk/mac_bng_controller_ul  traces/trace_trPR_gre_100_random.txt & 
 #./old_mk/mac_bng_controller_ul  traces/trace_trPR_gre_10000_random.txt & 
 
@@ -72,8 +76,8 @@ rm -rf build
 #python src/transpiler.py examples/p4_src/l3_routing_test.p4
 #python src/transpiler.py examples/p4_src/l3_routing_nhg.p4
 #python src/transpiler.py examples/p4_src/l3_routing_ipv6.p4
-#python src/transpiler.py /root/Juan/topicos_sistemas/bng_files/bng_elte.p4 --p4v 16
-python src/transpiler.py $TS/nat_mac/nat_mac.p4 --p4v 16
+python src/transpiler.py $TS/bng_files/bng_elte.p4 --p4v 16
+#python src/transpiler.py $TS/nat_mac/nat_mac.p4 --p4v 16
 ERROR_CODE=$?
 if [ "$ERROR_CODE" -ne 0 ]; then
     echo Transpiler failed with error code $ERROR_CODE
@@ -82,6 +86,6 @@ fi
 
 cd $pwd
 # Compile C sources
-make clean;${MAKE_CMD} -j4
+make clean;${MAKE_CMD} -j2
 
 rm -rf /tmp/odp*
