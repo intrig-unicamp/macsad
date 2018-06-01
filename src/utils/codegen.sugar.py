@@ -503,6 +503,10 @@ def gen_format_expr_16(e, format_as_value=True):
             h = e.method.expr.header_ref
             #[     /*INVALID*/
             #[ setInvalid(pd,${h.id});
+        elif e.method.node_type == 'Member' and e.method.member == 'execute_meter':
+
+            #[     /* METER */
+
         elif e.method.node_type == 'Member' and e.method.member == 'emit':
             arg0 = e.arguments[0].member
             haddr = "pd->headers[header_instance_%s].pointer"%arg0
