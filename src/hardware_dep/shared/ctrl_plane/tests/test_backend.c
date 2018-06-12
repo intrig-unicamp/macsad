@@ -1,3 +1,17 @@
+// Copyright 2018 INTRIG/FEEC/UNICAMP (University of Campinas), Brazil
+//
+//Licensed under the Apache License, Version 2.0 (the "License");
+//you may not use this file except in compliance with the License.
+//You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+//Unless required by applicable law or agreed to in writing, software
+//distributed under the License is distributed on an "AS IS" BASIS,
+//WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//See the License for the specific language governing permissions and
+//limitations under the License.
+
 #include "ctrl_plane_backend.h"
 #include <unistd.h>
 #include <stdio.h>
@@ -10,7 +24,7 @@ void cbf_test(struct p4_ctrl_msg* ctrl_m)
 	struct p4_field_match_header* fmh;
 	struct p4_field_match_exact* exact = 0;
 	printf("-----------CALLBACK---------------\n");
-	
+
 	if (ctrl_m->type == P4T_ADD_TABLE_ENTRY)
 	{
 		printf(" #### ADD_TABLE_ENTRY\n");
@@ -29,10 +43,10 @@ void cbf_test(struct p4_ctrl_msg* ctrl_m)
 		{
 			printf("   ## Action param %d: %s %d bits V:%d\n", i, ctrl_m->action_params[i]->name,ctrl_m->action_params[i]->length, *((uint8_t*)ctrl_m->action_params[i]->bitmap));
 			/*ctrl_m->action_params[i]*/
-		}   
+		}
 
 	}
-	
+
 
 }
 
@@ -84,4 +98,3 @@ int main()
 
 	return 0;
 }
-

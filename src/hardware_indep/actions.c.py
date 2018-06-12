@@ -1,7 +1,21 @@
+# Copyright 2018 INTRIG/FEEC/UNICAMP (University of Campinas), Brazil
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+
 from p4_hlir.hlir.p4_headers import p4_field, p4_field_list, p4_header_keywords, p4_header_instance
 from p4_hlir.hlir import p4_field_list_calculation
 from p4_hlir.hlir.p4_imperatives import p4_signature_ref
-from utils.misc import addError, addWarning 
+from utils.misc import addError, addWarning
 from utils.hlir import *
 import math
 
@@ -182,7 +196,7 @@ def modify_field(fun, call):
             if is_field_byte_aligned(dst) and l % 8 == 0: #and dst.instance.metadata:
                 dst_fd = "field_desc(pd, " + fld_id(dst) + ")"
                 #[ if(${l/8} < ${dst_fd}.bytewidth) {
-                #[ MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${l/8});                
+                #[ MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p}, ${l/8});
                 #[ } else {
                 #[ MODIFY_BYTEBUF_BYTEBUF(pd, ${fld_id(dst)}, ${p} + (${l/8} - ${dst_fd}.bytewidth), ${dst_fd}.bytewidth)
                 #[ }
@@ -190,7 +204,7 @@ def modify_field(fun, call):
                 if is_vwf(dst):
                     addError("generating modify_field", "Modifying non byte-wide variable width field '" + str(src) + "' with p4_signature_ref is not supported")
                 else:
-                    addError("generating modify_field", "Improper bytebufs cannot be modified yet.")        
+                    addError("generating modify_field", "Improper bytebufs cannot be modified yet.")
     return generated_code
 
 # =============================================================================
@@ -347,7 +361,7 @@ def register_write(fun, call):
 
 def generate_digest(fun, call):
     generated_code = ""
-    
+
     ## TODO make this proper
     extracted_params = []
     for p in call[1]:
@@ -517,7 +531,7 @@ for fun in userActions(hlir):
     #[     uint32_t value32, res32, mask32;
     #[     (void)value32; (void)res32; (void)mask32;
     for i,call in enumerate(fun.call_sequence):
-        name = call[0].name 
+        name = call[0].name
 
         # Generates a primitive action call to `name'
         if name in locals().keys():

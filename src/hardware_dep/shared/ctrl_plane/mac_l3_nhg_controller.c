@@ -1,3 +1,17 @@
+// Copyright 2018 INTRIG/FEEC/UNICAMP (University of Campinas), Brazil
+//
+//Licensed under the Apache License, Version 2.0 (the "License");
+//you may not use this file except in compliance with the License.
+//You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+//Unless required by applicable law or agreed to in writing, software
+//distributed under the License is distributed on an "AS IS" BASIS,
+//WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//See the License for the specific language governing permissions and
+//limitations under the License.
+
 #include "controller.h"
 #include "messages.h"
 #include <unistd.h>
@@ -32,7 +46,7 @@ void fill_ipv4_lpm_table(uint8_t ip[4], uint32_t nhgrp)
     strcpy(a->description.name, "set_nhop");
 
     printf("add nhgrp\n");
-    ap = add_p4_action_parameter(h, a, 2048);	
+    ap = add_p4_action_parameter(h, a, 2048);
     strcpy(ap->name, "nhgroup");
     memcpy(ap->bitmap, &nhgrp, 4);
     ap->length = 4*8+0;
@@ -70,16 +84,16 @@ void fill_nexthops_table(uint32_t nhgroup, uint8_t port, uint8_t smac[6], uint8_
     a = add_p4_action(h, 2048);
     strcpy(a->description.name, "forward");
 
-    ap = add_p4_action_parameter(h, a, 2048);	
+    ap = add_p4_action_parameter(h, a, 2048);
     strcpy(ap->name, "dmac");
     memcpy(ap->bitmap, dmac, 6);
     ap->length = 6*8+0;
-    ap2 = add_p4_action_parameter(h, a, 2048);	
+    ap2 = add_p4_action_parameter(h, a, 2048);
     strcpy(ap2->name, "smac");
     memcpy(ap2->bitmap, smac, 6);
     ap2->length = 6*8+0;
 
-    ap3 = add_p4_action_parameter(h, a, 2048);	
+    ap3 = add_p4_action_parameter(h, a, 2048);
     strcpy(ap3->name, "port");
     ap3->bitmap[0] = port;
     ap3->bitmap[1] = 0;
@@ -152,7 +166,7 @@ void init_complex() {
 }
 
 
-int main(int argc, char* argv[]) 
+int main(int argc, char* argv[])
 {
 	printf("Create and configure controller...\n");
 
@@ -180,4 +194,3 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
-

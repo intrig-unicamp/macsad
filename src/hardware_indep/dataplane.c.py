@@ -1,3 +1,17 @@
+# Copyright 2018 INTRIG/FEEC/UNICAMP (University of Campinas), Brazil
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+
 import p4_hlir.hlir.p4 as p4
 from p4_hlir.hlir.p4_sized_integer import *
 from p4_hlir.hlir.p4_headers import p4_field
@@ -8,7 +22,7 @@ from utils.misc import addError, addWarning
 #[ #include <string.h>
 #[ #include "odp_lib.h"
 #[ #include "actions.h"
-#[ 
+#[
 #[ extern void parse_packet(packet_descriptor_t* pd, lookup_table_t** tables);
 #[
 #[ extern void increase_counter (int counterid, int index);
@@ -45,7 +59,7 @@ for table in hlir.p4_tables.values():
         #Key for iplookup is {IP_add + port}
         #[ key -= ${key_length-1};
         #[ int c, d;
-        #[ for(c = ${key_length-2}, d = 0; c >= 0; c--, d++) *(reverse_buffer+d) = *(key+c); 
+        #[ for(c = ${key_length-2}, d = 0; c >= 0; c--, d++) *(reverse_buffer+d) = *(key+c);
         #[ //key_length-2 reduce the length one extra value
         #[ for(c = 0; c < ${key_length-1}; c++) *(key+c) = *(reverse_buffer+c);
         #[ //key_length-1 reduce the length one extra value
@@ -308,7 +322,7 @@ for f in hlir.p4_fields.values():
 #[ }
 #[
 
-#[ 
+#[
 #[ void handle_packet(packet_descriptor_t* pd, lookup_table_t** tables)
 #[ {
 #[     int value32;

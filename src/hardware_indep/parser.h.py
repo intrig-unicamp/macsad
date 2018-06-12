@@ -1,3 +1,17 @@
+# Copyright 2018 INTRIG/FEEC/UNICAMP (University of Campinas), Brazil
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+
 import inspect
 from utils.hlir import *
 
@@ -91,11 +105,11 @@ for f in hlir.p4_fields.values():
             #[ uint32_t ${fld_id(f)};
             #[ uint8_t attr_${fld_id(f)};
 #[ } parsed_fields_t;
-#[ 
+#[
 #[ #define HEADER_INSTANCE_COUNT ${hc}
 #[ #define HEADER_STACK_COUNT ${sc}
 #[ #define FIELD_INSTANCE_COUNT ${fc}
-#[ 
+#[
 #[ ${ header_stack_e() }
 #[ ${ header_instance_e() }
 #[ ${ field_instance_e() }
@@ -109,9 +123,9 @@ for f in hlir.p4_fields.values():
 #[ ${ field_instance_byte_offset_hdr() }
 #[ ${ field_instance_mask() }
 #[ ${ field_instance_header() }
-#[ 
+#[
 #[ ${ header_stack_elements() }
 #[ ${ header_stack_size() }
 #[ typedef enum header_stack_e header_stack_t;
-#[ 
+#[
 #[ #endif // __HEADER_INFO_H__

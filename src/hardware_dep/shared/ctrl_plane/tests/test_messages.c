@@ -1,3 +1,17 @@
+// Copyright 2018 INTRIG/FEEC/UNICAMP (University of Campinas), Brazil
+//
+//Licensed under the Apache License, Version 2.0 (the "License");
+//you may not use this file except in compliance with the License.
+//You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+//Unless required by applicable law or agreed to in writing, software
+//distributed under the License is distributed on an "AS IS" BASIS,
+//WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//See the License for the specific language governing permissions and
+//limitations under the License.
+
 #include "messages.h"
 #include "handlers.h"
 #include <stdio.h>
@@ -25,7 +39,7 @@ void test_p4_set_default_action()
 {
 	char buffer[BUFFLEN];
         struct p4_header* h;
-        struct p4_header* h2; 
+        struct p4_header* h2;
 	struct p4_set_default_action* sda;
 	struct p4_set_default_action* sda2;
 	struct p4_action* a;
@@ -43,14 +57,14 @@ void test_p4_set_default_action()
 	sda = create_p4_set_default_action(buffer,0,BUFFLEN);
 	strcpy(sda->table_name,"smac");
 
-	a = &(sda->action);	
+	a = &(sda->action);
 	strcpy(a->description.name,"smac_hit");
 
 	ap = add_p4_action_parameter(h, a, BUFFLEN);
 	strcpy(ap->name, "port");
 	memcpy(ap->bitmap, &val, sizeof(val));
 	ap->length = sizeof(val)*8; /* length of a bitvector */
-	
+
 	assert(h->length == (sizeof(struct p4_set_default_action) + sizeof(struct p4_action_parameter)));
 	assert(a->param_size == 1);
 
@@ -70,7 +84,7 @@ void test_p4_set_default_action()
 	}
 
 	assert(ap2->length == sizeof(uint32_t)*8);
-	assert(*(uint32_t*)&(ap2->bitmap) == val); 
+	assert(*(uint32_t*)&(ap2->bitmap) == val);
 
 	/* Testing the handler */
 

@@ -1,3 +1,17 @@
+// Copyright 2018 INTRIG/FEEC/UNICAMP (University of Campinas), Brazil
+//
+//Licensed under the Apache License, Version 2.0 (the "License");
+//you may not use this file except in compliance with the License.
+//You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+//Unless required by applicable law or agreed to in writing, software
+//distributed under the License is distributed on an "AS IS" BASIS,
+//WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//See the License for the specific language governing permissions and
+//limitations under the License.
+
 #include "controller.h"
 #include <unistd.h>
 #include <stdio.h>
@@ -82,7 +96,7 @@ controller create_controller_with_init(uint16_t port, int number_of_threads, dig
 		return 0;
 
 	ct = (controller_t*) malloc(sizeof(controller_t));
-	
+
 	if (ct==0)
 		return 0;
 
@@ -96,7 +110,7 @@ controller create_controller_with_init(uint16_t port, int number_of_threads, dig
 	ct->controller_fd = socket( PF_INET, SOCK_STREAM, 0 );
 
 	/* Server's information*/
-	server.sin_family = AF_INET;	
+	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = INADDR_ANY;
 	server.sin_port = htons(port);
 	ct->port = port;
@@ -105,7 +119,7 @@ controller create_controller_with_init(uint16_t port, int number_of_threads, dig
 	bind( ct->controller_fd, (struct sockaddr *) &server, sizeof server );
 
 	listen( ct->controller_fd, 5 );
-	
+
 	return (controller)ct;
 }
 
@@ -133,7 +147,7 @@ controller create_controller(uint16_t port, int number_of_threads, digest_handle
     ct->controller_fd = socket( PF_INET, SOCK_STREAM, 0 );
 
 	/* Server's information*/
-	server.sin_family = AF_INET;	
+	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = INADDR_ANY;
 	server.sin_port = htons(port);
 	ct->port = port;
@@ -142,7 +156,7 @@ controller create_controller(uint16_t port, int number_of_threads, digest_handle
 	bind( ct->controller_fd, (struct sockaddr *) &server, sizeof server );
 
 	listen( ct->controller_fd, 5 );
-	
+
 	return (controller)ct;
 }
 
@@ -210,10 +224,10 @@ void execute_controller(controller c)
                         close(i);
                         free(mem_cell);
                         break;
-                    }	
+                    }
                 }
             }
-        }			
+        }
     }
 }
 
@@ -233,4 +247,3 @@ int send_p4_msg(controller c, char* buffer, int length)
 
 	return 0;
 }
-

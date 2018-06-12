@@ -1,3 +1,17 @@
+# Copyright 2018 INTRIG/FEEC/UNICAMP (University of Campinas), Brazil
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+
 #Utility functions for analyzing HLIR and for generating some code parts from HLIR
 
 from p4_hlir.hlir.p4_tables import p4_match_type
@@ -98,7 +112,7 @@ def header_stack_ids(hlir):
 def stack_instance_ids(hlir):
     return map(hdr_prefix, filter(hstack, hlir.p4_header_instances))
 
-def header_instances(hlir): 
+def header_instances(hlir):
     return filter(lambda i: not i.virtual, hlir.p4_header_instances.values())
 
 def header_instance_ids(hlir):
@@ -150,7 +164,7 @@ def primitive(action):
 def userActions(hlir):
     return filter(lambda act: not primitive(act), hlir.p4_actions.values())
 
-def getTypeAndLength(table) : 
+def getTypeAndLength(table) :
    key_length = 0
    lpm = 0
    ternary = 0

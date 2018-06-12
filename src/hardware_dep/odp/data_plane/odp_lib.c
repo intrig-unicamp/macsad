@@ -1,3 +1,17 @@
+// Copyright 2018 INTRIG/FEEC/UNICAMP (University of Campinas), Brazil
+//
+//Licensed under the Apache License, Version 2.0 (the "License");
+//you may not use this file except in compliance with the License.
+//You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+//Unless required by applicable law or agreed to in writing, software
+//distributed under the License is distributed on an "AS IS" BASIS,
+//WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//See the License for the specific language governing permissions and
+//limitations under the License.
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <net/ethernet.h>
@@ -796,7 +810,7 @@ printf("rx_idx %d, num_rx_thr %d\n", rx_idx, gconf->pktios[rx_idx].num_rx_thr);
 	    gconf->pktios[tx_idx].num_tx_thr++;
 printf("=tx_idx %d, num_tx_thr %d\n", tx_idx, gconf->pktios[tx_idx].num_rx_thr);
 		    }
-	    }	
+	    }
 	    mconf->num_rx_pktio++;
 	    gconf->pktios[rx_idx].num_rx_thr++;
 printf("=rx_idx %d, num_rx_thr %d\n", rx_idx, gconf->pktios[rx_idx].num_rx_thr);

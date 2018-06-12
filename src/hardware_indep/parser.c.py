@@ -1,6 +1,20 @@
+# Copyright 2018 INTRIG/FEEC/UNICAMP (University of Campinas), Brazil
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+
 import p4_hlir.hlir.p4 as p4
 from utils.hlir import *
-from utils.misc import addError, addWarning 
+from utils.misc import addError, addWarning
 
 def format_state(state):
     generated_code = ""
@@ -53,7 +67,7 @@ for pe_name, pe in hlir.p4_parser_exceptions.items():
 #[
 #[ void print_mac(uint8_t* v) { printf("%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX\n", v[0], v[1], v[2], v[3], v[4], v[5]); }
 #[ void print_ip(uint8_t* v) { printf("%d.%d.%d.%d\n",v[0],v[1],v[2],v[3]); }
-#[ 
+#[
 
 for pe_name, pe in pe_dict.items():
     #[ static inline void ${pe_name}(packet_descriptor_t *pd) {
@@ -75,7 +89,7 @@ for hi_name, hi in hlir.p4_header_instances.items():
         #[     if(hdr_length > ${hi.header_type.max_length}) //TODO: is this the correct place for the check
         #[         p4_pe_header_too_long(pd);
     #[ }
-    #[ 
+    #[
 
 for state_name, parse_state in hlir.p4_parse_states.items():
     #[ static void parse_state_${state_name}(packet_descriptor_t* pd, uint8_t* buf, lookup_table_t** tables);
@@ -110,10 +124,10 @@ for state_name, parse_state in hlir.p4_parse_states.items():
     #[ {
     #[     uint32_t value32;
     #[     (void)value32;
-    
+
     for call in parse_state.call_sequence:
         if call[0] == p4.parse_call.extract:
-            hi = call[1] 
+            hi = call[1]
             #[     extract_header_${hi}(buf, pd);
             #[     buf += pd->headers[${hdr_prefix(hi.name)}].length;
             for f in hi.fields:
@@ -174,7 +188,7 @@ for state_name, parse_state in hlir.p4_parse_states.items():
         if not has_default_case:
             #[     return NULL;
     #[ }
-    #[ 
+    #[
 
 #[ void parse_packet(packet_descriptor_t* pd, lookup_table_t** tables) {
 #[     parse_state_start(pd, pd->pointer, tables);
