@@ -111,8 +111,8 @@ veth3 - a2:5e:37:ac:a1:7f
 veth0 - fa:4f:e8:df:b1:5f
 
 	scapy
-	pkt2 = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.2',src='192.168.0.1')`
-	sendp(pkt2,iface="veth0",count=1);`
+	pkt2 = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.2',src='192.168.0.1')
+	sendp(pkt2,iface="veth0",count=1);
 
 The first packet with an unknown destination mac address will be broadcasted by the switch while the source mac address is learned. Now after the two packets were sent, the switch has already learned the mac addresses of veth0 and veth3. Now if we send those packets again, switch will forward those packets via corresponding ports instead of broadcasting them.
 
