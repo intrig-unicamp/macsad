@@ -12,7 +12,7 @@ MACSAD uses ODP for forwarding plane developement.
 
 1. Download ODP v1.16.0, compile and install it:
 
-        sudo apt-get install -y build-essential autoconf automake pkg-config libssl-dev
+        sudo apt-get install -y build-essential autoconf automake pkg-config libssl-dev libconfig-dev
         wget https://github.com/Linaro/odp/archive/v1.16.0.0.tar.gz
         tar xzvf v1.16.0.0.tar.gz
         mv odp-1.16.0.0/ odp/
@@ -36,7 +36,7 @@ of the ODP build directory before running any of these commands):
 
 1. Clone the MACSAD project:
 
-        git clone --recursive https://github.com/intrig-unicamp/mac.git
+        git clone --recursive https://github.com/intrig-unicamp/macsad.git
         cd mac
 	
 2. MACSAD has added `P4-hlir` as a submodule. Download/update and then install
@@ -115,6 +115,10 @@ veth0 - fa:4f:e8:df:b1:5f
 	sendp(pkt2,iface="veth0",count=1);
 
 The first packet with an unknown destination mac address will be broadcasted by the switch while the source mac address is learned. Now after the two packets were sent, the switch has already learned the mac addresses of veth0 and veth3. Now if we send those packets again, switch will forward those packets via corresponding ports instead of broadcasting them.
+
+## Usecases
+
+Other tested P4 usecases with its dependency graphs can be found at [macsad-usecases](https://github.com/intrig-unicamp/macsad-usecases) repository.
 
 ## Acknowledgment
 
