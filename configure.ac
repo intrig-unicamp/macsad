@@ -128,18 +128,18 @@ AS_IF([test "x$enable_odpd" = "xyes"], [
 #	DPDK_LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
     DPDK_LIBS="-lrt -lcrypto -ldl -lpcap"
 #   DPDK_LIBS="-lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap"
-#   PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
-#	PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
-    MAC_PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
-    MAC_PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
+#   PKG_CHECK_MODULES([libodp], [libodp-linux = 1.19.0.2])
+#	PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.19.0.2])
+    MAC_PKG_CHECK_MODULES([libodp], [libodp-linux = 1.19.0.2])
+    MAC_PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.19.0.2])
 ])
 
 AS_IF([test "x$enable_odp_dpdk" != "xyes"] && [test "x$enable_odpd" != "xyes"], [
     echo "macsad(socket_mmap/netmap) is SET"
-#   PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
-#	PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
-    MAC_PKG_CHECK_MODULES([libodp], [libodp-linux = 1.16.0.0])
-    MAC_PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.16.0.0])
+#   PKG_CHECK_MODULES([libodp], [libodp-linux = 1.19.0.2])
+#	PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.19.0.2])
+    MAC_PKG_CHECK_MODULES([libodp], [libodp-linux = 1.19.0.2])
+    MAC_PKG_CHECK_MODULES([libodphelper], [libodphelper = 1.19.0.2])
 ])
 
 AX_PTHREAD(, [AC_MSG_ERROR([pthread support is required])])
