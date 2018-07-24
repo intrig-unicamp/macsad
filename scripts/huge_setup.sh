@@ -12,12 +12,40 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 
+#!/bin/bash
 
-mkdir /mnt/huge
+# Setting the hugepage with 2MB page size and user provided page numbers
+# across all the numa nodes.
+
+DEF_HUGEPAGE_NOS=512
+
+# Create directory to mount hugepages
+mkdir -p /mnt/huge
 umount -a -t hugetlbfs
 umount /mnt/huge
-echo "Mounting hugetlbfs"
-mount -t hugetlbfs nodev /mnt/huge
-sh -c 'echo 5120 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages'
+echo "Mounting Hugetlbfs for hugepages"
+(mount | grep hugetlbfs) > /dev/null || mount -t hugetlbfs nodev /mnt/huge
+
+# Read hugepage size (number of hugepages) from arguments
+HUGEPAGE_NOS=${1:-$DEF_HUGEPAGE_NOS}
+echo "Will set ${HUGEPAGE_NOS} hugepages"
+
+# Set the hugepages for all numa nodes
+for i in {0..7}
+do
+        if [[ -e "/sys/devices/system/node/node$i" ]]
+        then
+                echo $HUGEPAGE_NOS > /sys/devices/system/node/node$i/hugepages/hugepages-2048kB/nr_hugepages
+        fi
+done
+echo "Hugepage setup done"
+
+# Show the hugepage details
+echo "cat /proc/meminfo |grep uge"
 cat /proc/meminfo |grep uge
-grep -R "" /sys/kernel/mm/hugepages/ /proc/sys/vm/*huge*
+
+#echo "rep -R "" /sys/kernel/mm/hugepages/ /proc/sys/vm/*huge*"
+#grep -R "" /sys/kernel/mm/hugepages/ /proc/sys/vm/*huge*
+
+# To release the hugepage memory used by applications
+#rm -rf /dev/hugepages/*
