@@ -10,12 +10,12 @@ Note: We suggest to install MACSAD using install.sh (inside scripts folder). Thi
 
 MACSAD uses ODP for forwarding plane developement.
 
-1. Download ODP v1.16.0, compile and install it:
+1. Download ODP v1.19.0.2, compile and install it:
 
         sudo apt-get install -y build-essential autoconf automake pkg-config libssl-dev libconfig-dev
-        wget https://github.com/Linaro/odp/archive/v1.16.0.0.tar.gz
-        tar xzvf v1.16.0.0.tar.gz
-        mv odp-1.16.0.0/ odp/
+        wget https://github.com/Linaro/odp/archive/v1.19.0.2.tar.gz
+        tar xzvf v1.19.0.2.tar.gz
+        mv odp-1.19.0.2/ odp/
         cd odp
         ./bootstrap
         ./configure --disable-abi-compat --prefix=`pwd`/build

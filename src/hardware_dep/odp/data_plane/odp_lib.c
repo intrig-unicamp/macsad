@@ -529,7 +529,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
     static const char *shortopts = "+c:+C:+i:+m:h";
 
     /* let helper collect its own arguments (e.g. --odph_proc) */
-    odph_parse_options(argc, argv, shortopts, longopts);
+    argc = odph_parse_options(argc, argv);
 
     appl_args->time = 0; /* loop forever if time to run is 0 */
     appl_args->accuracy = 15; /* get and print pps stats second */
@@ -896,8 +896,8 @@ static void gconf_init(mac_global_t *gconf)
 }*/
 
 uint16_t calculate_csum16(void* buf, uint16_t length) {
-    //uint16_t value16 = odp_chksum_ones_comp16(buf, length);
-    uint16_t value16 = odph_chksum(buf, length);
+    uint16_t value16 = odp_chksum_ones_comp16(buf, length);
+    //uint16_t value16 = odph_chksum(buf, length);
     return value16;
 }
 

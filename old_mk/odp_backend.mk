@@ -68,28 +68,44 @@ SRCS-Y += vector.c
 
 LDFLAGS += -L$(ODP_SDK)/lib
 
+
 #01 ODP(socket-mmap, netmap)
-#static
-#LIBS = -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -lpcap
-#shared
-LIBS = -lodp-linux -lodphelper -lpthread -lrt -lcrypto -lpcap
+##static
+#ODP_LIB = -l:libodp-linux.a -lcrypto -ldl -lpcap -lrt -lpthread -latomic -lconfig
+#HELPER_LIB = -l:libodphelper.a
+
+##shared
+ODP_LIB = -lodp-linux -lcrypto -ldl -lpcap -lrt -lpthread -latomic -lconfig
+HELPER_LIB = -lodphelper
+
 
 #02 ODP(dpdk)
 #LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
-#static
-#LIBS =  -l:libodp-linux.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap -static
-#LIBS =  `PKG_CONFIG_PATH=/root/pktio/odp/buildD/lib/pkgconfig:${PKG_CONFIG_PATH} pkg-config --cflags --libs libodp-linux libodphelper --static`
-#shared
-#LIBS =  -lodp-linux -lodphelper -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap -lnuma
+##static
+#ODP_LIB = -l:libodp-linux.a -lcrypto -ldl -Wl,--whole-archive,-lrte_pmd_af_packet,-lrte_pmd_ark,-lrte_pmd_avp,-lrte_pmd_bnxt,-lrte_pmd_bond,-lrte_pmd_crypto_scheduler,-lrte_pmd_cxgbe,-lrte_pmd_e1000,-lrte_pmd_ena,-lrte_pmd_enic,-lrte_pmd_failsafe,-lrte_pmd_fm10k,-lrte_pmd_i40e,-lrte_pmd_ixgbe,-lrte_pmd_kni,-lrte_pmd_lio,-lrte_pmd_nfp,-lrte_pmd_null,-lrte_pmd_null_crypto,-lrte_pmd_octeontx,-lrte_pmd_octeontx_ssovf,-lrte_pmd_pcap,-lrte_pmd_qede,-lrte_pmd_ring,-lrte_pmd_sfc_efx,-lrte_pmd_skeleton_event,-lrte_pmd_softnic,-lrte_pmd_sw_event,-lrte_pmd_tap,-lrte_pmd_thunderx_nicvf,-lrte_pmd_vhost,-lrte_pmd_virtio,-lrte_pmd_vmxnet3_uio,--no-whole-archive -ldpdk -ldl -lpthread -lnuma -lm -lpcap -lrt -lpthread -latomic -lconfig
+#HELPER_LIB = -l:libodphelper.a
+
+##shared
+#LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
+#ODP_LIB = -lodp-linux -lcrypto -ldl -ldpdk -ldl -lpthread -lnuma -lm -lpcap -lrt -lpthread -latomic -lconfig
+#HELPER_LIB = -lodphelper
+##Experimental
+#LIBS =  `PKG_CONFIG_PATH=/root/gyn/odp/buildD/lib/pkgconfig:${PKG_CONFIG_PATH} pkg-config --cflags --libs libodp-linux libodphelper --static`
 
 #03 ODP-DPDK
 #CFLAGS  += -I "$(RTE_SDK)/$(RTE_TARGET)/include"
 #LDFLAGS += -L$(RTE_SDK)/x86_64-native-linuxapp-gcc/lib
 #Need to use shared library to compile with hash table support.
-#static
-#LIBS     = -l:libodp-dpdk.a -l:libodphelper.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
-#shared
-#LIBS     = -lodp-dpdk -lodphelper -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
+##static
+#ODP_LIB = -l:libodp-dpdk.a -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
+#HELPER_LIB = -l:libodphelper.a
+
+##shared
+#ODP_LIB = -lodp-dpdk -lpthread -lrt -lcrypto -ldl -lpcap -Wl,--whole-archive,-ldpdk,--no-whole-archive -ldl -lm -lpcap
+#HELPER_LIB = -lodphelper
+
+
+LIBS = $(ODP_LIB) $(HELPER_LIB)
 
 OBJS = $(SRCS-y:.c=.o)
 
