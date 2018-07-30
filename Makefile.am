@@ -54,7 +54,7 @@ ctrl_mac_l3_nhg_controller_SOURCES = \
     src/hardware_dep/shared/ctrl_plane/mac_l3_nhg_controller.c
 
 ODP_CFLAGS = $(libodp_CFLAGS) $(libodphelper_CFLAGS)
-AM_CFLAGS = $(ODP_CFLAGS) $(PTHREAD_CFLAGS) -D NDEBUG -D NINFO -D NSIGG -D CUCKOO
+AM_CFLAGS = $(ODP_CFLAGS) $(PTHREAD_CFLAGS) -D NDEBUG -D NINFO -D NSIGG -D NERROR -D NWARN -D CUCKOO
 
 ODP_LIBS = $(libodp_LIBS) $(libodphelper_LIBS)
 LIBS += $(ODP_LIBS)  $(PTHREAD_LIBS) 

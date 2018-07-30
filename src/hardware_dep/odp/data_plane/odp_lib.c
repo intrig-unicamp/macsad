@@ -81,7 +81,7 @@ static void sig_handler(int signo)
 		printf("Received signal=%u (%s) exiting.", signo, signal_name);
 	}else{
 		num_stack_frames = backtrace(bt_array, 100);
-		printf("2 Received signal=%u (%s) exiting.", signo, signal_name);
+		error("2 Received signal=%u (%s) exiting.", signo, signal_name);
 		backtrace_symbols_fd(bt_array, num_stack_frames, fileno(stderr));
 		fflush(NULL);
 		sync();

@@ -205,7 +205,7 @@ static void maco_bcast_packet(packet_descriptor_t* pd, uint8_t ingress_port, int
 			gconf->mconf[thr_idx].tx_pktios[port].buf.pkt[buf_len] = pkt_cp;
 		}
 		gconf->mconf[thr_idx].tx_pktios[port].buf.len++;
-		sigg("[Broadcast] recvd port id - %d, sent port id - %d\n", ingress_port, port);
+		sigg("[Broadcast]","recvd port id - %d, sent port id - %d\n", ingress_port, port);
 	}
 
 	odp_packet_free (pkt);
@@ -237,7 +237,7 @@ static inline int send_packet(packet_descriptor_t* pd, int thr_idx)
 		uint16_t buf_id = buf->len;
 		buf->pkt[buf_id] = *(odp_packet_t *)pd->wrapper;
 		buf->len++;
-		sigg("[Unicast] recvd port id - %d, sent port id - %d\n", odp_packet_input_index(*((odp_packet_t *)pd->wrapper)), port);
+		sigg("[Unicast]", "recvd port id - %d, sent port id - %d\n", odp_packet_input_index(*((odp_packet_t *)pd->wrapper)), port);
 	}
 	return 0;
 }
