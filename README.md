@@ -12,9 +12,9 @@ MACSAD uses ODP for forwarding plane developement.
 
 1. Download ODP v1.19.0.2, compile and install it:
 
-        sudo apt-get install -y build-essential autoconf automake pkg-config libssl-dev libconfig-dev
+        apt-get install -y build-essential autoconf automake pkg-config libssl-dev libconfig-dev libtool
         wget https://github.com/Linaro/odp/archive/v1.19.0.2.tar.gz
-        tar xzvf v1.19.0.2.tar.gz
+        tar xzvf v1.19.0.2.tar.gz; rm v1.19.0.2.tar.gz
         mv odp-1.19.0.2/ odp/
         cd odp
         ./bootstrap
@@ -26,7 +26,7 @@ MACSAD uses ODP for forwarding plane developement.
 of the ODP build directory before running any of these commands):
 
         echo `pwd`/build/lib | sudo tee /etc/ld.so.conf.d/odp.conf
-        sudo ldconfig
+        ldconfig
         export PKG_CONFIG_PATH=`pwd`/build/lib/pkgconfig
         echo "export PKG_CONFIG_PATH=`pwd`/build/lib/pkgconfig" >> ~/.bashrc
         cd ..
@@ -36,13 +36,14 @@ of the ODP build directory before running any of these commands):
 
 1. Clone the MACSAD project:
 
+        apt install -y git
         git clone --recursive https://github.com/intrig-unicamp/macsad.git
-        cd mac
+        cd macsad
 	
 2. MACSAD has added `P4-hlir` as a submodule. Download/update and then install
 it (along with its dependencies):
 
-        sudo apt-get install -y python-yaml graphviz python-setuptools
+        apt-get install -y python-yaml graphviz python-setuptools
         cd p4-hlir
         python setup.py install --user
 
@@ -55,15 +56,15 @@ it (along with its dependencies):
 
 4. Install build dependencies, project dependencies and compile MACSAD:
 
-        sudo apt-get install -y autoconf libtool build-essential pkg-config autoconf-archive libpcap-dev python-scapy
+        apt-get install -y autoconf build-essential pkg-config autoconf-archive libpcap-dev python-scapy
         ./autogen.sh
         ./configure
         make
 
 5. Set hugepages number and create interfaces for the test:
 
-        sudo sysctl -w vm.nr_hugepages=512
-        sudo ./scripts/veth_create.sh
+        sysctl -w vm.nr_hugepages=512
+        ./scripts/veth_create.sh
 
 ## Running MACSAD
 
@@ -78,18 +79,25 @@ switch):
 
 2. Run the MACSAD switch:
 
-        sudo ./macsad -i veth1,veth2 -c 0 -m 0 --out_mode 0
+        ./macsad -i veth1,veth2 -c 0 -m 0 --out_mode 0
 
-3. Now will use the veth interfaces created in step #5. `veth1` and `veth2` will
+    NOTE: To allow portability ODP sets a table size limit of 8192, to allow a higher limit:
+
+        sed -i 's/max_queue_size = 8192/max_queue_size = YYY/' /root/odp/config/odp-linux-generic.conf
+
+    Where YYY is the new limit. Then, odp needs to be recompiled. However, this will impact the memory usage and it has a limit of up to 1048576.
+
+3. Now open a new terminal and we will use the veth interfaces created in step #5. `veth1` and `veth2` will
 be part of the switch. We will send packet to `veth0` (which is `veth1`'s pair)
 and monitor at `veth3` (which is `veth2`'s pair) for packets. Similary we will
 send packet to `veth3` and expect packets to arrive at `veth0`:
 
-        sudo python run_test.py
+        cd /root/macsad
+        python run_test.py
 
     You should see output similar to this:
 
-        $ sudo python run_test.py
+        $ python run_test.py
         WARNING: No route found for IPv6 destination :: (no default route?)
         Sending 1 packets to  veth3 ...
         DISTRIBUTION:
@@ -110,9 +118,9 @@ veth3 - a2:5e:37:ac:a1:7f
 
 veth0 - fa:4f:e8:df:b1:5f
 
-	scapy
-	pkt2 = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.2',src='192.168.0.1')
-	sendp(pkt2,iface="veth0",count=1);
+	$ scapy
+	>>> pkt2 = Ether(dst='a2:5e:37:ac:a1:7f',src='fa:4f:e8:df:b1:5f')/IP(dst='192.168.0.2',src='192.168.0.1')
+	>>> sendp(pkt2,iface="veth0",count=1);
 
 The first packet with an unknown destination mac address will be broadcasted by the switch while the source mac address is learned. Now after the two packets were sent, the switch has already learned the mac addresses of veth0 and veth3. Now if we send those packets again, switch will forward those packets via corresponding ports instead of broadcasting them.
 
