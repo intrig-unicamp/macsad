@@ -32,11 +32,11 @@ of the ODP build directory before running any of these commands):
         cd ..
 
 
-3. Download P4C, compile and install:
+3. Download P4C, compile and install it:
         Please install using the repository in: https://github.com/p4lang/p4c
-        Note: install and previous version of P4C, recent newest version of P4C introduced changes currently incompatible with MACSAD.
+        Note: install an previous version of P4C. Newest version of P4C introduced changes currently incompatible with MACSAD. Use the command as follow:
         git checkout 80f8970b5ec8e57c4a3611da343461b5b0a8dda
-        Finally export the P4C behavioral variable:
+        Finally export the P4C behavior variable:
         export P4C=´installation_dir´
          
      
