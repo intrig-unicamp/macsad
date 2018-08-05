@@ -33,11 +33,11 @@ of the ODP build directory before running any of these commands):
 
 
 3. Download P4C, compile and install:
-     https://github.com/p4lang/p4c
-     Note: install and previous version of P4C, recent newest version of P4C introduced changes currently incompatible with MACSAD.
-           git checkout 80f8970b5ec8e57c4a3611da343461b5b0a8dda
-     Finally export the P4C behavioral variable:
-           export P4C=´installation_dir´
+        Please install using the repository in: https://github.com/p4lang/p4c
+        Note: install and previous version of P4C, recent newest version of P4C introduced changes currently incompatible with MACSAD.
+        git checkout 80f8970b5ec8e57c4a3611da343461b5b0a8dda
+        Finally export the P4C behavioral variable:
+        export P4C=´installation_dir´
          
      
 
@@ -54,7 +54,7 @@ it (along with its dependencies):
         git submodule update --init --recursive
         sudo apt-get install -y python-yaml graphviz python-setuptools
         
-    For any issues with p4-hlir, please refer to its `README.md` file.
+        For any issues with p4-hlir, please refer to its `README.md` file.
 
 3. Translate the P4 program to MACSAD:
         
