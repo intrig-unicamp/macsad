@@ -32,33 +32,34 @@ of the ODP build directory before running any of these commands):
         cd ..
 
 
+3. Download P4C, compile and install:
+     https://github.com/p4lang/p4c
+     Note: install and previous version of P4C, recent newest version of P4C introduced changes currently incompatible with MACSAD.
+           git checkout 80f8970b5ec8e57c4a3611da343461b5b0a8dda
+     Finally export the P4C behavioral variable:
+           export P4C=´installation_dir´
+         
+     
+
 ## MACSAD installation
 
 1. Clone the MACSAD project:
-
-        git clone --recursive https://github.com/intrig-unicamp/mac.git
-        cd mac
+        apt-get install -y autoconf build-essential pkg-config autoconf-archive libpcap-dev python-scapy
+        git clone https://github.com/intrig-unicamp/macsad.git 
+        cd macsad
+        git checkout mac-16
 	
-2. MACSAD has added `P4-hlir` as a submodule. Download/update and then install
+2. MACSAD has added `p4-hlir16` as a submodule. Download/update and then install
 it (along with its dependencies):
-
+        git submodule update --init --recursive
         sudo apt-get install -y python-yaml graphviz python-setuptools
-        cd p4-hlir
-        python setup.py install --user
-
+        
     For any issues with p4-hlir, please refer to its `README.md` file.
 
 3. Translate the P4 program to MACSAD:
         
         cd ..
-        python src/transpiler.py examples/p4_src/l2_fwd.p4
-
-4. Install build dependencies, project dependencies and compile MACSAD:
-
-        sudo apt-get install -y autoconf libtool build-essential pkg-config autoconf-archive libpcap-dev python-scapy
-        ./autogen.sh
-        ./configure
-        make
+        python src/transpiler.py examples/p4_16/l2_fwd_16.p4 
 
 5. Set hugepages number and create interfaces for the test:
 
@@ -78,9 +79,9 @@ switch):
 
 2. Run the MACSAD switch:
 
-        sudo ./macsad -i veth1,veth2 -c 0 -m 0 --out_mode 0
+        sudo ./macsad -i veth1,veth3 -c 2 -m 0 --out_mode 0
 
-3. Now will use the veth interfaces created in step #5. `veth1` and `veth2` will
+3. Now will use the veth interfaces created in step #5. `veth1` and `veth3` will
 be part of the switch. We will send packet to `veth0` (which is `veth1`'s pair)
 and monitor at `veth3` (which is `veth2`'s pair) for packets. Similary we will
 send packet to `veth3` and expect packets to arrive at `veth0`:
