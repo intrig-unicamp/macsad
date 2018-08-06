@@ -1,4 +1,4 @@
-## MACSAD
+## MACSAD [![License: Apache 2.0](https://img.shields.io/hexpm/l/plug.svg?style=for-the-badge)](LICENSE)
 
 The Multi-Architecture Compiler System for Abstract Dataplanes (MACSAD) is a P4 compiler that uses ODP aiming to archive portability of dataplane applications without compromising the target performance. MACSAD integrates the ODP APIs with P4, defining a programmable dataplane across multiple targets in an unified compiler system. MACSAD has a designed compiler module that generates an Intermediate Representation (IR) for P4 applications.
 
