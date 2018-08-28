@@ -12,11 +12,8 @@
 //See the License for the specific language governing permissions and
 //limitations under the License.
 
-#include <odp_api.h>
 #include "odp_lib.h"
 #include <odp/api/packet.h>
-#include <odp/helper/eth.h>
-#include <odp/helper/ip.h>
 
 uint32_t enabled_port_mask = 0;
 struct ether_addr ports_eth_addr[MAX_ETHPORTS];

@@ -15,8 +15,7 @@
 #ifndef DPDK_TABLES_H
 #define DPDK_TABLES_H
 
-#include <odp/helper/table.h>
-#include <odp/helper/odph_api.h>
+#include "odp_lib.h"
 
 typedef struct extended_table_s {
     void*     odp_table;

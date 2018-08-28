@@ -28,12 +28,7 @@
 
 // ODP headers
 #include "odp_api.h"
-#include <odp/helper/eth.h>
-#include <odp/helper/chksum.h>
-#include <odp/helper/ip.h>
-#include <odp/helper/table.h>
-#include <net/ethernet.h>
-#include <odp/helper/threads.h>
+#include <odp/helper/odph_api.h>
 
 // Backend-specific aliases
 #include "aliases.h"
