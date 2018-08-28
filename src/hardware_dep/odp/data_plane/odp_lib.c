@@ -78,8 +78,9 @@ static void sig_handler(int signo)
 	if (signo == SIGINT)
 	{
 		exit_threads = 1;
-		printf("Received signal=%u (%s) exiting.", signo, signal_name);
+		printf("Received signal=%u (%s) exiting. \n", signo, signal_name);
 	}else{
+		exit_threads = 1;
 		num_stack_frames = backtrace(bt_array, 100);
 		error("2 Received signal=%u (%s) exiting.", signo, signal_name);
 		backtrace_symbols_fd(bt_array, num_stack_frames, fileno(stderr));
@@ -409,6 +410,7 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
                 capa.max_input_queues, num_rx);
         num_rx  = capa.max_input_queues;
         mode_rx = ODP_PKTIO_OP_MT;
+		printf("SETTING RX MT MODE \n");
     }
 
     if (num_tx > (int)capa.max_output_queues) {
@@ -416,9 +418,14 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
                 capa.max_output_queues, num_tx);
         num_tx  = capa.max_output_queues;
         mode_tx = ODP_PKTIO_OP_MT;
+		printf("SETTING TX MT MODE \n");
     }
 
-    pktin_param.hash_enable = 1;
+	printf("[IMT] setting RX TX MT MODE forcefully \n");
+        mode_rx = ODP_PKTIO_OP_MT;
+        mode_tx = ODP_PKTIO_OP_MT;
+
+    pktin_param.hash_enable = 0;
     pktin_param.hash_proto.proto.ipv4 = 1;
     pktin_param.num_queues  = num_rx;
     pktin_param.op_mode     = mode_rx;
@@ -701,14 +708,15 @@ static void print_port_mapping(void)
 static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
         int duration, int timeout)
 {
-    uint64_t rx_pkts_tot = 0;
+    uint64_t rx_pkts_tot = 0, tx_pkts_tot;
     int elapsed = 0;
-//    int stats_enabled = 1;
+    int stats_enabled = 1;
     int loop_forever = (duration == 0);
+	int num_ifaces, rx_pps, rx_pkts_prev;
 
     if (timeout <= 0) {
-//        stats_enabled = 0;
-        timeout = 1;
+        stats_enabled = 0;
+//        timeout = 1;
     }
 
     do {
@@ -724,8 +732,8 @@ static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
         sleep(timeout);
         elapsed += timeout;
 
-        for (i = 0; i < num_workers; i++) {
-            for (j = 0; j < num_ifaces; j++) {
+        for (int i = 0; i < num_workers; i++) {
+            for (int j = 0; j < num_ifaces; j++) {
                 rx_pkts[j] += thr_stats[i][j].s.rx_packets;
                 tx_pkts[j] += thr_stats[i][j].s.tx_packets;
                 rx_drops += thr_stats[i][j].s.rx_drops;
@@ -904,6 +912,116 @@ uint16_t calculate_csum16(void* buf, uint16_t length) {
 uint32_t packet_length(packet_descriptor_t* pd) {
     //Returns sum of buffer lengths over all packet segments.
     return odp_packet_buf_len((odp_packet_t) pd->wrapper);
+}
+
+char * get_lstate(int i){
+    if (i == 0) return "STOPPED";
+    if (i == 1) return "CONFIGURED";
+    if (i == 2) return "RUNNING";
+    return "UNKNOWN";
+}
+
+void print_stats(void){
+	int num_workers = 0;
+	num_workers = gconf->appl.num_workers;
+	printf("Num_workers %d\n", num_workers);
+loop:
+	if (exit_threads == 1) return;
+	odp_time_wait_ns(10 * ODP_TIME_SEC_IN_NS);
+	printf("\n");
+	for (int i = 0; i < num_workers; ++i) {
+		printf("THR_IDX[%d] -> RX pkts  %" PRIu64 ",	TX pkts  %" PRIu64 ", 	Tx drps  %" PRIu64 " \n",  gconf->mconf[i].thr_idx, gconf->mconf[i].rx_pkts,  gconf->mconf[i].tx_pkts,  gconf->mconf[i].tx_drps);
+}
+	printf("\n");
+	goto loop;
+return;
+}
+
+void print_lstate(void) {
+	odp_time_t wait, next, cur;
+	int verbose_interval = 200;
+	int cpuid, cnt, num_workers;
+	int lstate_tmp;
+	int idt, rx_workers;
+	int to_change = 0, up = 0;
+
+	num_workers = gconf->appl.num_workers;
+	rx_workers = num_workers/2;
+	printf("PRINT_LSTATE: cpuID %d, thread_id %d , to_change %d, rx_workers %d\n",odp_cpu_id(), odp_thread_id(), to_change, rx_workers);
+loop:
+	if (exit_threads == 1) return;
+	odp_time_wait_ns(15 * ODP_TIME_SEC_IN_NS);
+	printf("Timer expired in ctrl thread cpuID %d, threadID %d\n", odp_cpu_id(), odp_thread_id());
+
+	if (to_change == rx_workers) {
+//		printf("to_change %d, up %d, rx_workers %d \n", to_change, up, rx_workers);
+		to_change = 0;
+		up = (up + 1) % 2;
+	}
+
+	if (up == 0) {
+		for(int i=0; i <= to_change; i++){
+			idt = i*2;
+			lstate_tmp = gconf->mconf[idt].lstate;
+			if (lstate_tmp == RUNNING) {
+				gconf->mconf[idt].lstate = STOPPED;
+	//			printf("THR_IDX(%d), state change(%s -> %s) \n", gconf->mconf[idt].thr_idx, get_lstate(lstate_tmp), get_lstate(gconf->mconf[idt].lstate));
+			}
+		}
+	} else if (up == 1) {
+		for(int i=0; i <= to_change; i++){
+			idt = i*2;
+			lstate_tmp = gconf->mconf[idt].lstate;
+			if (lstate_tmp == STOPPED) {
+				gconf->mconf[idt].lstate = CONFIGURED;
+	//			printf("THR_IDX(%d), state change(%s -> %s) \n", gconf->mconf[idt].thr_idx, get_lstate(lstate_tmp), get_lstate(gconf->mconf[idt].lstate));
+			}
+		}
+	}
+
+	for (int i = 0; i<num_workers; i++) { printf("-THR_IDX(%d) lstate %s \n", gconf->mconf[i].thr_idx, get_lstate(gconf->mconf[i].lstate));}
+
+	to_change++;
+	goto loop;
+
+#if 0
+//	for (int i = 0; i < num_workers; ++i) {
+//		lstate_tmp = gconf->mconf[i].lstate;
+//		if ((i%2) == 0){
+				//if (i==0){
+				if (lstate_tmp == STOPPED) {
+					gconf->mconf[i].lstate = CONFIGURED;
+					printf("THR_IDX(%d), state change(%s -> %s) \n", gconf->mconf[i].thr_idx, get_lstate(lstate_tmp), get_lstate(gconf->mconf[i].lstate));
+				} else if (lstate_tmp == RUNNING) {
+					gconf->mconf[i].lstate = STOPPED;
+					printf("THR_IDX(%d), state change(%s -> %s) \n", gconf->mconf[i].thr_idx, get_lstate(lstate_tmp), get_lstate(gconf->mconf[i].lstate));
+				}
+			}
+			//			gconf->mconf[i].lstate = ((gconf->mconf[i].lstate + 1) % 3);
+	goto loop;
+#endif
+
+#if 0
+	wait = odp_time_local_from_ns(verbose_interval * ODP_TIME_SEC_IN_NS);
+	next = odp_time_sum(odp_time_local(), wait);
+
+	while (cnt < 4) {
+	cur = odp_time_local();
+	if (odp_time_cmp(next, cur) > 0) {
+//		print();
+		cpuid = odp_cpu_id();
+		printf("lcore state of lcore(%d) is %d \n", cpuid, gconf->mconf[cpuid].lstate);
+		gconf->mconf[cpuid].lstate = ((gconf->mconf[cpuid].lstate + 1) % 3);
+		next = odp_time_sum(cur, wait);
+	}
+	else {
+		printf("waiting for timer expire\n");
+	}
+	cnt++;
+}
+#endif
+
+	return;
 }
 
 uint8_t maco_initialize(int argc, char **argv)
@@ -1146,10 +1264,19 @@ uint8_t maco_initialize(int argc, char **argv)
         odp_cpumask_set(&thd_mask, cpu);
         odph_odpthreads_create(&thread_tbl[i], &thd_mask, &thr_params);
 
+		printf("thread create: wrk_cpu is %d\n",cpu);
+		gconf->mconf[i].lstate = RUNNING;
         // Enable this to use one cpu per thread per interface
         if (gconf->appl.cpu_count > 0)
             cpu = maco_get_next_cpu(&cpumask, cpu);
     }
+
+	printf("lcore state of 1st lcore: %d \n", gconf->mconf[0].lstate);
+	printf("ctrl_cpu is %d, thread_id %d, odp_cpu_id %d, cpu afinity %d \n",ctrl_cpu, odp_thread_id(), odp_cpu_id(), odph_odpthread_getaffinity());
+	if(ctrl_cpu == odph_odpthread_getaffinity()){
+		print_lstate();
+		//print_stats();
+	}
 
     /* Master thread waits for other threads to exit */
     for (i = 0; i < num_workers; ++i)

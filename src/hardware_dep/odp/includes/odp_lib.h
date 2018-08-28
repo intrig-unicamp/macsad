@@ -213,6 +213,14 @@ typedef struct pkt_buf_t {
 	unsigned len;            /**< Number of packets in buffer */
 } pkt_buf_t;
 
+// sugar@100
+enum lcore_config_state_e {
+  STOPPED,
+  CONFIGURED,
+  RUNNING
+};
+typedef enum lcore_config_state_e lcore_config_state_t;// sugar@103
+
 typedef struct macs_conf{
     int mode;       /* TODO: Thread mode (process/thread) */
     int thr_idx;
@@ -220,7 +228,8 @@ typedef struct macs_conf{
     int num_rx_pktio;
     /** Number of interfaces to which to send packets */
     int num_tx_pktio;
-
+	volatile lcore_config_state_t lstate;
+	uint64_t rx_pkts, tx_pkts, tx_drps;
     /* rx_pktio */
     struct {
         odp_pktin_queue_t pktin;   /** Packet input queue */
@@ -237,8 +246,8 @@ typedef struct macs_conf{
         pkt_buf_t buf;         /** Packet TX buffer */
     } tx_pktios[MAX_PKTIOS];
 
-    stats_t *stats[MAX_PKTIOS];    /** Interface statistics */
-} macs_conf_t;
+   stats_t *stats[MAX_PKTIOS];    /** Interface statistics */
+} macs_conf_t ODP_ALIGNED_CACHE;
 
 /**
  * Grouping of all global data
@@ -246,8 +255,6 @@ typedef struct macs_conf{
 typedef struct mac_global{
 	/** Per thread interface statistics */
 	stats_t stats[MAX_WORKERS][MAX_PKTIOS];
-    /** Application (parsed) arguments */
-    appl_args_t appl;
 	/* pkt pool */
     odp_pool_t pool;
     /** Thread specific arguments */
@@ -270,7 +277,9 @@ typedef struct mac_global{
         int next_rx_queue;
         int next_tx_queue;
     } pktios[MAX_PKTIOS];
-}mac_global_t;
+    /** Application (parsed) arguments */
+    appl_args_t appl;
+}mac_global_t ODP_ALIGNED_CACHE;
 
 /** Global pointer to mac_global */
 extern mac_global_t *gconf;
@@ -281,10 +290,12 @@ extern odp_instance_t instance;
 
 uint8_t maco_initialize(int argc, char **argv);
 void maco_terminate();
-
+	
 int odpc_worker_mode_direct(void *arg);
 int odpc_worker_mode_queue(void *arg);
 int odpc_worker_mode_sched(void *arg);
+
+char * get_lstate(int i);
 
 //TODO where to defien these two
 uint32_t value32;

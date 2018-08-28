@@ -132,11 +132,13 @@ static inline int maco_send_burst(uint16_t n, uint8_t port, int thr_idx)
 	pktout = gconf->mconf[thr_idx].tx_pktios[port].pktout;
 	sent = odp_pktout_send(pktout, tx_pkt_tbl, n);
 	sent = (sent < 0) ? 0 : sent;
+	gconf->mconf[thr_idx].tx_pkts += sent;
 	drops = n - sent;
 	if (odp_unlikely(drops)) {
 		printf(" maco_send drop %d pkts \n", drops);
 		/* Drop rejected packets */
 		odp_packet_free_multi(&tx_pkt_tbl[sent], drops);
+		gconf->mconf[thr_idx].tx_drps += drops;
 	}
 	return 0;
 }
@@ -271,12 +273,19 @@ int odpc_worker_mode_direct(void *arg)
 	int idx = 0;
 	int portid;
 	int thr_idx = mconf->thr_idx;
-
+	int testt = 0;
+	int lstate = mconf->lstate;
+	int prev_lstate = RUNNING;
+	printf("odp_thread_id %d, mconf->thr_idx %d \n", odp_thread_id(), thr_idx);
 	//	uint64_t prev_tsc = 0, diff_tsc, cur_tsc;
 	//	const uint64_t drain_tsc = (odp_time_local_res() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 
 	num_pktio = mconf->num_rx_pktio;
 	init_dataplane(&pd, gconf->state.tables);
+
+        /* read back affinity to verify */
+    int affinity = odph_odpthread_getaffinity();
+    printf("THREAD[%d] - afinity CPU %d \n", thr_idx, affinity);
 
 	/* Loop packets */
 	while (odp_likely(!exit_threads)) {
@@ -293,18 +302,56 @@ int odpc_worker_mode_direct(void *arg)
 			prev_tsc = cur_tsc;
 		}
 #endif
+/*
+		if (prev_lstate != mconf->lstate){
+			printf("THREAD[%d] lstate changed (%s -> %s) \n", thr_idx, get_lstate(prev_lstate), get_lstate(mconf->lstate));
+			prev_lstate = mconf->lstate;
+		}
+*/
+//		if (thr_idx == 0){printf("THR%d cont\n",thr_idx); continue;}
+#if 1
+		while(mconf->lstate != RUNNING){
+			 if (mconf->lstate == CONFIGURED) {
+				mconf->lstate = RUNNING;
+//				printf("THREAD[%d] changing lstate to (%s) \n", thr_idx, get_lstate(mconf->lstate));
+				break;
+			}
 
+			if (mconf->lstate == STOPPED)
+			{
+//				printf("THREAD[%d] is entering sleep 10000us, testt is %d \n", thr_idx, testt++);
+				for (portid = 0; portid < gconf->appl.if_count; portid++) {
+					if (odp_unlikely((portid == port_in) || (mconf->tx_pktios[portid].buf.len == 0)))
+						continue;
+					maco_send_burst (mconf->tx_pktios[portid].buf.len, portid, thr_idx);
+					mconf->tx_pktios[portid].buf.len = 0;
+				//	printf("b%d ",thr_idx);
+				}
+				//printf("\n");
+				//odp_time_wait_ns(10000 * ODP_TIME_USEC_IN_NS);
+				usleep(10000);
+			}
+		}
+#endif
+//		printf("THREAD[%d] 2 testt iss %d \n", thr_idx, testt++);
 		int sent;
 		unsigned drops;
+//TODO: idx is zero here. Hence it will only recv pkt from one queue. If more
+// queues are mapped to this thread, then only the first queue is polled.
+// Need to udpate this code.
+
 		pktin   = mconf->rx_pktios[idx].pktin;
 		port_in = mconf->rx_pktios[idx].rx_idx;
 		idx++;
 		if (idx == num_pktio)
 			idx = 0;
 
-		pkts = odp_pktin_recv_tmo(pktin, pkt_tbl, MAX_PKT_BURST, DEF_RX_PKT_TMO_US);
-		if (odp_unlikely(pkts <= 0))
-			continue;
+        pkts = odp_pktin_recv(pktin, pkt_tbl, MAX_PKT_BURST);
+		//pkts = odp_pktin_recv_tmo(pktin, pkt_tbl, MAX_PKT_BURST, DEF_RX_PKT_TMO_US);
+		if (odp_unlikely(pkts <= 0)) { continue;}
+		mconf->rx_pkts += pkts;
+		//if (odp_unlikely(pkts <= 0)) {printf("THR %d no pkt \n", thr_idx); continue;}
+//		printf("THREAD[%d] 3 testt iss %d - after recv \n",thr_idx, testt++);
 #if 0
 		if(port_in) {pktout = mconf->tx_pktios[0].pktout;
 		}else {pktout = mconf->tx_pktios[1].pktout;}
@@ -323,6 +370,7 @@ int odpc_worker_mode_direct(void *arg)
 			packet_received(&pd, &pkt, port_in, thr_idx);
 			send_packet (&pd, thr_idx);
 		}
+//		printf("THREAD[%d] 4 testt iss %d - after sendpkt \n", thr_idx, testt++);
 
 		for (portid = 0; portid < gconf->appl.if_count; portid++) {
 			if (odp_unlikely((portid == port_in) || (mconf->tx_pktios[portid].buf.len == 0)))
@@ -330,6 +378,8 @@ int odpc_worker_mode_direct(void *arg)
 			maco_send_burst (mconf->tx_pktios[portid].buf.len, portid, thr_idx);
 			mconf->tx_pktios[portid].buf.len = 0;
 		}
+//		printf("THREAD[%d] 5 testt iss %d - after sendout TX queue clean \n",thr_idx, testt++);
+//		printf("%d", thr_idx);
 #endif
 	}
 
