@@ -133,7 +133,6 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
     t->socketid = socketid;
     odph_table_t tbl;
     if(t->key_size == 0) return; // we don't create the table if there are no keys (it's a fake table for an element in the pipeline)
-    info(":::: EXECUTING table create:\n");
     switch(t->type) {
         case LOOKUP_EXACT:
             snprintf(name, sizeof(name), "%s_exact_%d_%d", t->name, socketid, replica_id);

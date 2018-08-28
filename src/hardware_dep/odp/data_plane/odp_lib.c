@@ -158,7 +158,6 @@ static void print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 #endif
 }
 
-//int init_lcore_confs()
 int odpc_lcore_conf_init ()
 {
     info("Configuring lcore structs...\n");
@@ -1041,9 +1040,6 @@ uint8_t maco_initialize(int argc, char **argv)
         gconf->mconf[i].thr_idx = i;
 
     if_count = gconf->appl.if_count;
-    info("num worker threads: %i\n", num_workers);
-    info("first CPU:          %i\n", odp_cpumask_first(&cpumask));
-    info("cpu mask:           %s\n", cpumaskstr);
 
     /* create the packet pool */
     odp_pool_param_init(&params);
@@ -1113,8 +1109,6 @@ uint8_t maco_initialize(int argc, char **argv)
 
     /* Create worker threads */
     cpu = maco_get_first_cpu(&cpumask);
-    info("count threadmask %d\n ", odp_cpumask_count(&cpumask));
-    info("num worksers is %d\n", num_workers);
 
     /* Start packet receive and transmit */
     for (i = 0; i < if_count; ++i) {
@@ -1178,7 +1172,6 @@ void maco_terminate()
 		debug("Error: term global\n");
 		exit(EXIT_FAILURE);
 	}
-	printf("\nMACSAD Exiting\n\n");
 #endif
 	return;
 }
