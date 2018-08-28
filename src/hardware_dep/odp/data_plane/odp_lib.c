@@ -1108,6 +1108,7 @@ uint8_t maco_initialize(int argc, char **argv)
             exit(EXIT_FAILURE);
         }
         cpu = odp_cpumask_first(&cpumask);
+        ctrl_cpu = cpu;
         (void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
         printf("Control Thread: CPU %d, Mask %s \n",cpu, cpumaskstr);
 
