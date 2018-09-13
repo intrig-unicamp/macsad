@@ -1094,11 +1094,11 @@ uint8_t maco_initialize(int argc, char **argv)
     /* Initialize all the tables defined in p4 src */
     odpc_lookup_tbls_init();
 
-    /* initiate control plane */
-    init_control_plane();
-
     // TODO
     odpc_lcore_conf_init();
+
+    /* initiate control plane */
+    init_control_plane();
 
     /* Create and init worker threads */
     memset(thread_tbl, 0, sizeof(thread_tbl));
