@@ -21,7 +21,7 @@ $(info CC = $(CC))
 
 # Compiler debug level
 CFLAGS += -O3
-#CFLAGS +=  -g -O2
+#CFLAGS +=  -g -O0
 #CFLAGS +=  -g -rdynamic -O2
 #CFLAGS += -fno-omit-frame-pointer
 #CFLAGS +=  -ggdb
@@ -46,8 +46,5 @@ CFLAGS += -D NINFO
 CFLAGS += -D NSIGG
 CFLAGS += -D NERROR
 CFLAGS += -D NWARN
-
-#Comment to add hash table support instead of cuckoo table support
-CFLAGS += -D CUCKOO
 
 #CFLAGS += -fno-stack-protector
