@@ -13,26 +13,12 @@
 //limitations under the License.
 
 #include "stdio.h"
-#include "backend.h"
-#include "actions.h"
-#include "dataplane.h"
-#include "odp_tables.h"
-#include "odp_api.h"
 #include "odp_lib.h"
 
 // ============================================================================
 // LOOKUP TABLE IMPLEMENTATIONS
 
 #include "ternary_naive.h"  // TERNARY
-
-//TODO need to verify again. What is the functionality of it? How default_val is used?
-static uint8_t*
-copy_to_socket(uint8_t* src, int length, int socketid) {
-    //    uint8_t* dst = rte_malloc_socket("uint8_t", sizeof(uint8_t)*length, 0, socketid);
-    uint8_t* dst =	malloc(sizeof(uint8_t)*length);
-    memcpy(dst, src, length);
-    return dst;
-}
 
 static void print_prefix_info(
         const char *msg, uint32_t ip, uint8_t cidr)
@@ -129,23 +115,19 @@ void table_create(lookup_table_t* t, int socketid, int replica_id)
     }
 }
 
-static uint8_t* add_index(uint8_t* value, int val_size, int index)
+static uint8_t* add_index(uint8_t* src, int length, int index)
 {
-    //	realloc doesn't work in this case ("invalid old size")
-    uint8_t* value2 = malloc(val_size+sizeof(int));
-    memcpy(value2, value, val_size);
-    *(value2+val_size) = index;
-    return value2;
+    uint8_t* dst =  malloc(length+sizeof(int));
+    memcpy(dst, src, length);
+    *(dst+length) = index;
+    return dst;
 }
 
 void table_setdefault(lookup_table_t* t, uint8_t* value)
 {
-    info(":::: EXECUTING table_setdefault - val size %d, socket id %d\n", t->val_size, t->socketid);
-    debug("Default value set for table %s (on socket %d).\n", t->name, t->socketid);
-    value = add_index(value, t->val_size, DEFAULT_ACTION_INDEX);
+    info(":::: EXECUTING table_setdefault - val size %d\n", t->val_size);
     if(t->default_val) free(t->default_val);
-    t->default_val = copy_to_socket(value, t->val_size+sizeof(int), t->socketid);
-
+    t->default_val = add_index(value, t->val_size, DEFAULT_ACTION_INDEX);
 }
 
 void exact_add(lookup_table_t* t, uint8_t* key, uint8_t* value)
@@ -230,12 +212,12 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
     int ret = 0;
     if(t->key_size == 0) return t->default_val;
     extended_table_t* ext = (extended_table_t*)t->table;
-    memset(ext->content, 0, t->val_size);
+//    memset(ext->content, 0, t->val_size);
     uint8_t *result = ext->content;
     info(":::: EXECUTING exact lookup on table %s, keysize %d, result %p \n", t->name,t->key_size, result);
 
     ret = odph_cuckoo_table_get_value(ext->odp_table, key, result, t->val_size);
-    if (ret < 0) {
+    if (odp_unlikely(ret < 0)) {
         debug("  :: EXACT lookup fail with ret=%d,result=%d \n", ret, result);
         return t->default_val;
     }
