@@ -20,6 +20,7 @@
 typedef struct extended_table_s {
     void*     odp_table;
     uint32_t   size;
+    uint8_t* kv;
     uint8_t** content;
 } extended_table_t;
 

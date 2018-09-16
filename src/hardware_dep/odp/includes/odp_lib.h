@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include "data_plane_data.h"
 #include "backend.h"
+#include "actions.h"
 #include "dataplane.h" // lookup_table_t
 #include "ctrl_plane_backend.h"
 #include "odp_tables.h"
