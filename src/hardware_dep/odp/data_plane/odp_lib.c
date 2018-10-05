@@ -917,8 +917,8 @@ uint8_t maco_initialize(int argc, char **argv)
     odp_pktio_info_t info;
     odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
     int (*thr_run_func)(void *);
-
-    odp_pool_capability_t capa;
+    odp_pool_capability_t pool_capa;
+    uint32_t pkt_len, pkt_num;
 
     odp_init_t init;
 
@@ -1054,19 +1054,29 @@ uint8_t maco_initialize(int argc, char **argv)
 
     if_count = gconf->appl.if_count;
 
-    /* create the packet pool */
-    odp_pool_param_init(&params);
-    if (odp_pool_capability(&capa) < 0) {
-        error("getting pool capability failed \n");
-    //    exit(EXIT_FAILURE);
+
+    if (odp_pool_capability(&pool_capa)) {
+        error("Error: pool capability failed\n");
+        return -1;
     }
 
-    params.pkt.seg_len = PKT_POOL_BUF_SIZE;
-    params.pkt.len     = PKT_POOL_BUF_SIZE;
-    params.pkt.num     = PKT_POOL_SIZE;
+    pkt_len = PKT_POOL_BUF_SIZE;
+    pkt_num = PKT_POOL_SIZE;
+
+    if (pool_capa.pkt.max_len && pkt_len > pool_capa.pkt.max_len)
+        pkt_len = pool_capa.pkt.max_len;
+
+    if (pool_capa.pkt.max_num && pkt_num > pool_capa.pkt.max_num)
+        pkt_num = pool_capa.pkt.max_num;
+
+    /* create the packet pool */
+    odp_pool_param_init(&params);
+    params.pkt.seg_len = pkt_len;
+    params.pkt.len     = pkt_len;
+    params.pkt.num     = pkt_num;
     params.type        = ODP_POOL_PACKET;
 
-    printf ("the pkt.seg_len: %d, capa.seg_sen: %d \n", params.pkt.seg_len, capa.pkt.max_seg_len);
+    printf ("the pkt.seg_len: %d, capa.seg_sen: %d \n", params.pkt.seg_len, pool_capa.pkt.max_seg_len);
 
     gconf->pool = odp_pool_create("PktsPool", &params);
     if (gconf->pool == ODP_POOL_INVALID) {
