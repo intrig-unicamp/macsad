@@ -417,7 +417,7 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
         mode_tx = ODP_PKTIO_OP_MT;
     }
 
-    pktin_param.hash_enable = 1;
+    pktin_param.hash_enable = 0;
     pktin_param.hash_proto.proto.ipv4 = 1;
     pktin_param.num_queues  = num_rx;
     pktin_param.op_mode     = mode_rx;
@@ -513,7 +513,7 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
     char *token;
     size_t len;
     odp_cpumask_t cpumask, cpumask_args, cpumask_and;
-    int i, num_workers;
+    int i, num_workers = 0;
     static struct option longopts[] = {
         {"count", required_argument, NULL, 'c'},
         {"cpu_mask", required_argument, NULL, 'C'},
@@ -844,8 +844,8 @@ static void macs_set_queue_afinity(void)
             mconf->rx_pktios[pktio].rqueue_idx = rx_queue;
             mconf->rx_pktios[pktio].pktin =
                 gconf->pktios[rx_idx].pktin[rx_queue];
-            mconf->rx_pktios[pktio].rx_queue =
-                gconf->pktios[rx_idx].rx_q[rx_queue];
+            //mconf->rx_pktios[pktio].rx_queue =
+            //    gconf->pktios[rx_idx].rx_q[rx_queue];
  printf("  rx: pktio %i, queue %i\n", rx_idx, rx_queue);
             rx_queue++;
             if (rx_queue >= gconf->pktios[rx_idx].num_rx_queue)
@@ -859,8 +859,8 @@ static void macs_set_queue_afinity(void)
             mconf->tx_pktios[pktio].tqueue_idx = tx_queue;
             mconf->tx_pktios[pktio].pktout =
                 gconf->pktios[pktio].pktout[tx_queue];
-            mconf->tx_pktios[pktio].tx_queue =
-                gconf->pktios[pktio].tx_q[tx_queue];
+            //mconf->tx_pktios[pktio].tx_queue =
+            //    gconf->pktios[pktio].tx_q[tx_queue];
  printf("  tx: pktio %i, queue %i\n", pktio, tx_queue);
 
             tx_queue++;
@@ -918,6 +918,19 @@ uint8_t maco_initialize(int argc, char **argv)
     odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
     int (*thr_run_func)(void *);
 
+    odp_pool_capability_t capa;
+
+    odp_init_t init;
+
+    odp_init_param_init(&init);
+
+    /* List features not to be used (may optimize performance) */
+    init.not_used.feat.cls    = 1;
+    init.not_used.feat.crypto = 1;
+    init.not_used.feat.ipsec  = 1;
+    init.not_used.feat.timer  = 1;
+    init.not_used.feat.tm     = 1;
+
 /* Code for handling signals.
    TODO: should we write a func for this
 */
@@ -933,7 +946,7 @@ uint8_t maco_initialize(int argc, char **argv)
     sigaction(SIGINT,  &signal_action, NULL);
 
     /* init ODP  before calling anything else */
-    if (odp_init_global(&instance, NULL, NULL)) {
+    if (odp_init_global(&instance, &init, NULL)) {
         debug("Error: ODP global init failed.\n");
         exit(1);
     }
@@ -1043,15 +1056,21 @@ uint8_t maco_initialize(int argc, char **argv)
 
     /* create the packet pool */
     odp_pool_param_init(&params);
+    if (odp_pool_capability(&capa) < 0) {
+        error("getting pool capability failed \n");
+    //    exit(EXIT_FAILURE);
+    }
+
     params.pkt.seg_len = PKT_POOL_BUF_SIZE;
     params.pkt.len     = PKT_POOL_BUF_SIZE;
     params.pkt.num     = PKT_POOL_SIZE;
     params.type        = ODP_POOL_PACKET;
 
+    printf ("the pkt.seg_len: %d, capa.seg_sen: %d \n", params.pkt.seg_len, capa.pkt.max_seg_len);
+
     gconf->pool = odp_pool_create("PktsPool", &params);
     if (gconf->pool == ODP_POOL_INVALID) {
-        debug("Error: packet pool create failed.\n");
-        printf("Error: packet pool create failed.\n");
+        error("Error: Packet pool create failed.\n");
         exit(EXIT_FAILURE);
     }
     odp_pool_print(gconf->pool);
@@ -1103,7 +1122,7 @@ uint8_t maco_initialize(int argc, char **argv)
     /* Create and init worker threads */
     memset(thread_tbl, 0, sizeof(thread_tbl));
 
-    stats = gconf->stats;
+    //stats = gconf->stats;
 
     thr_run_func = odpc_worker_mode_direct;
 
@@ -1133,8 +1152,8 @@ uint8_t maco_initialize(int argc, char **argv)
         thr_params.arg      = &gconf->mconf[i];
         thr_params.start    = thr_run_func;
 
-        for (j = 0; j < MAX_PKTIOS; j++)
-            gconf->mconf[i].stats[j] = &stats[i][j];
+      //  for (j = 0; j < MAX_PKTIOS; j++)
+      //      gconf->mconf[i].stats[j] = &stats[i][j];
 
         odp_cpumask_zero(&thd_mask);
         odp_cpumask_set(&thd_mask, cpu);

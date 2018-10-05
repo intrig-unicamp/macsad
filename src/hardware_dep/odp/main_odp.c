@@ -128,7 +128,7 @@ static inline int maco_send_burst(uint16_t n, uint8_t port, int thr_idx)
 	tx_pkt_tbl = gconf->mconf[thr_idx].tx_pktios[port].buf.pkt;
 	pktout = gconf->mconf[thr_idx].tx_pktios[port].pktout;
 	sent = odp_pktout_send(pktout, tx_pkt_tbl, n);
-	sent = (sent < 0) ? 0 : sent;
+	sent = odp_unlikely(sent < 0) ? 0 : sent;
 	drops = n - sent;
 	if (odp_unlikely(drops)) {
 		printf(" maco_send drop %d pkts \n", drops);

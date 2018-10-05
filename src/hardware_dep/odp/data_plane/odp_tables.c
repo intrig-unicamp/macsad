@@ -187,7 +187,7 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
 
     prefix.ip = key[0] << 24 | key[1] << 16 | key[2] << 8 | key[3];
     prefix.cidr = key[4];
-    //prefix.cidr = 16;
+    //prefix.cidr = 16; // To Force set the prefix
 
     info(":::: EXECUTING lpm add on table %s, depth %d, keysize %d valsize %d, value %p \n", t->name, depth, t->key_size, t->val_size, value);
     info("  :: key:  %d:%d:%d:%d - %d \n",key[0],key[1],key[2],key[3],key[4]);
@@ -196,7 +196,7 @@ void lpm_add(lookup_table_t* t, uint8_t* key, uint8_t depth, uint8_t* value)
     ext->content[ext->size] = copy_to_socket(value, t->val_size+sizeof(int), t->socketid);
     value2 = malloc(t->val_size);
     memcpy(value2, value, t->val_size);
-    printf("addr value2 %p,value2 %p \n", &value2,value2);
+    info("addr value2 %p,value2 %p \n", &value2,value2);
 
     print_prefix_info("Add", prefix.ip, prefix.cidr);
     ret = odph_iplookup_table_put_value(ext->odp_table, &prefix, &value2);
@@ -242,7 +242,7 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 
     ret = odph_cuckoo_table_get_value(ext->odp_table, key, result, t->val_size);
     if (odp_unlikely(ret < 0)) {
-        debug("  :: EXACT lookup fail with ret=%d,result=%d \n", ret, result);
+        debug("  :: EXACT lookup fail with ret=%d,result=%p \n", ret, result);
         return t->default_val;
     }
 
@@ -273,7 +273,7 @@ uint8_t* lpm_lookup(lookup_table_t* t, uint8_t* key)
 #endif
     ret = odph_iplookup_table_get_value(ext->odp_table, &lkp_ip, &result, t->val_size);
     if (ret < 0) {
-        printf("Failed to find longest prefix with result %p \n", &result);
+   //     printf("Failed to find longest prefix with result %p \n", &result);
         debug("  :: LPM lookup fail \n");
         return t->default_val;
     }

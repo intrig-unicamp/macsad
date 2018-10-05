@@ -48,7 +48,7 @@ CFLAGS += -I "$(ODP_SDK)/helper"
 CFLAGS += -I "$(ODP_SDK)/helper/include"
 CFLAGS += -I "$(ODP_SDK)/helper/include/odp/helper"
 
-# odp main
+# MACSAD source files
 SRCS-y += $(CDIR)src/hardware_dep/odp/main.c
 SRCS-y += $(CDIR)src/hardware_dep/odp/main_odp.c
 

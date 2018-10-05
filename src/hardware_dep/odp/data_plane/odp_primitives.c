@@ -12,8 +12,11 @@
 //See the License for the specific language governing permissions and
 //limitations under the License.
 
+#include <string.h>
 #include "backend.h"
 #include "dataplane.h"
+
+uint16_t calculate_csum16(void* buf, uint16_t length);
 
 void add_header(packet_descriptor_t* p, header_instance_t hdr_prefix)
 {
