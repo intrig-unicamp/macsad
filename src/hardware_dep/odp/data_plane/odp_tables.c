@@ -242,7 +242,7 @@ uint8_t* exact_lookup(lookup_table_t* t, uint8_t* key)
 
     ret = odph_cuckoo_table_get_value(ext->odp_table, key, result, t->val_size);
     if (odp_unlikely(ret < 0)) {
-        debug("  :: EXACT lookup fail with ret=%d,result=%d \n", ret, result);
+        debug("  :: EXACT lookup fail with ret=%d,result=%p \n", ret, result);
         return t->default_val;
     }
 

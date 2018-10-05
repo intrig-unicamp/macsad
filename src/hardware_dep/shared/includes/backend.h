@@ -42,13 +42,13 @@
 #ifdef NERROR
 #define error(args, ...)
 #else
-#define error(args, ...) fprintf(stderr, args "[ERROR] \x1b[31m %s:%d " args "\n \x1b[0m", __FILE__, __LINE__, ##__VA_ARGS__)
+#define error(args, ...) fprintf(stderr, "[ERROR] \x1b[31m %s:%d " args "\n \x1b[0m", __FILE__, __LINE__, ##__VA_ARGS__)
 #endif
 
 #ifdef NWARN
 #define warn(args, ...)
 #else
-#define warn(args, ...) fprintf(stderr, args "[WARNING] \x1b[33m %s:%d " args "\n \x1b[0m", __FILE__, __LINE__, ##__VA_ARGS__)
+#define warn(args, ...) fprintf(stderr, "[WARNING] \x1b[33m %s:%d " args "\n \x1b[0m", __FILE__, __LINE__, ##__VA_ARGS__)
 #endif
 
 //=============================================================================
