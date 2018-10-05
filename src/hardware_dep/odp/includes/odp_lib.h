@@ -146,20 +146,20 @@ static inline int sched_mode(pktin_mode_t in_mode)
  * Parsed command line application arguments
  */
 typedef struct appl_args {
-    int cpu_count;
-    const char *cpu_mask;
-	int mcpu_enable;
-    int if_count;       /**< Number of interfaces to be used */
-    int num_workers;    /**< Number of worker threads */
-    char **if_names;    /**< Array of pointers to interface names */
+    uint16_t if_count;       /**< Number of interfaces to be used */
+    uint16_t num_workers;    /**< Number of worker threads */
+    uint16_t cpu_count;
+    uint16_t accuracy;       /**< Number of seconds to get and print statistics */
+  //  int mcpu_enable;
     pktin_mode_t in_mode;   /**< Packet input mode */
     pktout_mode_t out_mode; /**< Packet output mode */
 //TODO need to use the in_mode, out_mode and remove this variable
-	int mode;
-	int time;       /**< Time in seconds to run. */
-    int accuracy;       /**< Number of seconds to get and print statistics */
+//	int mode;
+    uint16_t time;       /**< Time in seconds to run. */
+    char **if_names;    /**< Array of pointers to interface names */
     char *if_str;       /**< Storage for interface names */
-    int error_check;        /**< Check packet errors */
+    const char *cpu_mask;
+    //int error_check;        /**< Check packet errors */
     uint64_t recv_tmo;        /**< Check packet errors */
 } appl_args_t;
 
@@ -210,48 +210,46 @@ typedef struct pkt_buf_t {
 } pkt_buf_t;
 
 typedef struct macs_conf{
-    int mode;       /* TODO: Thread mode (process/thread) */
-    int thr_idx;
+    //int mode;       /* TODO: Thread mode (process/thread) */
+    uint8_t thr_idx;
     /** Number of interfaces from which to receive packets */
-    int num_rx_pktio;
+    uint8_t num_rx_pktio;
     /** Number of interfaces to which to send packets */
-    int num_tx_pktio;
+    uint8_t num_tx_pktio;
 
     /* rx_pktio */
     struct {
         odp_pktin_queue_t pktin;   /** Packet input queue */
-        odp_queue_t rx_queue;
+        //odp_queue_t rx_queue;
         uint8_t rx_idx;      /** Rx Port index */
-        int rqueue_idx;      /** Queue index */
+        uint8_t rqueue_idx;      /** Queue index */
     } rx_pktios[MAX_PKTIOS];
     /* tx_pktio */
     struct {
-        odp_pktout_queue_t pktout; /** Packet output queue */
-        odp_queue_t tx_queue;
-        uint8_t tx_idx;      /** Tx Port index */
-        int tqueue_idx;         /** Queue index */
         pkt_buf_t buf;         /** Packet TX buffer */
+        odp_pktout_queue_t pktout; /** Packet output queue */
+        //odp_queue_t tx_queue;
+        uint8_t tx_idx;      /** Tx Port index */
+        uint8_t tqueue_idx;         /** Queue index */
     } tx_pktios[MAX_PKTIOS];
 
-    stats_t *stats[MAX_PKTIOS];    /** Interface statistics */
-} macs_conf_t;
+//    stats_t *stats[MAX_PKTIOS];    /** Interface statistics */
+} macs_conf_t ODP_ALIGNED_CACHE;
 
 /**
  * Grouping of all global data
  */
 typedef struct mac_global{
-	/** Per thread interface statistics */
-	stats_t stats[MAX_WORKERS][MAX_PKTIOS];
-    /** Application (parsed) arguments */
-    appl_args_t appl;
-	/* pkt pool */
-    odp_pool_t pool;
     /** Thread specific arguments */
 	macs_conf_t mconf[MAC_MAX_LCORE];
+	/** Per thread interface statistics */
+//	stats_t stats[MAX_WORKERS][MAX_PKTIOS];
+	/* pkt pool */
+    odp_pool_t pool;
 	/** ptr to statefull memories */
 	lcore_state_t state;
 
-	int num_pktio;
+	uint16_t num_pktio;
 	/** Table of pktio handles */
     struct {
         odp_pktio_t pktio;
@@ -259,14 +257,16 @@ typedef struct mac_global{
         odp_pktout_queue_t pktout[MAX_QUEUES];
         odp_queue_t rx_q[MAX_QUEUES];
         odp_queue_t tx_q[MAX_QUEUES];
-        int num_rx_thr;
-        int num_tx_thr;
-        int num_rx_queue;
-        int num_tx_queue;
-        int next_rx_queue;
-        int next_tx_queue;
+        uint16_t num_rx_thr;
+        uint16_t num_tx_thr;
+        uint16_t num_rx_queue;
+        uint16_t num_tx_queue;
+        uint16_t next_rx_queue;
+        uint16_t next_tx_queue;
     } pktios[MAX_PKTIOS];
-}mac_global_t;
+    /** Application (parsed) arguments */
+    appl_args_t appl;
+}mac_global_t ODP_ALIGNED_CACHE;
 
 /** Global pointer to mac_global */
 extern mac_global_t *gconf;

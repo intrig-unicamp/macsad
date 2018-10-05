@@ -417,7 +417,7 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
         mode_tx = ODP_PKTIO_OP_MT;
     }
 
-    pktin_param.hash_enable = 1;
+    pktin_param.hash_enable = 0;
     pktin_param.hash_proto.proto.ipv4 = 1;
     pktin_param.num_queues  = num_rx;
     pktin_param.op_mode     = mode_rx;
@@ -918,6 +918,17 @@ uint8_t maco_initialize(int argc, char **argv)
     odph_odpthread_t thread_tbl[MAC_MAX_LCORE];
     int (*thr_run_func)(void *);
 
+    odp_init_t init;
+
+    odp_init_param_init(&init);
+
+    /* List features not to be used (may optimize performance) */
+    init.not_used.feat.cls    = 1;
+    init.not_used.feat.crypto = 1;
+    init.not_used.feat.ipsec  = 1;
+    init.not_used.feat.timer  = 1;
+    init.not_used.feat.tm     = 1;
+
 /* Code for handling signals.
    TODO: should we write a func for this
 */
@@ -933,7 +944,7 @@ uint8_t maco_initialize(int argc, char **argv)
     sigaction(SIGINT,  &signal_action, NULL);
 
     /* init ODP  before calling anything else */
-    if (odp_init_global(&instance, NULL, NULL)) {
+    if (odp_init_global(&instance, &init, NULL)) {
         debug("Error: ODP global init failed.\n");
         exit(1);
     }
