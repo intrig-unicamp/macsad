@@ -128,6 +128,26 @@ The first packet with an unknown destination mac address will be broadcasted by 
 
 Other tested P4 usecases with its dependency graphs can be found at [macsad-usecases](https://github.com/intrig-unicamp/macsad-usecases) repository.
 
+## Publications
+
+- P Gyanesh Kumar Patra, Christian Esteve Rothenberg, Gergely Pongrácz. "MACSAD: Multi-Architecture Compiler System for Abstract Dataplanes (aka Partnering P4 with ODP)". In ACM SIGCOMM 2016 Poster & Demo Session, Aug 2016. [[link](https://intrig.dca.fee.unicamp.br/wp-content/plugins/papercite/pdf/patra2016macsad.pdf)]
+
+- P Gyanesh Kumar Patra, Christian Esteve Rothenberg, Gergely Pongrácz. "MACSAD: High Performance Dataplane Applications on the Move". In IEEE 18th International Conference on High Performance Switching and Routing (HPSR), Campinas, Brazil, Jun. 2017. [[link](https://intrig.dca.fee.unicamp.br/wp-content/plugins/papercite/pdf/patra2017macsad.pdf)]
+
+- F. R. Cesen, G. P. patra, C. E. Rothenberg, and G. Pongrácz, “Design, Implementation and Evaluation of IPv4/IPv6 Longest Prefix Match support in P4 Dataplanes,” In CSBC 2018 – 17o WPerformance, Jul. 2018. [[link](https://intrig.dca.fee.unicamp.br/wp-content/plugins/papercite/pdf/cesen2018design.pdf)]
+
+- J. S. Mejia, D. Feferman, and C. E. Rothenberg, “Network address translation using a programmable dataplane processor,” In CSBC 2018 – 17o WPerformance, Jul. 2018. [[link](https://intrig.dca.fee.unicamp.br/wp-content/plugins/papercite/pdf/mejia2018network.pdf)]
+
+- F. R. Cesen, G. P. patra, and C. E. Rothenberg, “BB-Gen: A Packet Crafter for Data Plane Evaluation,” in SBRC 2018 – Salão de Ferramentas, May, 2018. [[link](https://intrig.dca.fee.unicamp.br/wp-content/plugins/papercite/pdf/cesen2018bb.pdf)]
+
+- F. Rodriguez, P. G. Patra, L. Csikor, C. Rothenberg, P. Vörös, S. Laki, and G. Pongrácz, “BB-Gen: a packet crafter for P4 target evaluation”.  In ACM SIGCOMM’18 demo and poster session, 2018. [[link](https://intrig.dca.fee.unicamp.br/wp-content/plugins/papercite/pdf/cesen2018bbgensigcomm.pdf)]
+
+- P Gyanesh Kumar Patra, Fabricio Rodriguez Cesen, Christian Esteve Rothenberg, Gergely Pongracz, "MACSAD: An Exemplar Realization of Multi-Architecture P4 Pipelines". In 5th P4 Workshop, June 2018. [[link](https://p4.org/assets/P4WS_2018/6_MACSAD_Abstract2.pdf)]  
+
+- Fabricio Rodriguez Cesen, P Gyanesh Kumar Patra, Christian Esteve Rothenberg, Gergely Pongracz, "BB-Gen: A Packet Crafter for Performance Evaluation of P4 Data Planes". In 5th P4 Workshop, June 2018. [[link](https://p4.org/assets/P4WS_2018/3_BB-Gen_Abstract2.pdf)]
+
+- P Gyanesh Kumar Patra, Fabricio Rodriguez, Juan Sebastian Mejia, Daniel Lazkani Feferman, Levente Csikor, Christian Esteve Rothenberg, Gergely Pongrácz. "Towards a Sweet Spot of Dataplane Programmability, Portability and Performance: On the Scalability of Multi-Architecture P4 Pipelines". In IEEE JSAC issue on Scalability Issues and Solutions for Software Defined Networks, Sep.2018. [[link](https://intrig.dca.fee.unicamp.br/wp-content/plugins/papercite/pdf/gyanesh2018sweet.pdf)]
+
 ## Acknowledgment
 
 This work was supported by the Innovation Center, Ericsson Telecomunicações S.A., Brazil under grant agreement UNI.61.
