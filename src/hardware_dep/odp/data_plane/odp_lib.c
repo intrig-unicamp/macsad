@@ -24,7 +24,6 @@
 #include "dataplane.h"
 #include "odp_lib.h"
 
-
 struct socket_state state[NB_SOCKETS];
 /** Global pointer to mac_global */
 mac_global_t *gconf;
@@ -54,39 +53,39 @@ extern void odp_main_worker (void);
 
 static void sig_handler(int signo)
 {
-	size_t num_stack_frames;
-	const char  *signal_name;
-	void  *bt_array[128];
+    size_t num_stack_frames;
+    const char  *signal_name;
+    void  *bt_array[128];
 
-	switch (signo) {
-		case SIGINT:
-			signal_name = "SIGINT";   break;
-		case SIGILL:
-			signal_name = "SIGILL";   break;
-		case SIGFPE:
-			signal_name = "SIGFPE";   break;
-		case SIGSEGV:
-			signal_name = "SIGSEGV";  break;
-		case SIGTERM:
-			signal_name = "SIGTERM";  break;
-		case SIGBUS:
-			signal_name = "SIGBUS";   break;
-		default:
-			signal_name = "UNKNOWN";  break;
-	}
+    switch (signo) {
+        case SIGINT:
+            signal_name = "SIGINT";   break;
+        case SIGILL:
+            signal_name = "SIGILL";   break;
+        case SIGFPE:
+            signal_name = "SIGFPE";   break;
+        case SIGSEGV:
+            signal_name = "SIGSEGV";  break;
+        case SIGTERM:
+            signal_name = "SIGTERM";  break;
+        case SIGBUS:
+            signal_name = "SIGBUS";   break;
+        default:
+            signal_name = "UNKNOWN";  break;
+    }
 
-	if (signo == SIGINT)
-	{
-		exit_threads = 1;
-		printf("Received signal=%u (%s) exiting.", signo, signal_name);
-	}else{
-		num_stack_frames = backtrace(bt_array, 100);
-		error("2 Received signal=%u (%s) exiting.", signo, signal_name);
-		backtrace_symbols_fd(bt_array, num_stack_frames, fileno(stderr));
-		fflush(NULL);
-		sync();
-		abort();
-	}
+    if (signo == SIGINT)
+    {
+        exit_threads = 1;
+        printf("Received signal=%u (%s) exiting.", signo, signal_name);
+    }else{
+        num_stack_frames = backtrace(bt_array, 100);
+        error("2 Received signal=%u (%s) exiting.", signo, signal_name);
+        backtrace_symbols_fd(bt_array, num_stack_frames, fileno(stderr));
+        fflush(NULL);
+        sync();
+        abort();
+    }
 }
 
 //--------
@@ -173,7 +172,7 @@ int odpc_lcore_conf_init ()
                 socketid, lcore_id, NB_SOCKETS);
                 info("socket is out of range.\n");
                 }
-                */
+         */
         //TODO remove below socketid set and uncomment above code
         socketid = 0;
         //		qconf = &mconf_list[lcore_id];
@@ -201,7 +200,7 @@ static void change_replica(int socketid, int tid, int replica) {
        state[socketid].active_replica[tid] = replica;
     //info("\n\n\nCHANGING REPLICA of TABLE %d: core %d on socket %d now uses replica %d\n\n\n", tid, lcore_id, socketid, replica);
     }
-    */
+     */
 }
 
 //	int current_replica = active_replica[socketid][tableid];
@@ -324,7 +323,7 @@ uint32_t read_counter(int counterid, int index)
    }
    return 0;
    }
-   */
+ */
 
 /*
    int odpc_stfull_memories_init()
@@ -343,7 +342,7 @@ uint32_t read_counter(int counterid, int index)
    }
    return 0;
    }
-   */
+ */
 
 /**
  * Create a pktio handle
@@ -363,13 +362,13 @@ static int create_pktio(const char *name, int if_idx, int num_rx,
 {
     odp_pktio_t pktio;
     odp_pktio_capability_t capa;
-	odp_pktio_config_t config;
+    odp_pktio_config_t config;
     odp_pktio_param_t pktio_param;
     odp_pktin_queue_param_t pktin_param;
     odp_pktio_op_mode_t mode_rx, mode_tx;
     odp_pktout_queue_param_t pktout_param;
     odp_schedule_sync_t  sync_mode;
-//    int num_tx_shared;
+    //    int num_tx_shared;
 
     pktin_mode_t in_mode = gconf->appl.in_mode;
 
@@ -553,10 +552,10 @@ static void parse_args(int argc, char *argv[], appl_args_t *appl_args)
                 num_workers = odp_cpumask_default_worker(&cpumask, 0);
                 odp_cpumask_and(&cpumask_and, &cpumask_args, &cpumask);
                 if (odp_cpumask_count(&cpumask_and) <
-                                odp_cpumask_count(&cpumask_args)) {
-                        debug("Wrong cpu mask, max cpu's:%d\n",
-                                        num_workers);
-                exit(EXIT_FAILURE);
+                        odp_cpumask_count(&cpumask_args)) {
+                    debug("Wrong cpu mask, max cpu's:%d\n",
+                            num_workers);
+                    exit(EXIT_FAILURE);
                 }
                 break;
             case 'i':
@@ -651,8 +650,8 @@ static void print_info(char *progname, appl_args_t *appl_args)
         printf(" %s", appl_args->if_names[i]);
     printf("\n"
             "Mode:            ");
-        printf("PKTIN_DIRECT, ");
-        printf("PKTOUT_DIRECT");
+    printf("PKTIN_DIRECT, ");
+    printf("PKTOUT_DIRECT");
 
     printf("\n\n");
     fflush(NULL);
@@ -702,11 +701,11 @@ static int print_speed_stats(int num_workers, stats_t (*thr_stats)[MAX_PKTIOS],
 {
     uint64_t rx_pkts_tot = 0;
     int elapsed = 0;
-//    int stats_enabled = 1;
+    //    int stats_enabled = 1;
     int loop_forever = (duration == 0);
 
     if (timeout <= 0) {
-//        stats_enabled = 0;
+        //        stats_enabled = 0;
         timeout = 1;
     }
 
@@ -790,7 +789,7 @@ static void macs_set_worker_afinity(void)
             mconf->rx_pktios[pktio_id].rx_idx = rx_idx;
             mconf->num_rx_pktio++;
             gconf->pktios[rx_idx].num_rx_thr++;
-printf("rx_idx %d, num_rx_thr %d\n", rx_idx, gconf->pktios[rx_idx].num_rx_thr);
+            printf("rx_idx %d, num_rx_thr %d\n", rx_idx, gconf->pktios[rx_idx].num_rx_thr);
             mconf_id++;
             if (mconf_id >= num_workers)
                 mconf_id = 0;
@@ -800,23 +799,23 @@ printf("rx_idx %d, num_rx_thr %d\n", rx_idx, gconf->pktios[rx_idx].num_rx_thr);
 
         for (mconf_id = 0; mconf_id < num_workers; mconf_id++) {
             mconf = &gconf->mconf[mconf_id];
-	    pktio_id = mconf->num_rx_pktio;
-	    mconf->rx_pktios[pktio_id].rx_idx = rx_idx;
-	    for (tx_idx = 0; tx_idx < if_count; tx_idx++){
-		    if(tx_idx != rx_idx){
-			    mconf->tx_pktios[tx_idx].tx_idx = tx_idx;
-	    mconf->num_tx_pktio++;
-	    gconf->pktios[tx_idx].num_tx_thr++;
-printf("=tx_idx %d, num_tx_thr %d\n", tx_idx, gconf->pktios[tx_idx].num_rx_thr);
-		    }
-	    }
-	    mconf->num_rx_pktio++;
-	    gconf->pktios[rx_idx].num_rx_thr++;
-printf("=rx_idx %d, num_rx_thr %d\n", rx_idx, gconf->pktios[rx_idx].num_rx_thr);
-	    rx_idx++;
-	    if (rx_idx >= if_count)
-		    rx_idx = 0;
-	}
+            pktio_id = mconf->num_rx_pktio;
+            mconf->rx_pktios[pktio_id].rx_idx = rx_idx;
+            for (tx_idx = 0; tx_idx < if_count; tx_idx++){
+                if(tx_idx != rx_idx){
+                    mconf->tx_pktios[tx_idx].tx_idx = tx_idx;
+                    mconf->num_tx_pktio++;
+                    gconf->pktios[tx_idx].num_tx_thr++;
+                    printf("=tx_idx %d, num_tx_thr %d\n", tx_idx, gconf->pktios[tx_idx].num_rx_thr);
+                }
+            }
+            mconf->num_rx_pktio++;
+            gconf->pktios[rx_idx].num_rx_thr++;
+            printf("=rx_idx %d, num_rx_thr %d\n", rx_idx, gconf->pktios[rx_idx].num_rx_thr);
+            rx_idx++;
+            if (rx_idx >= if_count)
+                rx_idx = 0;
+        }
     }
     return;
 }
@@ -831,11 +830,11 @@ static void macs_set_queue_afinity(void)
     int rx_idx, tx_queue, rx_queue;
     macs_conf_t *mconf = NULL;
     num_workers = gconf->appl.num_workers;
-  printf("\nQueue binding (indexes)\n-----------------------\n");
+    printf("\nQueue binding (indexes)\n-----------------------\n");
     for (mconf_id = 0; mconf_id < num_workers; mconf_id++) {
         mconf = &gconf->mconf[mconf_id];
         int num = mconf->num_rx_pktio;
-                printf("worker %i\n", mconf_id);
+        printf("worker %i\n", mconf_id);
         /* Receive only from selected ports */
         for (pktio = 0; pktio < num; pktio++) {
             rx_idx   = mconf->rx_pktios[pktio].rx_idx;
@@ -846,7 +845,7 @@ static void macs_set_queue_afinity(void)
                 gconf->pktios[rx_idx].pktin[rx_queue];
             //mconf->rx_pktios[pktio].rx_queue =
             //    gconf->pktios[rx_idx].rx_q[rx_queue];
- printf("  rx: pktio %i, queue %i\n", rx_idx, rx_queue);
+            printf("  rx: pktio %i, queue %i\n", rx_idx, rx_queue);
             rx_queue++;
             if (rx_queue >= gconf->pktios[rx_idx].num_rx_queue)
                 rx_queue = 0;
@@ -861,7 +860,7 @@ static void macs_set_queue_afinity(void)
                 gconf->pktios[pktio].pktout[tx_queue];
             //mconf->tx_pktios[pktio].tx_queue =
             //    gconf->pktios[pktio].tx_q[tx_queue];
- printf("  tx: pktio %i, queue %i\n", pktio, tx_queue);
+            printf("  tx: pktio %i, queue %i\n", pktio, tx_queue);
 
             tx_queue++;
             if (tx_queue >= gconf->pktios[pktio].num_tx_queue)
@@ -883,16 +882,16 @@ static void gconf_init(mac_global_t *gconf)
             gconf->pktios[pktio].rx_q[queue] = ODP_QUEUE_INVALID;
     }
 
-   gconf->appl.in_mode  = DIRECT_RECV;
-   gconf->appl.out_mode = PKTOUT_DIRECT;
+    gconf->appl.in_mode  = DIRECT_RECV;
+    gconf->appl.out_mode = PKTOUT_DIRECT;
 }
 
 //static inline odp_u16sum_t odph_chksum(void *buffer, int len)
 //return checksum value in host cpu order
 /*uint16_t calculate_csum16(void* buf, uint16_t length) {
-    uint16_t value16 = odph_chksum(buf, length);
-    return value16;
-}*/
+  uint16_t value16 = odph_chksum(buf, length);
+  return value16;
+  }*/
 
 uint16_t calculate_csum16(void* buf, uint16_t length) {
     uint16_t value16 = odp_chksum_ones_comp16(buf, length);
@@ -910,6 +909,8 @@ uint8_t maco_initialize(int argc, char **argv)
     odp_pool_param_t params;
     odp_cpumask_t cpumask;
     char cpumaskstr[ODP_CPUMASK_STR_SIZE];
+    odp_cpumask_t allmask;
+    char allmaskstr[ODP_CPUMASK_STR_SIZE];
     int num_workers, i, j, if_count, ret;
     int cpu, ctrl_cpu, affinity;
     stats_t (*stats)[MAX_PKTIOS];
@@ -931,9 +932,9 @@ uint8_t maco_initialize(int argc, char **argv)
     init.not_used.feat.timer  = 1;
     init.not_used.feat.tm     = 1;
 
-/* Code for handling signals.
-   TODO: should we write a func for this
-*/
+    /* Code for handling signals.
+TODO: should we write a func for this
+     */
     struct sigaction signal_action;
     memset(&signal_action, 0, sizeof(signal_action));
     signal_action.sa_handler = sig_handler;
@@ -972,32 +973,36 @@ uint8_t maco_initialize(int argc, char **argv)
     parse_args(argc, argv, &gconf->appl);
 
     /* Print both system and application information */
-	print_info(NO_PATH(argv[0]), &gconf->appl);
+    print_info(NO_PATH(argv[0]), &gconf->appl);
 
-	if (gconf->appl.cpu_mask != NULL) {
-		odp_cpumask_from_str(&cpumask, gconf->appl.cpu_mask);
-		ctrl_cpu = odp_cpumask_first(&cpumask);
-		(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
-		printf("Control Thread: CPU %d, Mask %s \n",ctrl_cpu, cpumaskstr);
+    odp_cpumask_all_available(&allmask);
+    (void)odp_cpumask_to_str(&allmask, allmaskstr, sizeof(allmaskstr));
+    printf("All CPUs available: Mask %s \n", allmaskstr);
 
-		if (odph_odpthread_setaffinity(ctrl_cpu) != 0) {
-			debug("Set main process affinify to "
-					"cpu(%d) failed.\n", ctrl_cpu);
-			exit(EXIT_FAILURE);
-		}
-		odp_cpumask_clr(&cpumask, ctrl_cpu);
+    if (gconf->appl.cpu_mask != NULL) {
+        odp_cpumask_from_str(&cpumask, gconf->appl.cpu_mask);
+        ctrl_cpu = odp_cpumask_first(&cpumask);
+        (void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
+        printf("Control Thread: CPU %d, Mask %s \n",ctrl_cpu, cpumaskstr);
 
-		num_workers = odp_cpumask_count (&cpumask);
-		num_workers = odp_cpumask_default_worker(&cpumask, num_workers);
-		cpu = odp_cpumask_first(&cpumask);
-		(void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
-		printf("Worker Thread : CPUs %d, 1st CPU %d, Mask %s \n",num_workers, cpu, cpumaskstr);
+        if (odph_odpthread_setaffinity(ctrl_cpu) != 0) {
+            debug("Set main process affinify to "
+                    "cpu(%d) failed.\n", ctrl_cpu);
+            exit(EXIT_FAILURE);
+        }
+        odp_cpumask_clr(&cpumask, ctrl_cpu);
 
-	} else if (odp_cpu_count() > 2)
-	{
-		odp_cpumask_zero(&cpumask);
-		/* allocate the 1st available control cpu to main process */
-		if (odp_cpumask_default_control(&cpumask, 1) != 1) {
+        num_workers = odp_cpumask_count (&cpumask);
+        num_workers = odp_cpumask_default_worker(&cpumask, num_workers);
+        cpu = odp_cpumask_first(&cpumask);
+        (void)odp_cpumask_to_str(&cpumask, cpumaskstr, sizeof(cpumaskstr));
+        printf("Worker Thread : CPUs %d, 1st CPU %d, Mask %s \n",num_workers, cpu, cpumaskstr);
+
+    } else if (odp_cpu_count() > 2)
+    {
+        odp_cpumask_zero(&cpumask);
+        /* allocate the 1st available control cpu to main process */
+        if (odp_cpumask_default_control(&cpumask, 1) != 1) {
             debug("Allocate main process CPU core failed.\n");
             exit(EXIT_FAILURE);
         }
@@ -1095,7 +1100,7 @@ uint8_t maco_initialize(int argc, char **argv)
 
         /* A queue per assigned worker */
         num_rx = gconf->pktios[i].num_rx_thr;
-//      num_tx = gconf->pktios[i].num_tx_thr;
+        //      num_tx = gconf->pktios[i].num_tx_thr;
 
         if (create_pktio(dev, i, num_rx, num_workers, gconf->pool))
             exit(EXIT_FAILURE);
@@ -1162,8 +1167,8 @@ uint8_t maco_initialize(int argc, char **argv)
         thr_params.arg      = &gconf->mconf[i];
         thr_params.start    = thr_run_func;
 
-      //  for (j = 0; j < MAX_PKTIOS; j++)
-      //      gconf->mconf[i].stats[j] = &stats[i][j];
+        //  for (j = 0; j < MAX_PKTIOS; j++)
+        //      gconf->mconf[i].stats[j] = &stats[i][j];
 
         odp_cpumask_zero(&thd_mask);
         odp_cpumask_set(&thd_mask, cpu);
@@ -1184,23 +1189,23 @@ uint8_t maco_initialize(int argc, char **argv)
 void maco_terminate()
 {
 #if 0
-	free(gconf->appl.if_names);
-	free(gconf->appl.if_str);
-	if (odpc_lookup_tbls_des()) {
-		info("Lookup table destroy failed.\n");
-	}
-	if (odp_pool_destroy(gconf->pool)) {
-		debug("Error: pool destroy\n");
-		exit(EXIT_FAILURE);
-	}
-	if (odp_term_local()) {
-		debug("Error: term local\n");
-		exit(EXIT_FAILURE);
-	}
-	if (odp_term_global(instance)) {
-		debug("Error: term global\n");
-		exit(EXIT_FAILURE);
-	}
+    free(gconf->appl.if_names);
+    free(gconf->appl.if_str);
+    if (odpc_lookup_tbls_des()) {
+        info("Lookup table destroy failed.\n");
+    }
+    if (odp_pool_destroy(gconf->pool)) {
+        debug("Error: pool destroy\n");
+        exit(EXIT_FAILURE);
+    }
+    if (odp_term_local()) {
+        debug("Error: term local\n");
+        exit(EXIT_FAILURE);
+    }
+    if (odp_term_global(instance)) {
+        debug("Error: term global\n");
+        exit(EXIT_FAILURE);
+    }
 #endif
-	return;
+    return;
 }
