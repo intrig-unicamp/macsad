@@ -38,6 +38,8 @@ mac_controller
 mac_l2_l3_controller
 mac_l3_controller
 mac_l3_nhg_controller
+mac_nat_dw
+mac_nat_up
 
 # Debug files
 *.dSYM/
