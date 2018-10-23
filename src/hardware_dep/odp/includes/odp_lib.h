@@ -99,10 +99,6 @@ struct mbuf_table {
  * @brief Buffer size of the packet pool buffer
  */
 #define PKT_POOL_BUF_SIZE 1856
-/** @def MAX_PKT_BURST
- * @brief Maximum number of packet in a burst
- */
-#define MAX_PKT_BURST 32
 /** @def MAX_WORKERS
  * @brief Maximum number of worker threads
  */
